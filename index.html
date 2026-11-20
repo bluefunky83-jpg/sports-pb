@@ -31,6 +31,85 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen pb-24 antialiased selection:bg-blue-500 selection:text-white">
 
+  <!-- Global Gate Screen: Login & Sign up -->
+  <div id="gate-login-screen" class="fixed inset-0 z-50 bg-slate-950 flex flex-col justify-between p-6 max-w-md mx-auto hidden">
+    <!-- Top Branding -->
+    <div class="pt-12 text-center space-y-4">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-3xl mx-auto shadow-2xl shadow-blue-500/30">
+        🏃
+      </div>
+      <div>
+        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">전남체육 학생선수</span>
+        <h2 class="text-2xl font-extrabold text-white mt-1">운동 성장노트</h2>
+        <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">
+          대회 공식 기록부터 훈련 실기까지<br>
+          학생선수의 성장 흐름을 한눈에 분석합니다.
+        </p>
+      </div>
+    </div>
+
+    <!-- Center: Auth Buttons -->
+    <div class="space-y-3 pb-8">
+      <!-- Google Sign In Button -->
+      <button type="button" onclick="handleGoogleSignIn()" class="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-800 font-bold text-sm flex items-center justify-center gap-3 shadow-xl transition active:scale-95">
+        <svg class="w-5 h-5" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span>Google 계정으로 시작하기</span>
+      </button>
+
+      <!-- Admin Direct Login Button -->
+      <button type="button" onclick="handleAdminDirectSignIn()" class="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-blue-400 font-bold text-sm border border-blue-500/30 flex items-center justify-center gap-2 transition active:scale-95 shadow-md">
+        <span>👑 관리자 로그인</span>
+      </button>
+
+      <div class="pt-2 text-center">
+        <p class="text-[11px] text-slate-500">
+          학부모·코치님은 Google 로그인 후 승인 대기 상태로 진입합니다.
+        </p>
+      </div>
+    </div>
+
+    <!-- Bottom Footer -->
+    <div class="text-center text-[11px] text-slate-600 pb-2">
+      전남체육 학생선수 운동 성장노트 · PWA
+    </div>
+  </div>
+
+  <!-- Screen: Pending Approval for Viewers -->
+  <div id="screen-pending-approval" class="fixed inset-0 z-40 bg-slate-950 flex flex-col justify-between p-6 max-w-md mx-auto hidden">
+    <div class="pt-16 text-center space-y-4">
+      <div class="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-3xl mx-auto shadow-xl">
+        ⏳
+      </div>
+      <div>
+        <h3 class="text-xl font-bold text-white">관리자의 승인을 기다리는 중입니다</h3>
+        <p class="text-xs text-slate-400 mt-2 leading-relaxed" id="text-viewer-nickname-display">
+          관리자가 열람 권한을 승인하면<br>선수의 경기 기록과 성장 차트가 열립니다.
+        </p>
+      </div>
+
+      <!-- Enter 4-digit code option -->
+      <div class="pt-4 max-w-xs mx-auto space-y-2">
+        <p class="text-[11px] text-slate-400">발급받은 승인코드 4자리가 있으신가요?</p>
+        <div class="flex gap-2">
+          <input type="text" id="input-viewer-auth-code" maxlength="4" placeholder="4자리 코드" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center font-mono font-bold text-sm text-white focus:outline-none focus:border-amber-400 tracking-widest">
+          <button type="button" onclick="submitViewerAuthCode()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition active:scale-95">입력</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pb-6 space-y-2 text-center">
+      <button type="button" onclick="handleLogout()" class="text-xs text-slate-500 hover:text-slate-300 underline py-2">
+        다른 계정으로 로그인 (로그아웃)
+      </button>
+    </div>
+  </div>
+
+
   <!-- Main Container -->
   <div class="max-w-md mx-auto px-4 pt-4">
 
@@ -48,7 +127,7 @@
         </div>
       </div>
       <div class="flex items-center gap-1.5">
-        <button type="button" onclick="openViewerApprovalModal()" class="px-2.5 py-1.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center gap-1 transition active:scale-95">
+        <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="px-2.5 py-1.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center gap-1 transition active:scale-95">
           <span>🔔 뷰어 승인</span>
           <span id="badge-pending-count" class="w-2 h-2 rounded-full bg-amber-400 hidden"></span>
         </button>
@@ -89,7 +168,7 @@
   </div>
 
   <!-- Bottom Floating Action Button (Add Record) -->
-  <div class="fixed bottom-6 right-6 z-40">
+  <div id="btn-add-record-fixed" class="fixed bottom-6 right-6 z-40">
     <button type="button" onclick="openRecordModal()" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold px-5 py-3.5 rounded-2xl shadow-xl shadow-blue-600/40 flex items-center gap-2 transition border border-blue-400/30">
       <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
       <span>기록 추가</span>
@@ -461,6 +540,23 @@
       </div>
 
       <div class="space-y-2 text-xs">
+        <!-- Mode / Authentication Card -->
+        <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400">현재 모드:</span>
+            <span id="label-current-mode" class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold text-[11px]">👑 최고 관리자</span>
+          </div>
+          <button type="button" id="btn-toggle-auth-mode" onclick="toggleAuthMode()" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition active:scale-95 flex items-center justify-center gap-1.5">
+            <span>👀 뷰어 모드로 전환 (로그아웃)</span>
+          </button>
+        </div>
+
+        
+        <!-- Logout Button in Settings -->
+        <button type="button" onclick="handleLogout()" class="w-full py-2.5 rounded-xl bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95">
+          <span>🚪 로그아웃 (대문 화면으로 이동)</span>
+        </button>
+
         <!-- Exact Format Excel Export Button -->
         <button type="button" onclick="exportToExcelExactFormat()" class="w-full py-3 rounded-2xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95">
           <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -1919,6 +2015,177 @@
       document.getElementById('modal-settings').classList.add('hidden');
     }
 
+    
+    // --- Global Gate & Auth State Management ---
+    function checkInitialAuthGate() {
+      const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+      const gate = document.getElementById('gate-login-screen');
+      const pendingScreen = document.getElementById('screen-pending-approval');
+
+      if (!authUserStr) {
+        // First visit: Show Login Gate
+        if (gate) gate.classList.remove('hidden');
+        if (pendingScreen) pendingScreen.classList.add('hidden');
+        return;
+      }
+
+      const authUser = JSON.parse(authUserStr);
+      if (gate) gate.classList.add('hidden');
+
+      if (authUser.role === 'admin') {
+        if (pendingScreen) pendingScreen.classList.add('hidden');
+        isMasterAdmin = true;
+        checkInitialAuthGate();
+      applyAuthModeUI();
+      } else {
+        // Viewer Role
+        isMasterAdmin = false;
+        checkInitialAuthGate();
+      applyAuthModeUI();
+        if (!authUser.approved) {
+          if (pendingScreen) {
+            pendingScreen.classList.remove('hidden');
+            const nickDisp = document.getElementById('text-viewer-nickname-display');
+            if (nickDisp) {
+              nickDisp.innerHTML = `<span class="text-amber-300 font-bold font-mono">[${authUser.name}]</span> 님으로 로그인되었습니다.<br>관리자의 승인을 기다리는 중입니다.`;
+            }
+          }
+        } else {
+          if (pendingScreen) pendingScreen.classList.add('hidden');
+        }
+      }
+    }
+
+    function handleGoogleSignIn() {
+      const nick = prompt('구글 로그인에 사용할 닉네임이나 성함을 입력하세요 (예: 코치님, 하람아빠):', '');
+      if (!nick || !nick.trim()) return;
+
+      const user = {
+        id: 'user_' + Date.now(),
+        name: nick.trim(),
+        email: nick.trim() + '@gmail.com',
+        role: 'viewer',
+        approved: false,
+        allowedPlayers: []
+      };
+
+      localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+      checkInitialAuthGate();
+    }
+
+    function handleAdminDirectSignIn() {
+      const pw = prompt('👑 관리자 비밀번호를 입력하세요:', '');
+      if (pw === '1234' || pw === '' || pw === 'admin') {
+        const user = {
+          id: 'admin_jihye',
+          name: '최고관리자',
+          role: 'admin',
+          approved: true,
+          allowedPlayers: ['yusin', 'byeolha']
+        };
+        localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+        checkInitialAuthGate();
+        alert('👑 최고 관리자로 로그인되었습니다!');
+      } else {
+        alert('비밀번호가 일치하지 않습니다.');
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('ATHLETE_APP_AUTH_USER');
+      localStorage.removeItem('ATHLETE_APP_IS_ADMIN');
+      checkInitialAuthGate();
+      closeSettingsModal();
+    }
+
+    function submitViewerAuthCode() {
+      const codeInput = document.getElementById('input-viewer-auth-code');
+      const code = (codeInput && codeInput.value ? codeInput.value : '').trim();
+      if (!code) {
+        alert('승인코드 4자리를 입력해주세요.');
+        return;
+      }
+
+      let authUser = JSON.parse(localStorage.getItem('ATHLETE_APP_AUTH_USER') || '{}');
+      if (code.startsWith('1')) {
+        authUser.approved = true;
+        authUser.allowedPlayers = ['yusin'];
+        alert('✅ 유신 선수 기록 열람이 승인되었습니다!');
+      } else if (code.startsWith('2')) {
+        authUser.approved = true;
+        authUser.allowedPlayers = ['byeolha'];
+        alert('✅ 별하 선수 기록 열람이 승인되었습니다!');
+      } else if (code.startsWith('7')) {
+        authUser.approved = true;
+        authUser.allowedPlayers = ['yusin', 'byeolha'];
+        alert('✅ 전체 선수 기록 열람이 승인되었습니다!');
+      } else {
+        alert('올바른 승인코드가 아닙니다. 관리자에게 코드를 확인해주세요.');
+        return;
+      }
+
+      localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
+      checkInitialAuthGate();
+    }
+
+    // --- Mode & Authentication Logic ---
+    let isMasterAdmin = true;
+
+    function toggleAuthMode() {
+      if (isMasterAdmin) {
+        // Switch to Viewer Mode
+        isMasterAdmin = false;
+        localStorage.setItem('ATHLETE_APP_IS_ADMIN', 'false');
+        checkInitialAuthGate();
+      applyAuthModeUI();
+        closeSettingsModal();
+        alert('👀 뷰어 모드로 전환되었습니다! (기록 추가 및 관리자 기능이 숨겨집니다)');
+      } else {
+        // Switch to Master Admin Mode
+        const inputPw = prompt('👑 관리자 비밀번호를 입력하세요:', '');
+        if (inputPw === null) return;
+        // Default pin is 1234 or empty for prototype convenience
+        if (inputPw === '1234' || inputPw === '' || inputPw === 'admin') {
+          isMasterAdmin = true;
+          localStorage.setItem('ATHLETE_APP_IS_ADMIN', 'true');
+          checkInitialAuthGate();
+      applyAuthModeUI();
+          closeSettingsModal();
+          alert('👑 최고 관리자로 로그인되었습니다!');
+        } else {
+          alert('비밀번호가 일치하지 않습니다.');
+        }
+      }
+    }
+
+    function applyAuthModeUI() {
+      const savedMode = localStorage.getItem('ATHLETE_APP_IS_ADMIN');
+      if (savedMode !== null) isMasterAdmin = (savedMode === 'true');
+
+      const lbl = document.getElementById('label-current-mode');
+      const btn = document.getElementById('btn-toggle-auth-mode');
+      const btnAddRecord = document.getElementById('btn-add-record-fixed');
+      const btnViewerApprove = document.getElementById('btn-viewer-approve-top');
+
+      if (isMasterAdmin) {
+        if (lbl) {
+          lbl.className = 'px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold text-[11px]';
+          lbl.textContent = '👑 최고 관리자';
+        }
+        if (btn) btn.innerHTML = '<span>👀 뷰어 모드로 전환 (로그아웃)</span>';
+        if (btnAddRecord) btnAddRecord.classList.remove('hidden');
+        if (btnViewerApprove) btnViewerApprove.classList.remove('hidden');
+      } else {
+        if (lbl) {
+          lbl.className = 'px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[11px]';
+          lbl.textContent = '👀 뷰어 모드';
+        }
+        if (btn) btn.innerHTML = '<span>👑 관리자로 로그인</span>';
+        if (btnAddRecord) btnAddRecord.classList.add('hidden');
+        if (btnViewerApprove) btnViewerApprove.classList.add('hidden');
+      }
+    }
+
     function exportToExcelExactFormat() {
       const p = currentPlayer;
       let csvContent = "\ufeff";
@@ -2341,6 +2608,8 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       history.pushState({ page: 'main' }, '');
+      checkInitialAuthGate();
+      applyAuthModeUI();
       checkForUpdates();
       loadRealtimeApprovals();
       loadDataFromStorage();
