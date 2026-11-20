@@ -1,0 +1,2391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#020617">
+  <meta name="apple-mobile-web-app-title" content="성장노트">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>유신 & 별하 운동 성장노트</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js & Datalabels Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    * { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .no-select {
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen pb-24 antialiased selection:bg-blue-500 selection:text-white">
+
+  <!-- Main Container -->
+  <div class="max-w-md mx-auto px-4 pt-4">
+
+    <!-- Top App Bar -->
+    <header class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800/80">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </div>
+        <div>
+          <h1 class="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
+            운동 성장노트
+            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">전남체육</span>
+          </h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button type="button" onclick="openViewerApprovalModal()" class="px-2.5 py-1.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center gap-1 transition active:scale-95">
+          <span>🔔 뷰어 승인</span>
+          <span id="badge-pending-count" class="w-2 h-2 rounded-full bg-amber-400 hidden"></span>
+        </button>
+        <button type="button" onclick="openSettingsModal()" class="p-2 text-slate-400 hover:text-white rounded-xl bg-slate-900 border border-slate-800 transition active:scale-95" title="설정 및 백업">
+        <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </button>
+    </header>
+
+    <!-- Player Dropdown & Manage Button -->
+    <div class="flex items-center gap-2 mb-4">
+      <div class="relative flex-1">
+        <select id="select-player" onchange="switchPlayer(this.value)" class="w-full bg-slate-900 border border-blue-500/50 rounded-2xl px-4 py-2.5 text-white font-bold text-sm appearance-none focus:outline-none focus:border-blue-400 cursor-pointer shadow-lg shadow-blue-500/10">
+          <!-- Dynamically populated -->
+        </select>
+        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-blue-400">
+          <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+      </div>
+
+      <button type="button" onclick="openPlayerManageModal()" class="px-3.5 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 whitespace-nowrap">
+        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <span>선수관리</span>
+      </button>
+    </div>
+
+    <!-- Event Category Tabs (Horizontal Scroll) -->
+    <div class="relative mb-4">
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs" id="event-tabs-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Active View Area -->
+    <div id="view-container">
+      <!-- Dynamic Content (PB View or Event Chart + Records) -->
+    </div>
+
+  </div>
+
+  <!-- Bottom Floating Action Button (Add Record) -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <button type="button" onclick="openRecordModal()" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold px-5 py-3.5 rounded-2xl shadow-xl shadow-blue-600/40 flex items-center gap-2 transition border border-blue-400/30">
+      <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+      <span>기록 추가</span>
+    </button>
+  </div>
+
+
+  <!-- Modal: Viewer Approval Management (Realtime Cloud) -->
+  <div id="modal-viewer-approvals" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>🔔</span>
+          <span>뷰어 열람 승인 관리</span>
+        </h3>
+        <button type="button" onclick="closeViewerApprovalModal()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
+        <span class="text-slate-400">신청 닉네임별 열람 권한 지정</span>
+        <button type="button" onclick="loadRealtimeApprovals()" class="text-blue-400 font-bold hover:underline flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          새로고침
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-3" id="approval-list-container">
+        <!-- Rendered dynamically -->
+      </div>
+      
+      <div class="p-3 border-t border-slate-800 bg-slate-900 text-center text-[10px] text-slate-500">
+        승인 즉시 상대방 폰의 깡통 화면이 풀리고 지정된 기록이 열립니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 1: Add/Edit Record Modal -->
+  <div id="modal-record" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span class="text-blue-500">⏱️</span>
+          <span>새 운동 기록 등록</span>
+        </h3>
+        <button type="button" onclick="closeRecordModal()" class="text-slate-400 hover:text-white p-1">
+          <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Form Body -->
+      <form onsubmit="handleSaveRecord(event)" class="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        
+        <!-- Player & Event Display Badge -->
+        <div class="flex items-center gap-2">
+          <span id="badge-modal-player" class="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30">김유신</span>
+          <span id="badge-modal-event" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-bold border border-slate-700">400m</span>
+        </div>
+
+        <!-- Date & Kind (공식 vs 전문실기) -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">경기 날짜 *</label>
+            <input type="date" id="input-date" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">대회 / 실기 구분 *</label>
+            <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <button type="button" id="btn-kind-official" onclick="setFormKind('공식')" class="py-1.5 rounded-lg font-bold text-center transition">공식대회</button>
+              <button type="button" id="btn-kind-practice" onclick="setFormKind('비공식')" class="py-1.5 rounded-lg font-medium text-center transition">전문실기</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Meet Name (with Lock Button) -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="font-semibold text-slate-400">대회명 / 경기명 *</label>
+            <button type="button" id="btn-lock-meet" onclick="toggleLockMeet()" class="text-[11px] text-slate-400 hover:text-blue-400 flex items-center gap-1 transition">
+              <span id="lock-meet-icon">🔓</span>
+              <span id="lock-meet-text">대회명 고정</span>
+            </button>
+          </div>
+          <input type="text" id="input-meet" required placeholder="예: 제55회 전국소년체육대회" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <!-- Round / Stage (Smart Switched) -->
+        <div>
+          <label id="label-round-kind" class="block font-semibold text-slate-400 mb-1.5">라운드 (공식대회 구분)</label>
+          <div class="flex flex-wrap gap-1.5" id="round-chips">
+            <!-- Populated dynamically based on Official vs Practice -->
+          </div>
+        </div>
+
+        <!-- Relay Runners Input (Conditional: Only for Relay/Team Events) -->
+        <div id="field-relay-container" class="hidden bg-slate-900/80 border border-blue-500/30 rounded-xl p-3 space-y-2">
+          <label class="block font-semibold text-blue-400 text-xs flex items-center justify-between">
+            <span>🏃 릴레이 / 단체전 주자 명단 (1~4번)</span>
+            <span class="text-[10px] text-slate-400 font-normal">순서대로 입력 또는 아래 칩 터치</span>
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <span class="text-[10px] text-slate-400">1주자</span>
+              <input type="text" id="relay-runner-1" placeholder="1주자 이름" class="relay-input w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400">2주자</span>
+              <input type="text" id="relay-runner-2" placeholder="2주자 이름" class="relay-input w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400">3주자</span>
+              <input type="text" id="relay-runner-3" placeholder="3주자 이름" class="relay-input w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400">4주자 (앵커)</span>
+              <input type="text" id="relay-runner-4" placeholder="4주자 이름" class="relay-input w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+            </div>
+          </div>
+          
+          <!-- Quick Teammate Chips (Multi-Select & Batch Delete) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[11px] font-semibold text-slate-300">릴레이 선수 선택:</span>
+              <div class="flex items-center gap-1.5">
+                <button type="button" id="btn-toggle-runner-del" onclick="toggleTeammateEditMode()" class="text-[11px] text-slate-300 hover:text-red-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95">
+                  편집
+                </button>
+                <button type="button" id="btn-cancel-runner-del" onclick="cancelTeammateEditMode()" class="hidden text-[11px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded-lg border border-slate-800 bg-slate-900 transition active:scale-95">
+                  취소
+                </button>
+                <button type="button" id="btn-add-teammate" onclick="promptAddNewTeammate()" class="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-0.5 transition active:scale-95 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/30">
+                  <span>+ 새 선수 등록</span>
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto no-scrollbar p-1.5 bg-slate-950/60 rounded-xl border border-slate-800/80" id="relay-teammate-chips">
+              <!-- Dynamically rendered -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Time Inputs (H : M : S) - Default 0.00 -->
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800/80">
+          <label class="block font-semibold text-slate-300 mb-2 flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 경기 기록 (시 : 분 : 초) *</span>
+            <span class="text-[10px] text-slate-500 font-normal">단거리는 초만 적어도 OK</span>
+          </label>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <span class="text-[10px] text-slate-400 block mb-1">시 (Hour)</span>
+              <input type="number" id="time-h" min="0" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block mb-1">분 (Min)</span>
+              <input type="number" id="time-m" min="0" max="59" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block mb-1">초 (Sec.00)</span>
+              <input type="number" step="0.01" id="time-s" placeholder="0.00" class="w-full bg-slate-900 border border-blue-500/80 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-400 bg-blue-500/5">
+            </div>
+          </div>
+          <div class="mt-2 text-right text-[11px] text-blue-400 font-mono font-semibold" id="preview-formatted-time">
+            미리보기: 0.00초
+          </div>
+        </div>
+
+        <!-- Rank & Wind: Perfectly Aligned Grid -->
+        <div class="grid grid-cols-2 gap-2.5 items-start">
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">순위</label>
+            <input type="text" id="input-rank" placeholder="예: 1, 2, 3 (숫자만)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <p class="text-[10px] text-slate-500 mt-1">※ 라운드는 위에서 선택, 등수만 입력</p>
+          </div>
+          <div id="field-wind-container">
+            <label class="block font-semibold text-slate-400 mb-1">풍속 (m/s)</label>
+            <input type="text" id="input-wind" placeholder="예: 0.8, -0.2" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">비고 / 메모</label>
+          <input type="text" id="input-note" placeholder="예: 동메달 획득, 스타트 반응 좋았음, 로라 훈련" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <!-- Modal Submit Actions -->
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="saveRecord(true)" class="flex-1 py-3 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center gap-1.5 transition active:scale-95">
+            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>추가 후 계속 입력</span>
+          </button>
+          <button type="submit" class="flex-1 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 flex items-center justify-center gap-1.5 transition active:scale-95">
+            <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            <span>저장 완료</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Player Management Modal (User's Hand-drawn Layout) -->
+  <div id="modal-players" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-blue-400 text-lg">👥</span>
+          <h3 class="text-base font-bold text-white">선수 관리 명단</h3>
+        </div>
+        <button type="button" onclick="closePlayerManageModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Filters Section -->
+      <div class="p-4 bg-slate-950/60 border-b border-slate-800/80 space-y-2.5">
+        <!-- Search bar -->
+        <div class="relative">
+          <input type="text" id="player-filter-search" oninput="renderPlayerCards()" placeholder="선수 이름 또는 종목 검색..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+          <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+
+        <!-- Filter Chips: School Level & Gender -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] no-scrollbar">
+          <span class="text-slate-500 text-[10px] whitespace-nowrap">부별:</span>
+          <button type="button" onclick="setPlayerFilterLevel('all')" id="pf-level-all" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
+          <button type="button" onclick="setPlayerFilterLevel('중등부')" id="pf-level-middle" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">중등부</button>
+          <button type="button" onclick="setPlayerFilterLevel('고등부')" id="pf-level-high" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">고등부</button>
+          <button type="button" onclick="setPlayerFilterLevel('대학/실업')" id="pf-level-adult" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">대학/실업</button>
+          
+          <span class="text-slate-500 text-[10px] ml-2 whitespace-nowrap">성별:</span>
+          <button type="button" onclick="setPlayerFilterGender('all')" id="pf-gender-all" class="px-2 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
+          <button type="button" onclick="setPlayerFilterGender('남')" id="pf-gender-m" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">남</button>
+          <button type="button" onclick="setPlayerFilterGender('여')" id="pf-gender-f" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">여</button>
+        </div>
+      </div>
+
+      <!-- Player Cards List -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-3" id="player-cards-container">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Add New Player Button -->
+      <div class="p-4 border-t border-slate-800 bg-slate-900 flex gap-2">
+        <button type="button" onclick="openAddEditPlayerModal()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 transition">
+          <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          새 선수 등록하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Add/Edit Player Profile (With Events Add/Delete Management) -->
+  <div id="modal-player-form" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="modal-player-form-title" class="text-base font-bold text-white">선수 프로필 등록</h3>
+        <button type="button" onclick="closeAddEditPlayerModal()" class="text-slate-400 hover:text-white p-1">
+          <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form onsubmit="handleSavePlayer(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="form-player-id">
+        <!-- Photo Upload & Preview -->
+        <div class="flex items-center gap-3 p-3 bg-slate-950 rounded-2xl border border-slate-800">
+          <div id="player-photo-preview-box" class="w-14 h-18 rounded-xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center text-slate-500 text-xs shrink-0 overflow-hidden relative shadow-inner">
+            <span id="player-photo-empty-icon" class="text-xl">📷</span>
+            <img id="player-photo-preview-img" class="w-full h-full object-cover hidden" alt="선수 사진">
+          </div>
+          <div class="flex-1 space-y-1.5">
+            <span class="block text-xs font-semibold text-slate-300">선수 프로필 사진</span>
+            <div class="flex items-center gap-1.5">
+              <label class="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold cursor-pointer transition active:scale-95 shadow-sm">
+                사진 선택
+                <input type="file" id="form-player-photo-file" accept="image/*" onchange="handlePhotoUpload(event)" class="hidden">
+              </label>
+              <button type="button" id="btn-remove-photo" onclick="removePlayerPhoto()" class="hidden px-2 py-1 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700 text-[11px] font-medium transition">
+                삭제
+              </button>
+            </div>
+            <input type="hidden" id="form-player-photo-base64">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">선수 이름 *</label>
+          <input type="text" id="form-player-name" required placeholder="예: 김유신" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">성별 *</label>
+            <input type="hidden" id="form-player-gender" value="남">
+            <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <button type="button" id="btn-gender-m" onclick="setFormPlayerGender('남')" class="py-1.5 rounded-lg font-bold text-center bg-blue-600 text-white transition">남</button>
+              <button type="button" id="btn-gender-f" onclick="setFormPlayerGender('여')" class="py-1.5 rounded-lg font-medium text-center text-slate-400 hover:text-white transition">여</button>
+            </div>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">생년월일 *</label>
+            <input type="date" id="form-player-birth" required value="2011-02-15" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">운동 대분류 *</label>
+            <input type="text" id="form-player-sport" required placeholder="예: 육상, 사이클, 수영" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">주종목 *</label>
+            <input type="text" id="form-player-event" placeholder="예: 단거리 400m" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+
+        <!-- Event Categories Management (Add / Delete) -->
+        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+          <label class="block font-semibold text-blue-400 text-xs flex items-center justify-between">
+            <span>🏃 출전 세부 종목 탭 관리</span>
+            <span class="text-[10px] text-slate-500">상단 탭에 반영</span>
+          </label>
+          <div class="flex flex-wrap gap-1.5" id="form-player-events-chips">
+            <!-- Dynamically populated chips with (x) delete -->
+          </div>
+          <div class="space-y-1.5 pt-1">
+            <div class="flex gap-1.5">
+              <input type="text" id="input-new-event" placeholder="새 종목명 (예: 3km추발, 도로독주, 800m)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+              <button type="button" onclick="addEventToCurrentFormPlayer()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs whitespace-nowrap active:scale-95 transition">
+                + 종목 추가
+              </button>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] px-1">
+              <span class="text-slate-400">구분:</span>
+              <label class="flex items-center gap-1 cursor-pointer text-slate-300">
+                <input type="radio" name="new-event-type" id="new-event-personal" value="personal" checked class="text-blue-500">
+                <span>개인전</span>
+              </label>
+              <label class="flex items-center gap-1 cursor-pointer text-slate-300 ml-2">
+                <input type="radio" name="new-event-type" id="new-event-team" value="team" class="text-blue-500">
+                <span>단체 / 릴레이</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="closeAddEditPlayerModal()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700">취소</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 shadow-lg shadow-blue-500/20">저장 완료</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Settings & Backup Modal -->
+  <div id="modal-settings" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>⚙️</span>
+          <span>설정 및 데이터 백업</span>
+        </h3>
+        <button type="button" onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1">
+          <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <!-- Exact Format Excel Export Button -->
+        <button type="button" onclick="exportToExcelExactFormat()" class="w-full py-3 rounded-2xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95">
+          <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>내 엑셀 양식 그대로 다운로드 (.csv)</span>
+        </button>
+
+        <!-- JSON Backup / Export -->
+        <button type="button" onclick="exportDataJson()" class="w-full py-3 rounded-2xl bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95">
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <span>데이터 파일로 내보내기 (백업)</span>
+        </button>
+
+        <!-- JSON Restore / Import -->
+        <label class="w-full py-3 rounded-2xl bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <span>데이터 파일 불러오기 (복원)</span>
+          <input type="file" id="file-import-json" accept=".json" onchange="importDataJson(event)" class="hidden">
+        </label>
+
+        <!-- Notion Guide & FAQ Link -->
+        <a href="https://app.notion.com/p/FAQ-41ed8a73430d81da9e04dad5b6d157b3" target="_blank" class="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 text-blue-300 border border-blue-500/40 hover:from-blue-600/40 hover:to-indigo-600/40 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-sm">
+          <span>📖 이용 가이드 & FAQ (노션)</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+
+      </div>
+
+      <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
+        유신 & 별하 운동 성장노트 v2.8 · 전남체육
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // 1. Core Data
+    let appData = {"yusin": [{"id": "u_2_2024-02-20", "date": "2024-02-20", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 14.59, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_3_2024-03-08", "date": "2024-03-08", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 13.02, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_4_2024-03-21", "date": "2024-03-21", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.97, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_5_2024-08-09", "date": "2024-08-09", "meet": "제53회 추계전국중.고육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 27.48, "rank": "예선 95", "wind": "-0.6", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_6_2024-08-10", "date": "2024-08-10", "meet": "제53회 추계전국중.고육상경기대회(1학년부)", "event": "100m", "kind": "공식", "round": "예선", "seconds": 13.34, "rank": "예선 26", "wind": "0.8", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_7_2025-01-21", "date": "2025-01-21", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.14, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_8_2025-02-06", "date": "2025-02-06", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 13.31, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_9_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.24, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_10_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "200m", "kind": "비공식", "round": "1차", "seconds": 26.0, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_11_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "300m", "kind": "비공식", "round": "1차", "seconds": 43.11, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_12_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "1차", "seconds": 63.21, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_13_2025-04-12", "date": "2025-04-12", "meet": "제54회 춘계 전국중고육상경기대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.87, "rank": "예선 72", "wind": "-0.2", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_14_2025-04-13", "date": "2025-04-13", "meet": "제54회 춘계 전국중고육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 26.93, "rank": "예선 79", "wind": "2.1", "relay": "", "runners": [], "reaction": "", "note": "참고기록"}, {"id": "u_15_2025-05-13", "date": "2025-05-13", "meet": "전남체중고 전문실기", "event": "200m", "kind": "비공식", "round": "1차", "seconds": 25.48, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_16_2025-05-13", "date": "2025-05-13", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.56, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_17_2025-07-08", "date": "2025-07-08", "meet": "백제왕도 익산 2025 전국육상경기대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.53, "rank": "예선 37", "wind": "-0.1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_18_2025-07-08", "date": "2025-07-08", "meet": "백제왕도 익산 2025 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "예선", "seconds": 282.24, "rank": "예선 12", "wind": "", "relay": "김유신/안하람/윤찬영/박윤서", "runners": ["김유신", "안하람", "윤찬영", "박윤서"], "reaction": "", "note": ""}, {"id": "u_19_2025-07-10", "date": "2025-07-10", "meet": "백제왕도 익산 2025 전국육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 212.32999999999998, "rank": "결승 2", "wind": "", "relay": "김유신/김이랑/박도원/윤찬영", "runners": ["김유신", "김이랑", "박도원", "윤찬영"], "reaction": "", "note": ""}, {"id": "u_20_2025-07-18", "date": "2025-07-18", "meet": "회장배 제23회 전국중.고육상경기선수권대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.55, "rank": "예선 39", "wind": "0.1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_21_2025-07-19", "date": "2025-07-19", "meet": "회장배 제23회 전국중.고육상경기선수권대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 25.6, "rank": "예선 45", "wind": "-0.2", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_22_2025-08-07", "date": "2025-08-07", "meet": "제54회 추계전국중.고육상경기대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.69, "rank": "예선 50", "wind": "-1.1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_23_2025-08-08", "date": "2025-08-08", "meet": "제54회 추계전국중.고육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 25.13, "rank": "예선 58", "wind": "1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_24_2025-09-13", "date": "2025-09-13", "meet": "제35회 전남교육감기 학년별 육상대회", "event": "100m", "kind": "공식", "round": "결승", "seconds": 12.41, "rank": "결승 3", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_25_2025-12-09", "date": "2025-12-09", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.06, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_26_2025-12-18", "date": "2025-12-18", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 11.08, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_27_2026-03-24", "date": "2026-03-24", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "2차", "seconds": 53.77, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_28_2026-03-24", "date": "2026-03-24", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 12.05, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_29_2026-03-26", "date": "2026-03-26", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 11.85, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_30_2026-03-31", "date": "2026-03-31", "meet": "전남 소체 선발전", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.8, "rank": "결승 1", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_31_2026-04-08", "date": "2026-04-08", "meet": "익산 보석배 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 55.45, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_32_2026-04-08", "date": "2026-04-08", "meet": "익산 보석배 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 54.56, "rank": "결승 7", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_33_2026-04-09", "date": "2026-04-09", "meet": "익산 보석배 2026 전국육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 54.97, "rank": "예선 24", "wind": "0.2", "relay": "", "runners": [], "reaction": "", "note": "신발벗겨짐"}, {"id": "u_34_2026-04-10", "date": "2026-04-10", "meet": "익산 보석배 2026 전국육상경기대회", "event": "4x100mR", "kind": "공식", "round": "결승", "seconds": 46.72, "rank": "결승 3", "wind": "", "relay": "박창서/김차윤/김유신/전희재", "runners": ["박창서", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_35_2026-04-10", "date": "2026-04-10", "meet": "익산 보석배 2026 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 233.1, "rank": "결승 1", "wind": "", "relay": "김차윤/양예림/김유신/김예주", "runners": ["김차윤", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_36_2026-04-11", "date": "2026-04-11", "meet": "익산 보석배 2026 전국육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 218.99, "rank": "결승 1", "wind": "", "relay": "전희재/김차윤/박창서/김유신", "runners": ["전희재", "김차윤", "박창서", "김유신"], "reaction": "", "note": ""}, {"id": "u_37_2026-04-19", "date": "2026-04-19", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 225.36, "rank": "결승 2", "wind": "", "relay": "김차윤/양예림/김유신/김예주", "runners": ["김차윤", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_38_2026-04-21", "date": "2026-04-21", "meet": "제55회 춘계전국중.고육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 54.24, "rank": "예선 18", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_39_2026-04-22", "date": "2026-04-22", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x100mR", "kind": "공식", "round": "예선", "seconds": 46.18, "rank": "예선 6", "wind": "", "relay": "김후/김차윤/김유신/전희재", "runners": ["김후", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_40_2026-04-22", "date": "2026-04-22", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x100mR", "kind": "공식", "round": "결승", "seconds": 45.8, "rank": "결승 6", "wind": "", "relay": "김후/김차윤/김유신/전희재", "runners": ["김후", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_41_2026-04-23", "date": "2026-04-23", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 218.17000000000002, "rank": "결승 3", "wind": "", "relay": "전희재/김유신/박창서/김차윤", "runners": ["전희재", "김유신", "박창서", "김차윤"], "reaction": "", "note": ""}, {"id": "u_42_2026-04-30", "date": "2026-04-30", "meet": "제55회 전국종별육상경기선수권대회", "event": "4x100mR", "kind": "공식", "round": "결승", "seconds": 46.34, "rank": "결승 6", "wind": "", "relay": "김후/김차윤/김유신/전희재", "runners": ["김후", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_43_2026-05-01", "date": "2026-05-01", "meet": "제55회 전국종별육상경기선수권대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 24.52, "rank": "예선 27", "wind": "0.8", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_44_2026-05-02", "date": "2026-05-02", "meet": "제55회 전국종별육상경기선수권대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 53.82, "rank": "예선 9", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_45_2026-05-02", "date": "2026-05-02", "meet": "제55회 전국종별육상경기선수권대회", "event": "400m", "kind": "공식", "round": "준결승", "seconds": 71.42, "rank": "준결 13", "wind": "", "relay": "", "runners": [], "reaction": "", "note": "심판오류"}, {"id": "u_46_2026-05-04", "date": "2026-05-04", "meet": "제55회 전국종별육상경기선수권대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 220.4, "rank": "결승 3", "wind": "", "relay": "전희재/김차윤/박창서/김유신", "runners": ["전희재", "김차윤", "박창서", "김유신"], "reaction": "", "note": ""}, {"id": "u_47_2026-05-23", "date": "2026-05-23", "meet": "제55회 전국소년체육대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "예선", "seconds": 234.25, "rank": "예선 3", "wind": "", "relay": "김차윤/양예림/김유신/김다은(여선중)", "runners": ["김차윤", "양예림", "김유신", "김다은(여선중)"], "reaction": "", "note": ""}, {"id": "u_48_2026-05-23", "date": "2026-05-23", "meet": "제55회 전국소년체육대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 227.35, "rank": "결승 5", "wind": "", "relay": "김차윤/양예림/김유신/김예주", "runners": ["김차윤", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_49_2026-05-24", "date": "2026-05-24", "meet": "제55회 전국소년체육대회", "event": "4x400mR", "kind": "공식", "round": "예선", "seconds": 223.64, "rank": "예선 11", "wind": "", "relay": "서예성(광양백운중)/김유신/박창서/김차윤", "runners": ["서예성(광양백운중)", "김유신", "박창서", "김차윤"], "reaction": "", "note": ""}, {"id": "u_50_2026-07-02", "date": "2026-07-02", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "2차", "seconds": 52.89, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_51_2026-07-04", "date": "2026-07-04", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 54.19, "rank": "예선 10", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_52_2026-07-04", "date": "2026-07-04", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "준결승", "seconds": 53.32, "rank": "준결 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_53_2026-07-05", "date": "2026-07-05", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.26, "rank": "결승 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_54_2026-07-06", "date": "2026-07-06", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "예선", "seconds": 238.07999999999998, "rank": "예선 2", "wind": "", "relay": "박창서/양예림/김유신/김예주", "runners": ["박창서", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_55_2026-07-06", "date": "2026-07-06", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 228.71, "rank": "결승 2", "wind": "", "relay": "박창서/양예림/김유신/김예주", "runners": ["박창서", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_56_2026-07-31", "date": "2026-07-31", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 224.35, "rank": "결승 5", "wind": "", "relay": "정유찬/양예림/김유신/김예주", "runners": ["정유찬", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_57_2026-08-01", "date": "2026-08-01", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 216.32999999999998, "rank": "결승 4", "wind": "", "relay": "문찬영/김유신/박창서/정유찬", "runners": ["문찬영", "김유신", "박창서", "정유찬"], "reaction": "", "note": ""}, {"id": "u_58_2026-08-02", "date": "2026-08-02", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 53.96, "rank": "예선 8", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_59_2026-08-02", "date": "2026-08-02", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.66, "rank": "결승 6", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_60_2026-08-06", "date": "2026-08-06", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 223.68, "rank": "결승 2", "wind": "", "relay": "정유찬/양예림/김유신/김예주", "runners": ["정유찬", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_61_2026-08-07", "date": "2026-08-07", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 24.15, "rank": "예선 18", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_62_2026-08-08", "date": "2026-08-08", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 53.14, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_63_2026-08-08", "date": "2026-08-08", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.54, "rank": "준결 9", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_64_2026-08-10", "date": "2026-08-10", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "4x400mR", "kind": "공식", "round": "예선", "seconds": 220.8, "rank": "예선 1", "wind": "", "relay": "전희재/김유신/문찬영/정유찬", "runners": ["전희재", "김유신", "문찬영", "정유찬"], "reaction": "", "note": ""}, {"id": "u_65_2026-08-10", "date": "2026-08-10", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 215.55, "rank": "결승 2", "wind": "", "relay": "김지한/김유신/박창서/정유찬", "runners": ["김지한", "김유신", "박창서", "정유찬"], "reaction": "", "note": ""}, {"id": "u_66_2026-09-22", "date": "2026-09-22", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "1차", "seconds": 53.19, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_67_2026-09-22", "date": "2026-09-22", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "2차", "seconds": 54.78, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_68_2026-09-23", "date": "2026-09-23", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 11.8, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_69_2026-10-09", "date": "2026-10-09", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 11.6, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_70_2026-11-05", "date": "2026-11-05", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.15, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_71_2026-11-05", "date": "2026-11-05", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "100m", "kind": "공식", "round": "결승", "seconds": 11.89, "rank": "결승 3", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_72_2026-11-06", "date": "2026-11-06", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 25.98, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_73_2026-11-06", "date": "2026-11-06", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "200m", "kind": "공식", "round": "결승", "seconds": 24.31, "rank": "결승 3", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}], "byeolha": [{"id": "b_2_2026-03-29", "date": "2026-03-29", "meet": "소년체전 선발전", "event": "500m독주", "kind": "공식", "round": "결승", "seconds": 48.91, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_3_2026-04-02", "date": "2026-04-02", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 41.0, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_4_2026-04-02", "date": "2026-04-02", "meet": "전남체중고", "event": "500m독주", "kind": "비공식", "round": "", "seconds": 47.34, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_5_2026-04-14", "date": "2026-04-14", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 32.33, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_6_2026-04-15", "date": "2026-04-15", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 31.23, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_7_2026-04-16", "date": "2026-04-16", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 32.56, "rank": "", "wind": "", "relay": "", "runners": [], "note": "로라에 힘 다 씀"}, {"id": "b_8_2026-04-18", "date": "2026-04-18", "meet": "제43회 대통령기 전국사이클대회", "event": "1Lap", "kind": "공식", "round": "결승", "seconds": 33.374, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_9_2026-04-19", "date": "2026-04-19", "meet": "제43회 대통령기 전국사이클대회", "event": "500m독주", "kind": "공식", "round": "결승", "seconds": 49.742, "rank": "", "wind": "", "relay": "", "runners": [], "note": "울었음"}, {"id": "b_10_2026-06-04", "date": "2026-06-04", "meet": "제55회 문체부장관기 전국학생사이클대회", "event": "1km추발", "kind": "공식", "round": "결승", "seconds": 94.847, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_11_2026-06-04", "date": "2026-06-04", "meet": "제55회 문체부장관기 전국학생사이클대회", "event": "1Lap", "kind": "공식", "round": "결승", "seconds": 31.151, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_12_2026-06-21", "date": "2026-06-21", "meet": "2026 KBS 양양 전국사이클선수권대회", "event": "2km단체추발", "kind": "공식", "round": "결승", "seconds": 176.2, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_13_2026-06-21", "date": "2026-06-21", "meet": "2026 KBS 양양 전국사이클선수권대회", "event": "1km추발", "kind": "공식", "round": "결승", "seconds": 96.779, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}]};
+    let playersData = [{"id": "yusin", "name": "김유신", "gender": "남", "birth": "2011-02-15", "sport": "육상", "mainEvent": "단거리 400m", "events": ["100m", "200m", "400m", {"name": "4x100mR", "isTeam": true}, {"name": "4x400mR", "isTeam": true}, {"name": "4x400mR(Mixed)", "isTeam": true}], "photo": ""}, {"id": "byeolha", "name": "김별하", "gender": "여", "birth": "2013-05-20", "sport": "사이클", "mainEvent": "트랙 독주", "events": ["1Lap", "500m독주", "1km추발", {"name": "2km단체추발", "isTeam": true}], "photo": ""}];
+
+    const STORAGE_KEY = 'ATHLETE_GROWTH_APP_DATA_V3';
+    const PLAYERS_KEY = 'ATHLETE_GROWTH_PLAYERS_V3';
+    const TEAMMATES_KEY = 'ATHLETE_GROWTH_TEAMMATES_V3';
+
+    let currentPlayer = 'yusin';
+    let currentEvent = 'ALL_PB';
+    let selectedKind = '공식';
+    let selectedRound = '결승';
+    let isMeetLocked = false;
+    let editingRecordId = null;
+    let chartInstance = null;
+    let activeRelayInputId = 'relay-runner-1';
+
+    let filterKind = 'ALL';
+    let filterYear = 'ALL';
+    let searchMeet = '';
+
+    let playerFilterLevel = 'all';
+    let playerFilterGender = 'all';
+
+    let formCurrentEvents = [];
+
+    let savedTeammates = [
+      '김유신', '김차윤', '전희재', '박창서', '정유찬', 
+      '양예림', '김예주', '김후', '문찬영', '안하람', 
+      '윤찬영', '박윤서', '김이랑', '박도원', '서예성', 
+      '김지한', '김다은'
+    ];
+    let isTeammateEditMode = false;
+    let selectedTeammatesToDelete = new Set();
+
+    // 2. Storage Functions
+    function saveDataToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        localStorage.setItem(PLAYERS_KEY, JSON.stringify(playersData));
+        localStorage.setItem(TEAMMATES_KEY, JSON.stringify(savedTeammates));
+      } catch (e) {
+        console.error('saveDataToStorage error:', e);
+      }
+    }
+
+    function loadDataFromStorage() {
+      try {
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (parsed && parsed.yusin) appData = parsed;
+        }
+        // Ensure byeolha records exist
+        if (!appData.byeolha || appData.byeolha.length === 0) {
+          appData.byeolha = JSON.parse(JSON.stringify({"yusin": [{"id": "u_2_2024-02-20", "date": "2024-02-20", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 14.59, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_3_2024-03-08", "date": "2024-03-08", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 13.02, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_4_2024-03-21", "date": "2024-03-21", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.97, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_5_2024-08-09", "date": "2024-08-09", "meet": "제53회 추계전국중.고육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 27.48, "rank": "예선 95", "wind": "-0.6", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_6_2024-08-10", "date": "2024-08-10", "meet": "제53회 추계전국중.고육상경기대회(1학년부)", "event": "100m", "kind": "공식", "round": "예선", "seconds": 13.34, "rank": "예선 26", "wind": "0.8", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_7_2025-01-21", "date": "2025-01-21", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.14, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_8_2025-02-06", "date": "2025-02-06", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 13.31, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_9_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.24, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_10_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "200m", "kind": "비공식", "round": "1차", "seconds": 26.0, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_11_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "300m", "kind": "비공식", "round": "1차", "seconds": 43.11, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_12_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "1차", "seconds": 63.21, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_13_2025-04-12", "date": "2025-04-12", "meet": "제54회 춘계 전국중고육상경기대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.87, "rank": "예선 72", "wind": "-0.2", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_14_2025-04-13", "date": "2025-04-13", "meet": "제54회 춘계 전국중고육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 26.93, "rank": "예선 79", "wind": "2.1", "relay": "", "runners": [], "reaction": "", "note": "참고기록"}, {"id": "u_15_2025-05-13", "date": "2025-05-13", "meet": "전남체중고 전문실기", "event": "200m", "kind": "비공식", "round": "1차", "seconds": 25.48, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_16_2025-05-13", "date": "2025-05-13", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.56, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_17_2025-07-08", "date": "2025-07-08", "meet": "백제왕도 익산 2025 전국육상경기대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.53, "rank": "예선 37", "wind": "-0.1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_18_2025-07-08", "date": "2025-07-08", "meet": "백제왕도 익산 2025 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "예선", "seconds": 282.24, "rank": "예선 12", "wind": "", "relay": "김유신/안하람/윤찬영/박윤서", "runners": ["김유신", "안하람", "윤찬영", "박윤서"], "reaction": "", "note": ""}, {"id": "u_19_2025-07-10", "date": "2025-07-10", "meet": "백제왕도 익산 2025 전국육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 212.32999999999998, "rank": "결승 2", "wind": "", "relay": "김유신/김이랑/박도원/윤찬영", "runners": ["김유신", "김이랑", "박도원", "윤찬영"], "reaction": "", "note": ""}, {"id": "u_20_2025-07-18", "date": "2025-07-18", "meet": "회장배 제23회 전국중.고육상경기선수권대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.55, "rank": "예선 39", "wind": "0.1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_21_2025-07-19", "date": "2025-07-19", "meet": "회장배 제23회 전국중.고육상경기선수권대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 25.6, "rank": "예선 45", "wind": "-0.2", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_22_2025-08-07", "date": "2025-08-07", "meet": "제54회 추계전국중.고육상경기대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.69, "rank": "예선 50", "wind": "-1.1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_23_2025-08-08", "date": "2025-08-08", "meet": "제54회 추계전국중.고육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 25.13, "rank": "예선 58", "wind": "1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_24_2025-09-13", "date": "2025-09-13", "meet": "제35회 전남교육감기 학년별 육상대회", "event": "100m", "kind": "공식", "round": "결승", "seconds": 12.41, "rank": "결승 3", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_25_2025-12-09", "date": "2025-12-09", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.06, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_26_2025-12-18", "date": "2025-12-18", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 11.08, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_27_2026-03-24", "date": "2026-03-24", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "2차", "seconds": 53.77, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_28_2026-03-24", "date": "2026-03-24", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 12.05, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_29_2026-03-26", "date": "2026-03-26", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 11.85, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_30_2026-03-31", "date": "2026-03-31", "meet": "전남 소체 선발전", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.8, "rank": "결승 1", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_31_2026-04-08", "date": "2026-04-08", "meet": "익산 보석배 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 55.45, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_32_2026-04-08", "date": "2026-04-08", "meet": "익산 보석배 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 54.56, "rank": "결승 7", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_33_2026-04-09", "date": "2026-04-09", "meet": "익산 보석배 2026 전국육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 54.97, "rank": "예선 24", "wind": "0.2", "relay": "", "runners": [], "reaction": "", "note": "신발벗겨짐"}, {"id": "u_34_2026-04-10", "date": "2026-04-10", "meet": "익산 보석배 2026 전국육상경기대회", "event": "4x100mR", "kind": "공식", "round": "결승", "seconds": 46.72, "rank": "결승 3", "wind": "", "relay": "박창서/김차윤/김유신/전희재", "runners": ["박창서", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_35_2026-04-10", "date": "2026-04-10", "meet": "익산 보석배 2026 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 233.1, "rank": "결승 1", "wind": "", "relay": "김차윤/양예림/김유신/김예주", "runners": ["김차윤", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_36_2026-04-11", "date": "2026-04-11", "meet": "익산 보석배 2026 전국육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 218.99, "rank": "결승 1", "wind": "", "relay": "전희재/김차윤/박창서/김유신", "runners": ["전희재", "김차윤", "박창서", "김유신"], "reaction": "", "note": ""}, {"id": "u_37_2026-04-19", "date": "2026-04-19", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 225.36, "rank": "결승 2", "wind": "", "relay": "김차윤/양예림/김유신/김예주", "runners": ["김차윤", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_38_2026-04-21", "date": "2026-04-21", "meet": "제55회 춘계전국중.고육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 54.24, "rank": "예선 18", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_39_2026-04-22", "date": "2026-04-22", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x100mR", "kind": "공식", "round": "예선", "seconds": 46.18, "rank": "예선 6", "wind": "", "relay": "김후/김차윤/김유신/전희재", "runners": ["김후", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_40_2026-04-22", "date": "2026-04-22", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x100mR", "kind": "공식", "round": "결승", "seconds": 45.8, "rank": "결승 6", "wind": "", "relay": "김후/김차윤/김유신/전희재", "runners": ["김후", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_41_2026-04-23", "date": "2026-04-23", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 218.17000000000002, "rank": "결승 3", "wind": "", "relay": "전희재/김유신/박창서/김차윤", "runners": ["전희재", "김유신", "박창서", "김차윤"], "reaction": "", "note": ""}, {"id": "u_42_2026-04-30", "date": "2026-04-30", "meet": "제55회 전국종별육상경기선수권대회", "event": "4x100mR", "kind": "공식", "round": "결승", "seconds": 46.34, "rank": "결승 6", "wind": "", "relay": "김후/김차윤/김유신/전희재", "runners": ["김후", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_43_2026-05-01", "date": "2026-05-01", "meet": "제55회 전국종별육상경기선수권대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 24.52, "rank": "예선 27", "wind": "0.8", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_44_2026-05-02", "date": "2026-05-02", "meet": "제55회 전국종별육상경기선수권대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 53.82, "rank": "예선 9", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_45_2026-05-02", "date": "2026-05-02", "meet": "제55회 전국종별육상경기선수권대회", "event": "400m", "kind": "공식", "round": "준결승", "seconds": 71.42, "rank": "준결 13", "wind": "", "relay": "", "runners": [], "reaction": "", "note": "심판오류"}, {"id": "u_46_2026-05-04", "date": "2026-05-04", "meet": "제55회 전국종별육상경기선수권대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 220.4, "rank": "결승 3", "wind": "", "relay": "전희재/김차윤/박창서/김유신", "runners": ["전희재", "김차윤", "박창서", "김유신"], "reaction": "", "note": ""}, {"id": "u_47_2026-05-23", "date": "2026-05-23", "meet": "제55회 전국소년체육대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "예선", "seconds": 234.25, "rank": "예선 3", "wind": "", "relay": "김차윤/양예림/김유신/김다은(여선중)", "runners": ["김차윤", "양예림", "김유신", "김다은(여선중)"], "reaction": "", "note": ""}, {"id": "u_48_2026-05-23", "date": "2026-05-23", "meet": "제55회 전국소년체육대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 227.35, "rank": "결승 5", "wind": "", "relay": "김차윤/양예림/김유신/김예주", "runners": ["김차윤", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_49_2026-05-24", "date": "2026-05-24", "meet": "제55회 전국소년체육대회", "event": "4x400mR", "kind": "공식", "round": "예선", "seconds": 223.64, "rank": "예선 11", "wind": "", "relay": "서예성(광양백운중)/김유신/박창서/김차윤", "runners": ["서예성(광양백운중)", "김유신", "박창서", "김차윤"], "reaction": "", "note": ""}, {"id": "u_50_2026-07-02", "date": "2026-07-02", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "2차", "seconds": 52.89, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_51_2026-07-04", "date": "2026-07-04", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 54.19, "rank": "예선 10", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_52_2026-07-04", "date": "2026-07-04", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "준결승", "seconds": 53.32, "rank": "준결 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_53_2026-07-05", "date": "2026-07-05", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.26, "rank": "결승 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_54_2026-07-06", "date": "2026-07-06", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "예선", "seconds": 238.07999999999998, "rank": "예선 2", "wind": "", "relay": "박창서/양예림/김유신/김예주", "runners": ["박창서", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_55_2026-07-06", "date": "2026-07-06", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 228.71, "rank": "결승 2", "wind": "", "relay": "박창서/양예림/김유신/김예주", "runners": ["박창서", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_56_2026-07-31", "date": "2026-07-31", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 224.35, "rank": "결승 5", "wind": "", "relay": "정유찬/양예림/김유신/김예주", "runners": ["정유찬", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_57_2026-08-01", "date": "2026-08-01", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 216.32999999999998, "rank": "결승 4", "wind": "", "relay": "문찬영/김유신/박창서/정유찬", "runners": ["문찬영", "김유신", "박창서", "정유찬"], "reaction": "", "note": ""}, {"id": "u_58_2026-08-02", "date": "2026-08-02", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 53.96, "rank": "예선 8", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_59_2026-08-02", "date": "2026-08-02", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.66, "rank": "결승 6", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_60_2026-08-06", "date": "2026-08-06", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 223.68, "rank": "결승 2", "wind": "", "relay": "정유찬/양예림/김유신/김예주", "runners": ["정유찬", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_61_2026-08-07", "date": "2026-08-07", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 24.15, "rank": "예선 18", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_62_2026-08-08", "date": "2026-08-08", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 53.14, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_63_2026-08-08", "date": "2026-08-08", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.54, "rank": "준결 9", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_64_2026-08-10", "date": "2026-08-10", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "4x400mR", "kind": "공식", "round": "예선", "seconds": 220.8, "rank": "예선 1", "wind": "", "relay": "전희재/김유신/문찬영/정유찬", "runners": ["전희재", "김유신", "문찬영", "정유찬"], "reaction": "", "note": ""}, {"id": "u_65_2026-08-10", "date": "2026-08-10", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 215.55, "rank": "결승 2", "wind": "", "relay": "김지한/김유신/박창서/정유찬", "runners": ["김지한", "김유신", "박창서", "정유찬"], "reaction": "", "note": ""}, {"id": "u_66_2026-09-22", "date": "2026-09-22", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "1차", "seconds": 53.19, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_67_2026-09-22", "date": "2026-09-22", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "2차", "seconds": 54.78, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_68_2026-09-23", "date": "2026-09-23", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 11.8, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_69_2026-10-09", "date": "2026-10-09", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 11.6, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_70_2026-11-05", "date": "2026-11-05", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.15, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_71_2026-11-05", "date": "2026-11-05", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "100m", "kind": "공식", "round": "결승", "seconds": 11.89, "rank": "결승 3", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_72_2026-11-06", "date": "2026-11-06", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 25.98, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_73_2026-11-06", "date": "2026-11-06", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "200m", "kind": "공식", "round": "결승", "seconds": 24.31, "rank": "결승 3", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}], "byeolha": [{"id": "b_2_2026-03-29", "date": "2026-03-29", "meet": "소년체전 선발전", "event": "500m독주", "kind": "공식", "round": "결승", "seconds": 48.91, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_3_2026-04-02", "date": "2026-04-02", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 41.0, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_4_2026-04-02", "date": "2026-04-02", "meet": "전남체중고", "event": "500m독주", "kind": "비공식", "round": "", "seconds": 47.34, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_5_2026-04-14", "date": "2026-04-14", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 32.33, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_6_2026-04-15", "date": "2026-04-15", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 31.23, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_7_2026-04-16", "date": "2026-04-16", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 32.56, "rank": "", "wind": "", "relay": "", "runners": [], "note": "로라에 힘 다 씀"}, {"id": "b_8_2026-04-18", "date": "2026-04-18", "meet": "제43회 대통령기 전국사이클대회", "event": "1Lap", "kind": "공식", "round": "결승", "seconds": 33.374, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_9_2026-04-19", "date": "2026-04-19", "meet": "제43회 대통령기 전국사이클대회", "event": "500m독주", "kind": "공식", "round": "결승", "seconds": 49.742, "rank": "", "wind": "", "relay": "", "runners": [], "note": "울었음"}, {"id": "b_10_2026-06-04", "date": "2026-06-04", "meet": "제55회 문체부장관기 전국학생사이클대회", "event": "1km추발", "kind": "공식", "round": "결승", "seconds": 94.847, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_11_2026-06-04", "date": "2026-06-04", "meet": "제55회 문체부장관기 전국학생사이클대회", "event": "1Lap", "kind": "공식", "round": "결승", "seconds": 31.151, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_12_2026-06-21", "date": "2026-06-21", "meet": "2026 KBS 양양 전국사이클선수권대회", "event": "2km단체추발", "kind": "공식", "round": "결승", "seconds": 176.2, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_13_2026-06-21", "date": "2026-06-21", "meet": "2026 KBS 양양 전국사이클선수권대회", "event": "1km추발", "kind": "공식", "round": "결승", "seconds": 96.779, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}]}.byeolha));
+        }
+
+        // Auto Data Migration for corrections in local storage
+        if (appData.yusin) {
+          appData.yusin.forEach(r => {
+            if (r.id === 'u_52_2026-07-04' || (r.meet && r.meet.includes('백제왕도') && r.date === '2026-07-04' && r.seconds === 53.32)) {
+              r.round = '준결승';
+            }
+            if (r.id === 'u_44_2026-05-02' || (r.meet && r.meet.includes('종별') && r.date === '2026-05-02' && (r.rank === '예선 9' || Math.abs(r.seconds - 53.82) < 0.01))) {
+              r.round = '예선';
+            }
+            if (r.id === 'u_45_2026-05-02' || (r.meet && r.meet.includes('종별') && r.date === '2026-05-02' && (r.rank === '준결 13' || Math.abs(r.seconds - 71.42) < 0.01))) {
+              r.round = '준결승';
+            }
+          });
+        }
+        if (appData.byeolha) {
+          appData.byeolha.forEach(r => {
+            if (r.date === '2026-06-04' && r.note === '1:34.847') {
+              r.note = '';
+            }
+          });
+        }
+
+        const savedP = localStorage.getItem(PLAYERS_KEY);
+        if (savedP) {
+          const parsedP = JSON.parse(savedP);
+          if (Array.isArray(parsedP) && parsedP.length > 0) playersData = parsedP;
+        }
+
+        const savedT = localStorage.getItem(TEAMMATES_KEY);
+        if (savedT) {
+          const parsedT = JSON.parse(savedT);
+          if (Array.isArray(parsedT) && parsedT.length > 0) savedTeammates = parsedT;
+        }
+      } catch (e) {
+        console.error('loadDataFromStorage error:', e);
+      }
+    }
+
+    // 3. Strict Event Matching Helper
+    function isEventMatch(recordEvent, targetEvent) {
+      if (!recordEvent || !targetEvent) return false;
+      if (recordEvent === targetEvent) return true;
+
+      const cleanR = recordEvent.replace(/\s+/g, '');
+      const cleanT = targetEvent.replace(/\s+/g, '');
+      if (cleanR === cleanT) return true;
+
+      // Only for Byeolha cycling pursuit variations
+      if (cleanT === '1km추발' && (cleanR === '1km개인추발' || cleanR === '1km추발')) return true;
+      if (cleanT === '2km단체추발' && (cleanR === '2km단체추발' || cleanR === '2km추발')) return true;
+
+      return false;
+    }
+
+    // 4. Age & Grade Calculator (2026 Year Baseline)
+    function calculateGradeAndAge(birthStr) {
+      if (!birthStr) return { gradeBadge: '일반', schoolLevel: '대학/실업', age: 0 };
+      const parts = birthStr.split('-');
+      const birthYear = parseInt(parts[0], 10) || 2011;
+      const currentYear = 2026;
+      const age = currentYear - birthYear + 1;
+
+      let gradeBadge = '';
+      let schoolLevel = '';
+      if (age <= 13) {
+        gradeBadge = `초${Math.max(1, age - 7)}`;
+        schoolLevel = '초등부';
+      } else if (age === 14) {
+        gradeBadge = '중1';
+        schoolLevel = '중등부';
+      } else if (age === 15) {
+        gradeBadge = '중2';
+        schoolLevel = '중등부';
+      } else if (age === 16) {
+        gradeBadge = '중3';
+        schoolLevel = '중등부';
+      } else if (age === 17) {
+        gradeBadge = '고1';
+        schoolLevel = '고등부';
+      } else if (age === 18) {
+        gradeBadge = '고2';
+        schoolLevel = '고등부';
+      } else if (age === 19) {
+        gradeBadge = '고3';
+        schoolLevel = '고등부';
+      } else {
+        gradeBadge = `만 ${currentYear - birthYear}세`;
+        schoolLevel = '대학/실업';
+      }
+      return { gradeBadge, schoolLevel, age };
+    }
+
+    // 5. Time Formatting Helper
+    function formatTimeDisplay(secVal, eventName) {
+      const sec = parseFloat(secVal || 0);
+      if (sec === 0) return '0.00초';
+      const isLong = (eventName && (eventName.includes('추발') || eventName.includes('단체') || eventName.includes('1600mR'))) || sec >= 60;
+      if (isLong) {
+        const m = Math.floor(sec / 60);
+        const s = (sec % 60).toFixed(2);
+        return `${m}:${s.padStart(5, '0')}`;
+      }
+      return `${sec.toFixed(2)}초`;
+    }
+
+    // 6. Navigation: Switch Player & Populate Dropdown
+    function initPlayerSelectDropdown() {
+      const select = document.getElementById('select-player');
+      if (!select) return;
+      select.innerHTML = '';
+      playersData.forEach(p => {
+        const sportText = p.sport || '';
+        const icon = sportText.includes('육상') ? '🏃' : (sportText.includes('사이클') ? '🚴' : '🏅');
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${icon} ${p.name || ''} (${sportText}) - ${p.mainEvent || ''}`;
+        if (p.id === currentPlayer) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function switchPlayer(playerId) {
+      currentPlayer = playerId;
+      currentEvent = 'ALL_PB';
+      const sel = document.getElementById('select-player');
+      if (sel) sel.value = playerId;
+      renderEventTabs();
+      renderCurrentView();
+    }
+
+    // 7. Event Tabs Navigation (Dynamic from Player's Events)
+    function getPlayerEvents(playerId) {
+      const p = playersData.find(x => x.id === playerId);
+      if (p && Array.isArray(p.events) && p.events.length > 0) {
+        return p.events.map(ev => typeof ev === 'object' ? ev.name : ev);
+      }
+      if (playerId === 'yusin') {
+        return ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'];
+      }
+      return ['1Lap', '500m독주', '1km추발', '2km단체추발'];
+    }
+
+    function renderEventTabs() {
+      const container = document.getElementById('event-tabs-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const events = getPlayerEvents(currentPlayer);
+      const allTabs = [
+        { id: 'ALL_PB', label: '★ 최고기록 요약' },
+        ...events.map(ev => ({ id: ev, label: ev }))
+      ];
+
+      allTabs.forEach(tab => {
+        const btn = document.createElement('button');
+        const isActive = tab.id === currentEvent;
+        btn.onclick = () => selectEventTab(tab.id);
+
+        btn.className = `px-3.5 py-2 rounded-xl text-xs whitespace-nowrap font-bold transition flex-shrink-0 ` +
+          (isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white');
+        btn.textContent = tab.label;
+        container.appendChild(btn);
+      });
+    }
+
+    function selectEventTab(eventId) {
+      currentEvent = eventId;
+      renderEventTabs();
+      renderCurrentView();
+    }
+
+    // 8. Render Current View: PB Overview or Event Detail
+    function renderCurrentView() {
+      const container = document.getElementById('view-container');
+      if (!container) return;
+
+      if (currentEvent === 'ALL_PB') {
+        renderPBView(container);
+      } else {
+        renderEventDetailView(container);
+      }
+    }
+
+    // 8-1. PB Overview View (Separate Personal vs Team Best)
+    function renderPBView(container) {
+      const records = appData[currentPlayer] || [];
+      const events = getPlayerEvents(currentPlayer);
+
+      const personalEvents = [];
+      const teamEvents = [];
+
+      events.forEach(ev => {
+        const isTeam = ev.includes('mR') || ev.includes('릴레이') || ev.includes('단체');
+        if (isTeam) teamEvents.push(ev);
+        else personalEvents.push(ev);
+      });
+
+      const buildCard = (ev, isTeam) => {
+        const evRecs = records.filter(r => isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
+        if (evRecs.length === 0) return '';
+
+        evRecs.sort((a, b) => parseFloat(a.seconds) - parseFloat(b.seconds));
+        const best = evRecs[0];
+        const formatted = formatTimeDisplay(best.seconds, ev);
+
+        const badgeHtml = isTeam 
+          ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40">단체 최고기록</span>'
+          : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">개인최고 (PB)</span>';
+
+        let runnersHtml = '';
+        if (isTeam) {
+          if (best.runners && best.runners.length > 0) {
+            const listStr = best.runners.map((name, i) => {
+              const isHero = name.includes('김유신') || name.includes('김별하');
+              return `<span class="${isHero ? 'text-amber-300 font-bold' : 'text-slate-300'}">${i + 1}주자 ${name}</span>`;
+            }).join(' <span class="text-slate-600">·</span> ');
+            runnersHtml = `<div class="mt-2 text-[11px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2.5 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-1">👥 주자:</span> ${listStr}</div>`;
+          } else if (best.relay) {
+            const rList = best.relay.split('/').map(x => x.trim()).filter(Boolean);
+            if (rList.length > 0) {
+              const listStr = rList.map((name, i) => {
+                const isHero = name.includes('김유신') || name.includes('김별하');
+                return `<span class="${isHero ? 'text-amber-300 font-bold' : 'text-slate-300'}">${i + 1}주자 ${name}</span>`;
+              }).join(' <span class="text-slate-600">·</span> ');
+              runnersHtml = `<div class="mt-2 text-[11px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2.5 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-1">👥 주자:</span> ${listStr}</div>`;
+            }
+          }
+        }
+
+        return `
+          <div onclick="selectEventTab('${ev}')" class="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 transition cursor-pointer shadow-md">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-bold text-slate-300">${ev}</span>
+              ${badgeHtml}
+            </div>
+            <div class="text-2xl font-black text-white font-mono tracking-tight mb-1">${formatted}</div>
+            <div class="text-[11px] text-slate-400 flex items-center justify-between">
+              <span class="truncate mr-2">${best.meet}</span>
+              <span class="font-mono shrink-0">${best.date}</span>
+            </div>
+            ${runnersHtml}
+          </div>
+        `;
+      };
+
+      const personalCards = personalEvents.map(ev => buildCard(ev, false)).filter(Boolean).join('');
+      const teamCards = teamEvents.map(ev => buildCard(ev, true)).filter(Boolean).join('');
+
+      let sectionsHtml = '';
+      if (personalCards) {
+        sectionsHtml += `
+          <div class="space-y-2 mb-5">
+            <div class="flex items-center justify-between px-1">
+              <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
+                <span>🏆</span> 개인 최고기록 (Personal Best)
+              </h2>
+            </div>
+            <div class="grid grid-cols-1 gap-2.5">
+              ${personalCards}
+            </div>
+          </div>
+        `;
+      }
+
+      if (teamCards) {
+        sectionsHtml += `
+          <div class="space-y-2">
+            <div class="flex items-center justify-between px-1">
+              <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
+                <span>👥</span> 릴레이 / 단체전 최고기록 (Team Best)
+              </h2>
+            </div>
+            <div class="grid grid-cols-1 gap-2.5">
+              ${teamCards}
+            </div>
+          </div>
+        `;
+      }
+
+      if (!sectionsHtml) {
+        sectionsHtml = '<div class="py-12 text-center text-slate-500 text-xs">등록된 최고 기록이 없습니다.</div>';
+      }
+
+      container.innerHTML = `
+        <div class="space-y-1">
+          <div class="text-[11px] text-slate-400 px-1 mb-2">카드를 터치하면 해당 종목 상세 그래프로 이동합니다.</div>
+          ${sectionsHtml}
+        </div>
+      `;
+    }
+
+    // 8-2. Event Detail View (Chart + Filter + Meet Grouped List)
+    function renderEventDetailView(container) {
+      container.innerHTML = `
+        <!-- Chart Section -->
+        <div class="p-4 rounded-3xl bg-slate-900 border border-slate-800 mb-4 shadow-xl">
+          <div class="flex items-center justify-between mb-3 px-1">
+            <h3 class="text-xs font-bold text-white flex items-center gap-1.5" id="chart-title">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+              <span>성장 기록 추이</span>
+            </h3>
+            <span class="text-[10px] text-slate-500">기록 단축 흐름 (초/분초)</span>
+          </div>
+          <div class="h-56 relative">
+            <canvas id="growthChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="p-3 bg-slate-900/60 border border-slate-800/80 rounded-2xl mb-4 space-y-2">
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <select id="filter-kind" onchange="updateFilters()" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200">
+              <option value="ALL">구분: 전체</option>
+              <option value="공식">공식대회</option>
+              <option value="비공식">전문실기</option>
+            </select>
+            <select id="filter-year" onchange="updateFilters()" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200">
+              <option value="ALL">연도: 전체</option>
+              <option value="2026">2026년</option>
+              <option value="2025">2025년</option>
+              <option value="2024">2024년</option>
+            </select>
+          </div>
+          <input type="text" id="search-meet" oninput="updateFilters()" placeholder="대회명 검색..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+        </div>
+
+        <!-- Meet Grouped List Header -->
+        <div class="flex items-center justify-between mb-2.5 px-1">
+          <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
+            <span>📋</span> 상세 기록 목록 (대회별)
+          </h3>
+          <span class="text-[11px] text-slate-400 font-mono" id="list-count">0건</span>
+        </div>
+
+        <!-- Meet Grouped Records Container -->
+        <div class="space-y-3" id="meet-groups-container">
+          <!-- Rendered dynamically -->
+        </div>
+      `;
+
+      renderChart();
+      renderMeetGroupedList();
+    }
+
+    function updateFilters() {
+      filterKind = document.getElementById('filter-kind').value;
+      filterYear = document.getElementById('filter-year').value;
+      searchMeet = (document.getElementById('search-meet').value || '').trim().toLowerCase();
+
+      renderChart();
+      renderMeetGroupedList();
+    }
+
+    // 8-3. Render Chart
+    function renderChart() {
+      const canvas = document.getElementById('growthChart');
+      if (!canvas) return;
+
+      const records = (appData[currentPlayer] || []).filter(r => isEventMatch(r.event, currentEvent) && parseFloat(r.seconds) > 0);
+      
+      let filtered = records.filter(r => {
+        if (filterKind !== 'ALL' && r.kind !== filterKind) return false;
+        if (filterYear !== 'ALL' && !r.date.startsWith(filterYear)) return false;
+        if (searchMeet && !r.meet.toLowerCase().includes(searchMeet)) return false;
+        return true;
+      });
+
+      filtered.sort((a, b) => a.date.localeCompare(b.date));
+
+      const labels = filtered.map(r => r.date.substring(5).replace('-', '/'));
+      const dataPoints = filtered.map(r => parseFloat(r.seconds));
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      if (dataPoints.length === 0) return;
+
+      const minVal = Math.min(...dataPoints);
+      const isLong = (currentEvent.includes('추발') || currentEvent.includes('단체') || currentEvent.includes('1600mR')) || minVal >= 60;
+
+      const ctx = canvas.getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: currentEvent,
+            data: dataPoints,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.2,
+            pointRadius: 4.5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: dataPoints.map(v => v === minVal ? '#fbbf24' : '#3b82f6'),
+            pointBorderColor: dataPoints.map(v => v === minVal ? '#f59e0b' : '#1d4ed8'),
+            pointBorderWidth: 2
+          }]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 25, right: 10, left: 5, bottom: 5 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => filtered[items[0].dataIndex].meet,
+                label: (item) => `기록: ${formatTimeDisplay(item.raw, currentEvent)}`
+              }
+            },
+            datalabels: {
+              align: 'top',
+              color: '#93c5fd',
+              font: { family: 'Pretendard', size: 10, weight: 'bold' },
+              formatter: (val) => {
+                if (isLong) {
+                  const m = Math.floor(val / 60);
+                  const s = (val % 60).toFixed(1);
+                  return `${m}:${s.padStart(4, '0')}`;
+                }
+                return val.toFixed(2);
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748b', font: { size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(51, 65, 85, 0.4)' },
+              ticks: {
+                color: '#64748b',
+                font: { size: 10 },
+                precision: 0,
+                stepSize: 1,
+                maxTicksLimit: 6,
+                callback: (val) => {
+                  if (isLong) {
+                    const m = Math.floor(val / 60);
+                    const s = Math.floor(val % 60);
+                    return `${m}:${String(s).padStart(2, '0')}`;
+                  }
+                  return Math.round(val) + 's';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 8-4. Render Meet Grouped List
+    function renderMeetGroupedList() {
+      const container = document.getElementById('meet-groups-container');
+      const countElem = document.getElementById('list-count');
+      if (!container) return;
+
+      const records = (appData[currentPlayer] || []).filter(r => isEventMatch(r.event, currentEvent));
+
+      let filtered = records.filter(r => {
+        if (filterKind !== 'ALL' && r.kind !== filterKind) return false;
+        if (filterYear !== 'ALL' && !r.date.startsWith(filterYear)) return false;
+        if (searchMeet && !r.meet.toLowerCase().includes(searchMeet)) return false;
+        return true;
+      });
+
+      if (countElem) countElem.textContent = `${filtered.length}건`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">일치하는 기록이 없습니다.</div>';
+        return;
+      }
+
+      const groups = [];
+      filtered.forEach(r => {
+        const isPractice = (r.kind === '비공식') || r.meet.includes('전문실기') || r.meet.includes('실기');
+        const lastGroup = groups[groups.length - 1];
+
+        let canMergePractice = false;
+        if (isPractice && lastGroup && lastGroup.isPractice) {
+          // Check if last record and current record are within same year and within 30 days!
+          const lastDate = lastGroup.records[lastGroup.records.length - 1].date;
+          const curDate = r.date;
+          const d1 = new Date(lastDate);
+          const d2 = new Date(curDate);
+          const diffDays = Math.abs((d2 - d1) / (1000 * 60 * 60 * 24));
+          if (d1.getFullYear() === d2.getFullYear() && diffDays <= 30) {
+            canMergePractice = true;
+          }
+        }
+
+        if (canMergePractice) {
+          lastGroup.records.push(r);
+        } else if (!isPractice && lastGroup && lastGroup.meet === r.meet) {
+          lastGroup.records.push(r);
+        } else {
+          let meetTitle = r.meet;
+          if (isPractice) {
+            meetTitle = '전남체중고 전문실기';
+          }
+          groups.push({
+            meet: meetTitle,
+            kind: r.kind,
+            isPractice: isPractice,
+            records: [r]
+          });
+        }
+      });
+
+      groups.forEach(g => {
+        g.maxDate = g.records.reduce((max, r) => r.date > max ? r.date : max, '');
+      });
+      groups.sort((a, b) => b.maxDate.localeCompare(a.maxDate));
+
+      container.innerHTML = '';
+      groups.forEach(group => {
+        const card = document.createElement('div');
+        card.className = 'rounded-2xl bg-slate-900 border border-slate-800/90 overflow-hidden shadow-lg';
+
+        const isOfficial = group.kind === '공식';
+        const kindBadge = isOfficial 
+          ? '<span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold whitespace-nowrap shrink-0">공식</span>'
+          : '<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold whitespace-nowrap shrink-0">실기</span>';
+        const meetIcon = isOfficial ? '🏆' : '📋';
+
+        const header = document.createElement('div');
+        header.className = 'px-4 py-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2';
+        header.innerHTML = `
+          <div class="flex items-center gap-2 flex-1 min-w-0">
+            <span class="text-sm">${meetIcon}</span>
+            <span class="text-xs font-bold text-white truncate">${group.meet}</span>
+            ${kindBadge}
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="text-[10px] text-slate-400 font-mono">${group.records.length}경기</span>
+            <button type="button" onclick="openAddRecordForMeet('${encodeURIComponent(group.meet)}', '${group.kind}')" class="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center justify-center hover:bg-blue-500/40 active:scale-95 transition" title="이 대회에 새 라운드 추가">
+              <svg width="14" height="14" class="w-3.5 h-3.5" style="max-width:16px;max-height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            </button>
+          </div>
+        `;
+        card.appendChild(header);
+
+        const roundOrder = (round) => {
+          if (!round) return 50;
+          if (round.includes('1차')) return 1;
+          if (round.includes('2차')) return 2;
+          if (round.includes('3차')) return 3;
+          if (round.includes('예선') || round.includes('예')) return 10;
+          if (round.includes('준결')) return 20;
+          if (round.includes('결승') || round.includes('결')) return 30;
+          return 40;
+        };
+
+        const sortedRecords = [...group.records].sort((a, b) => {
+          const cmpDate = a.date.localeCompare(b.date);
+          if (cmpDate !== 0) return cmpDate;
+          return roundOrder(a.round) - roundOrder(b.round);
+        });
+
+        const listDiv = document.createElement('div');
+        listDiv.className = 'divide-y divide-slate-800/60';
+
+        sortedRecords.forEach(r => {
+          const row = document.createElement('div');
+          row.className = 'px-4 py-3 hover:bg-slate-800/30 transition';
+
+          let roundBadge = '';
+          if (r.round) {
+            if (r.round.includes('준결')) {
+              roundBadge = '<span class="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-semibold whitespace-nowrap">준결</span>';
+            } else if (r.round.includes('결승') || r.round.includes('결')) {
+              roundBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold whitespace-nowrap">결승</span>';
+            } else if (r.round && r.round.includes('차')) {
+              // Only display 1차, 2차 if there are multiple records on the exact same date!
+              const sameDateCount = sortedRecords.filter(x => x.date === r.date).length;
+              if (sameDateCount > 1) {
+                roundBadge = '<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-semibold whitespace-nowrap">' + r.round + '</span>';
+              } else {
+                roundBadge = ''; // If dates differ, 1차/2차 is not needed!
+              }
+            } else {
+              roundBadge = '<span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-semibold whitespace-nowrap">' + r.round + '</span>';
+            }
+          }
+
+          let rankBadge = '';
+          const isFinal = r.round && (r.round.includes('결승') || r.round.includes('결'));
+          const rankStr = String(r.rank || '').trim();
+          const isNotSemiOrPrelim = !rankStr.includes('준결') && !rankStr.includes('예선');
+          const rankMatch = rankStr.match(/\d+/);
+          const rankNum = rankMatch ? parseInt(rankMatch[0], 10) : 0;
+
+          if (isFinal && isNotSemiOrPrelim && rankNum === 1) {
+            rankBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[10px] font-bold whitespace-nowrap">🥇 1위</span>';
+          } else if (isFinal && isNotSemiOrPrelim && rankNum === 2) {
+            rankBadge = '<span class="px-1.5 py-0.5 rounded bg-slate-300/20 text-slate-200 border border-slate-300/40 text-[10px] font-bold whitespace-nowrap">🥈 2위</span>';
+          } else if (isFinal && isNotSemiOrPrelim && rankNum === 3) {
+            rankBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-700/20 text-amber-500 border border-amber-700/40 text-[10px] font-bold whitespace-nowrap">🥉 3위</span>';
+          } else if (rankNum > 0) {
+            // Strip redundant '예선', '결승', '준결' and display only clean number + 위!
+            rankBadge = `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-medium whitespace-nowrap">${rankNum}위</span>`;
+          } else if (rankStr) {
+            rankBadge = `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-medium whitespace-nowrap">${rankStr}</span>`;
+          }
+
+          const formattedTime = formatTimeDisplay(r.seconds, currentEvent);
+          const windNum = parseFloat(r.wind || 0);
+          const windPrefix = windNum > 0 ? '+' : '';
+          const windText = r.wind ? `(${windPrefix}${r.wind}m/s)` : '';
+
+          let runnersHtml = '';
+          if (r.runners && r.runners.length > 0) {
+            const listStr = r.runners.map((name, i) => {
+              const isHero = name.includes('김유신') || name.includes('김별하');
+              return `<span class="${isHero ? 'text-amber-300 font-bold' : 'text-slate-300'}">${i + 1}주자 ${name}</span>`;
+            }).join(' <span class="text-slate-600">·</span> ');
+            runnersHtml = `<div class="mt-1.5 text-[11px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2.5 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-1">👥 주자:</span> ${listStr}</div>`;
+          } else if (r.relay) {
+            const rList = r.relay.split('/').map(x => x.trim()).filter(Boolean);
+            if (rList.length > 0) {
+              const listStr = rList.map((name, i) => {
+                const isHero = name.includes('김유신') || name.includes('김별하');
+                return `<span class="${isHero ? 'text-amber-300 font-bold' : 'text-slate-300'}">${i + 1}주자 ${name}</span>`;
+              }).join(' <span class="text-slate-600">·</span> ');
+              runnersHtml = `<div class="mt-1.5 text-[11px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2.5 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-1">👥 주자:</span> ${listStr}</div>`;
+            }
+          }
+
+          let noteHtml = '';
+          const noteStr = String(r.note || '').trim();
+          // Filter out time-only string notes like "1:34.847" or numbers
+          const isTimeFormat = /^[\d\s:.]+(초|s|분)?$/.test(noteStr);
+          if (noteStr && !isTimeFormat) {
+            noteHtml = `<div class="mt-1 text-[11px] text-amber-300/90 flex items-center gap-1.5 bg-amber-500/10 rounded-lg px-2.5 py-1 border border-amber-500/20"><span class="text-amber-400 font-bold shrink-0">📝 메모:</span> <span class="truncate">${noteStr}</span></div>`;
+          }
+
+          row.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                <span class="text-xs text-slate-400 font-mono whitespace-nowrap shrink-0">${r.date}</span>
+                <button type="button" onclick="openEditRecord('${r.id}')" class="p-1 text-slate-500 hover:text-blue-400 transition" title="수정">
+                  <svg width="14" height="14" class="w-3.5 h-3.5" style="max-width:16px;max-height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </button>
+                <button type="button" onclick="deleteRecord('${r.id}')" class="p-1 text-slate-500 hover:text-red-400 transition" title="삭제">
+                  <svg width="14" height="14" class="w-3.5 h-3.5" style="max-width:16px;max-height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+                ${roundBadge}
+                ${rankBadge}
+              </div>
+              <div class="text-right shrink-0">
+                <div class="text-sm font-bold text-white font-mono leading-tight">${formattedTime}</div>
+                ${windText ? `<div class="text-[10px] text-slate-400 font-mono leading-none mt-0.5">${windText}</div>` : ''}
+              </div>
+            </div>
+            ${runnersHtml}
+            ${noteHtml}
+          `;
+          listDiv.appendChild(row);
+        });
+
+        card.appendChild(listDiv);
+        container.appendChild(card);
+      });
+    }
+
+    // 9. Record Form Functions (CRUD & Smart Switching)
+    function resetFormFields() {
+      document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('input-meet').value = '';
+      document.getElementById('time-h').value = '';
+      document.getElementById('time-m').value = '';
+      document.getElementById('time-s').value = '';
+      document.getElementById('input-rank').value = '';
+      document.getElementById('input-wind').value = '';
+      document.getElementById('input-note').value = '';
+      document.getElementById('relay-runner-1').value = '';
+      document.getElementById('relay-runner-2').value = '';
+      document.getElementById('relay-runner-3').value = '';
+      document.getElementById('relay-runner-4').value = '';
+      selectedRound = '';
+      document.getElementById('preview-formatted-time').textContent = '미리보기: 0.00초';
+    }
+
+    function updateFormChips() {
+      const p = playersData.find(x => x.id === currentPlayer);
+      document.getElementById('badge-modal-player').textContent = p ? p.name : '선수';
+      document.getElementById('badge-modal-event').textContent = currentEvent;
+    }
+
+    function toggleLockMeet() {
+      isMeetLocked = !isMeetLocked;
+      const icon = document.getElementById('lock-meet-icon');
+      const text = document.getElementById('lock-meet-text');
+      if (isMeetLocked) {
+        icon.textContent = '🔒';
+        text.textContent = '대회명 고정됨';
+        text.className = 'text-blue-400 font-bold';
+      } else {
+        icon.textContent = '🔓';
+        text.textContent = '대회명 고정';
+        text.className = 'text-slate-400';
+      }
+    }
+
+    function setFormKind(kind) {
+      selectedKind = kind;
+      const bOfficial = document.getElementById('btn-kind-official');
+      const bPractice = document.getElementById('btn-kind-practice');
+      const chipsContainer = document.getElementById('round-chips');
+      const roundLabel = document.getElementById('label-round-kind');
+
+      if (kind === '공식') {
+        bOfficial.className = 'py-1.5 rounded-lg font-bold text-center bg-blue-600 text-white shadow-md';
+        bPractice.className = 'py-1.5 rounded-lg font-medium text-center text-slate-400 hover:text-white';
+        if (roundLabel) roundLabel.textContent = '라운드 (공식대회 구분)';
+        
+        chipsContainer.innerHTML = `
+          <button type="button" onclick="setRound('결승')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500 font-medium">결승</button>
+          <button type="button" onclick="setRound('예선')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500 font-medium">예선</button>
+          <button type="button" onclick="setRound('준결승')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500 font-medium">준결승</button>
+          <button type="button" onclick="setRound('')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:border-blue-500 font-medium">없음</button>
+        `;
+      } else {
+        bOfficial.className = 'py-1.5 rounded-lg font-medium text-center text-slate-400 hover:text-white';
+        bPractice.className = 'py-1.5 rounded-lg font-bold text-center bg-blue-600 text-white shadow-md';
+        if (roundLabel) roundLabel.textContent = '시기 (전문실기 구분)';
+
+        chipsContainer.innerHTML = `
+          <button type="button" onclick="setRound('1차')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-purple-300 hover:border-purple-500 font-medium">1차</button>
+          <button type="button" onclick="setRound('2차')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-purple-300 hover:border-purple-500 font-medium">2차</button>
+          <button type="button" onclick="setRound('3차')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-purple-300 hover:border-purple-500 font-medium">3차</button>
+          <button type="button" onclick="setRound('')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:border-blue-500 font-medium">없음</button>
+        `;
+      }
+
+      setRound(selectedRound || (kind === '공식' ? '결승' : '1차'));
+      checkRelayVisibility();
+    }
+
+    function setRound(r) {
+      selectedRound = r;
+      document.querySelectorAll('.chip-round').forEach(b => {
+        const target = r || '없음';
+        if (b.textContent === target) {
+          b.className = 'chip-round px-2.5 py-1.5 rounded-lg border border-blue-500 bg-blue-500/20 text-white font-bold';
+        } else {
+          b.className = 'chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 font-medium';
+        }
+      });
+    }
+
+    function checkRelayVisibility() {
+      const isRelay = (currentEvent && (currentEvent.includes('mR') || currentEvent.includes('릴레이') || currentEvent.includes('단체')));
+      const container = document.getElementById('field-relay-container');
+      if (container) {
+        if (isRelay) {
+          container.classList.remove('hidden');
+          renderTeammateChips();
+        } else {
+          container.classList.add('hidden');
+        }
+      }
+    }
+
+    document.addEventListener('focusin', (e) => {
+      if (e.target && e.target.classList && e.target.classList.contains('relay-input')) {
+        activeRelayInputId = e.target.id;
+      }
+    });
+
+    function insertRelayRunner(name) {
+      if (activeRelayInputId) {
+        document.getElementById(activeRelayInputId).value = name;
+        if (activeRelayInputId === 'relay-runner-1') activeRelayInputId = 'relay-runner-2';
+        else if (activeRelayInputId === 'relay-runner-2') activeRelayInputId = 'relay-runner-3';
+        else if (activeRelayInputId === 'relay-runner-3') activeRelayInputId = 'relay-runner-4';
+        const nextElem = document.getElementById(activeRelayInputId);
+        if (nextElem) nextElem.focus();
+      }
+    }
+
+    function openRecordModal() {
+      cancelTeammateEditMode();
+      editingRecordId = null;
+      if (!isMeetLocked) {
+        resetFormFields();
+      }
+      document.querySelector('#modal-record h3 span:last-child').textContent = '새 운동 기록 등록';
+      updateFormChips();
+      setFormKind(selectedKind);
+      document.getElementById('modal-record').classList.remove('hidden');
+    }
+
+    function closeRecordModal() {
+      document.getElementById('modal-record').classList.add('hidden');
+    }
+
+    function openAddRecordForMeet(encodedMeet, kind) {
+      const meet = decodeURIComponent(encodedMeet);
+      editingRecordId = null;
+      resetFormFields();
+
+      document.getElementById('input-meet').value = meet;
+      if (!isMeetLocked) toggleLockMeet();
+
+      setFormKind(kind || '공식');
+      document.querySelector('#modal-record h3 span:last-child').textContent = '새 운동 기록 등록';
+      updateFormChips();
+      checkRelayVisibility();
+      document.getElementById('modal-record').classList.remove('hidden');
+    }
+
+    function openEditRecord(recordId) {
+      const record = (appData[currentPlayer] || []).find(r => r.id === recordId);
+      if (!record) return;
+
+      editingRecordId = recordId;
+      resetFormFields();
+
+      document.querySelector('#modal-record h3 span:last-child').textContent = '운동 기록 수정';
+      document.getElementById('input-date').value = record.date || '';
+      document.getElementById('input-meet').value = record.meet || '';
+      setFormKind(record.kind || '공식');
+      setRound(record.round || '');
+
+      const sec = parseFloat(record.seconds || 0);
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = (sec % 60);
+      document.getElementById('time-h').value = h > 0 ? h : '';
+      document.getElementById('time-m').value = m > 0 ? m : '';
+      document.getElementById('time-s').value = s > 0 ? (s % 1 === 0 ? s : s.toFixed(2)) : '';
+
+      const numMatch = record.rank ? String(record.rank).match(/\d+/) : null;
+      document.getElementById('input-rank').value = numMatch ? numMatch[0] : (record.rank || '');
+      document.getElementById('input-wind').value = record.wind || '';
+      document.getElementById('input-note').value = record.note || '';
+
+      if (record.runners && record.runners.length > 0) {
+        document.getElementById('relay-runner-1').value = record.runners[0] || '';
+        document.getElementById('relay-runner-2').value = record.runners[1] || '';
+        document.getElementById('relay-runner-3').value = record.runners[2] || '';
+        document.getElementById('relay-runner-4').value = record.runners[3] || '';
+      } else if (record.relay) {
+        const parts = record.relay.split('/').map(x => x.trim());
+        document.getElementById('relay-runner-1').value = parts[0] || '';
+        document.getElementById('relay-runner-2').value = parts[1] || '';
+        document.getElementById('relay-runner-3').value = parts[2] || '';
+        document.getElementById('relay-runner-4').value = parts[3] || '';
+      }
+
+      updateTimePreview();
+      updateFormChips();
+      checkRelayVisibility();
+      document.getElementById('modal-record').classList.remove('hidden');
+    }
+
+    function deleteRecord(recordId) {
+      if (!confirm('이 기록을 삭제하시겠습니까?')) return;
+      const idx = (appData[currentPlayer] || []).findIndex(r => r.id === recordId);
+      if (idx !== -1) {
+        appData[currentPlayer].splice(idx, 1);
+        saveDataToStorage();
+        renderCurrentView();
+      }
+    }
+
+    function updateTimePreview() {
+      const h = parseFloat(document.getElementById('time-h').value || 0);
+      const m = parseFloat(document.getElementById('time-m').value || 0);
+      const s = parseFloat(document.getElementById('time-s').value || 0);
+      const total = h * 3600 + m * 60 + s;
+      document.getElementById('preview-formatted-time').textContent = `미리보기: ${formatTimeDisplay(total, currentEvent)}`;
+    }
+
+    ['time-h', 'time-m', 'time-s'].forEach(id => {
+      document.addEventListener('input', (e) => {
+        if (e.target && e.target.id === id) updateTimePreview();
+      });
+    });
+
+    function handleSaveRecord(e) {
+      e.preventDefault();
+      saveRecord(false);
+    }
+
+    function saveRecord(keepOpen) {
+      const dateVal = document.getElementById('input-date').value;
+      const meetVal = document.getElementById('input-meet').value.trim();
+      const h = parseFloat(document.getElementById('time-h').value || 0);
+      const m = parseFloat(document.getElementById('time-m').value || 0);
+      const s = parseFloat(document.getElementById('time-s').value || 0);
+      const totalSec = parseFloat((h * 3600 + m * 60 + s).toFixed(3));
+      const rankVal = document.getElementById('input-rank').value.trim();
+      const windVal = document.getElementById('input-wind').value.trim();
+      const noteVal = document.getElementById('input-note').value.trim();
+
+      if (!meetVal) {
+        alert('대회명을 입력해주세요.');
+        return;
+      }
+      if (totalSec <= 0) {
+        alert('기록 시간을 입력해주세요.');
+        return;
+      }
+
+      const r1 = document.getElementById('relay-runner-1').value.trim();
+      const r2 = document.getElementById('relay-runner-2').value.trim();
+      const r3 = document.getElementById('relay-runner-3').value.trim();
+      const r4 = document.getElementById('relay-runner-4').value.trim();
+      const runnersList = [r1, r2, r3, r4].filter(Boolean);
+      const relayStr = runnersList.join('/');
+
+      // Auto learn new teammate names into quick chips
+      runnersList.forEach(name => {
+        if (name && !savedTeammates.includes(name)) {
+          savedTeammates.push(name);
+          saveTeammates();
+        }
+      });
+
+      const newEntry = {
+        id: editingRecordId || ('rec_' + Date.now()),
+        date: dateVal,
+        meet: meetVal,
+        event: currentEvent === 'ALL_PB' ? (getPlayerEvents(currentPlayer)[0] || '100m') : currentEvent,
+        kind: selectedKind,
+        round: selectedRound,
+        seconds: totalSec,
+        rank: rankVal,
+        wind: windVal,
+        runners: runnersList,
+        relay: relayStr,
+        note: noteVal
+      };
+
+      if (!appData[currentPlayer]) appData[currentPlayer] = [];
+
+      if (editingRecordId) {
+        const idx = appData[currentPlayer].findIndex(r => r.id === editingRecordId);
+        if (idx !== -1) appData[currentPlayer][idx] = newEntry;
+      } else {
+        appData[currentPlayer].push(newEntry);
+      }
+
+      saveDataToStorage();
+      renderCurrentView();
+
+      if (keepOpen) {
+        document.getElementById('time-h').value = '';
+        document.getElementById('time-m').value = '';
+        document.getElementById('time-s').value = '';
+        document.getElementById('input-rank').value = '';
+        document.getElementById('input-wind').value = '';
+        document.getElementById('input-note').value = '';
+        updateTimePreview();
+      } else {
+        closeRecordModal();
+      }
+    }
+
+    // 10. Player Management Modal (User's Hand-drawn Layout)
+    function openPlayerManageModal() {
+      try {
+        const modal = document.getElementById('modal-players');
+        if (modal) modal.classList.remove('hidden');
+        renderPlayerCards();
+      } catch (err) {
+        console.error('openPlayerManageModal error:', err);
+      }
+    }
+
+    function closePlayerManageModal() {
+      const modal = document.getElementById('modal-players');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function setPlayerFilterLevel(lvl) {
+      playerFilterLevel = lvl;
+      ['all', 'middle', 'high', 'adult'].forEach(k => {
+        const btn = document.getElementById('pf-level-' + k);
+        if (btn) {
+          btn.className = 'px-2.5 py-1 rounded-lg text-[11px] whitespace-nowrap ' + 
+            ((lvl === 'all' && k === 'all') || (lvl === '중등부' && k === 'middle') || (lvl === '고등부' && k === 'high') || (lvl === '대학/실업' && k === 'adult') ? 
+            'bg-blue-600 text-white font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700');
+        }
+      });
+      renderPlayerCards();
+    }
+
+    function setPlayerFilterGender(gen) {
+      playerFilterGender = gen;
+      ['all', 'm', 'f'].forEach(k => {
+        const btn = document.getElementById('pf-gender-' + k);
+        if (btn) {
+          btn.className = 'px-2 py-1 rounded-lg text-[11px] whitespace-nowrap ' + 
+            ((gen === 'all' && k === 'all') || (gen === '남' && k === 'm') || (gen === '여' && k === 'f') ? 
+            'bg-blue-600 text-white font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700');
+        }
+      });
+      renderPlayerCards();
+    }
+
+    function renderPlayerCards() {
+      const container = document.getElementById('player-cards-container');
+      if (!container) return;
+      const searchInput = document.getElementById('player-filter-search');
+      const search = (searchInput && searchInput.value ? searchInput.value : '').trim().toLowerCase();
+
+      if (!Array.isArray(playersData) || playersData.length === 0) {
+        playersData = [
+          { id: 'yusin', name: '김유신', gender: '남', birth: '2011-02-15', sport: '육상', mainEvent: '단거리 400m', events: ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'], photo: '' },
+          { id: 'byeolha', name: '김별하', gender: '여', birth: '2013-05-20', sport: '사이클', mainEvent: '트랙 독주', events: ['1Lap', '500m독주', '1km추발', '2km단체추발'], photo: '' }
+        ];
+      }
+
+      let filtered = playersData.filter(p => {
+        if (!p) return false;
+        const { schoolLevel } = calculateGradeAndAge(p.birth || '');
+        if (playerFilterLevel !== 'all' && schoolLevel !== playerFilterLevel) return false;
+        if (playerFilterGender !== 'all' && p.gender !== playerFilterGender) return false;
+        if (search) {
+          const matchName = (p.name || '').toLowerCase().includes(search);
+          const matchSport = (p.sport || '').toLowerCase().includes(search);
+          const matchEvent = (p.mainEvent || '').toLowerCase().includes(search);
+          if (!matchName && !matchSport && !matchEvent) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">일치하는 선수가 없습니다.</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      filtered.forEach(p => {
+        const { gradeBadge } = calculateGradeAndAge(p.birth || '');
+        const card = document.createElement('div');
+        const isCurrent = p.id === currentPlayer;
+        card.className = `p-3.5 rounded-2xl bg-slate-800/80 border ${isCurrent ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700/80 hover:border-slate-600'} flex items-center justify-between gap-3 shadow-md transition`;
+        
+        const genderBadgeClass = p.gender === '남' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-pink-500/20 text-pink-300 border-pink-500/40';
+        const pSport = p.sport || '';
+        const sportIcon = pSport.includes('육상') ? '🏃' : (pSport.includes('사이클') ? '🚴' : '🏅');
+
+        card.innerHTML = `
+          <!-- Left: Photo Box (Portrait 3:4) -->
+          <div onclick="selectPlayerFromCard('${p.id}')" class="flex items-center gap-3.5 flex-1 cursor-pointer">
+            <div class="w-12 h-16 rounded-xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center text-xl shadow-inner shrink-0 overflow-hidden relative">
+              ${p.photo ? `<img src="${p.photo}" class="w-full h-full object-cover">` : `<span>${sportIcon}</span><span class="text-[9px] text-slate-500 mt-0.5">${p.gender || ''}</span>`}
+            </div>
+
+            <!-- Right: Info Rows (User's Hand-drawn Layout) -->
+            <div class="space-y-1">
+              <!-- Row 1: Name + [Gender] -->
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm font-bold text-white">${p.name || ''}</span>
+                <span class="px-1.5 py-0.5 rounded border ${genderBadgeClass} text-[10px] font-bold leading-none">${p.gender || ''}</span>
+                ${isCurrent ? '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold">선택됨</span>' : ''}
+              </div>
+
+              <!-- Row 2: Birth + [Grade] -->
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+                <span>${(p.birth || '').replace(/-/g, '.')}</span>
+                <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold font-sans">${gradeBadge}</span>
+              </div>
+
+              <!-- Row 3: Event -->
+              <div class="text-xs text-blue-400 font-medium">
+                ${p.sport || '운동'} · ${p.mainEvent || '종목 미지정'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions: Edit / Delete -->
+          <div class="flex flex-col gap-1 items-end shrink-0">
+            <button type="button" onclick="openAddEditPlayerModal('${p.id}')" class="p-1.5 text-slate-400 hover:text-blue-400 rounded-lg hover:bg-slate-700/50 transition" title="프로필 수정">
+              <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            </button>
+            ${playersData.length > 1 ? `
+            <button type="button" onclick="deletePlayer('${p.id}')" class="p-1.5 text-slate-400 hover:text-red-400 rounded-lg hover:bg-slate-700/50 transition" title="선수 삭제">
+              <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>` : ''}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function selectPlayerFromCard(id) {
+      switchPlayer(id);
+      closePlayerManageModal();
+    }
+
+    // 10-1. Player Profile Form: Event Add/Delete Management
+    function renderFormEventsChips() {
+      const container = document.getElementById('form-player-events-chips');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (!formCurrentEvents || formCurrentEvents.length === 0) {
+        container.innerHTML = '<span class="text-[11px] text-slate-500">등록된 출전 종목이 없습니다.</span>';
+        return;
+      }
+
+      formCurrentEvents.forEach((ev, idx) => {
+        const evName = typeof ev === 'object' ? ev.name : ev;
+        const isTeam = typeof ev === 'object' ? ev.isTeam : (evName.includes('mR') || evName.includes('릴레이') || evName.includes('단체'));
+        const typeBadge = isTeam 
+          ? '<span class="text-[9px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40">단체</span>'
+          : '<span class="text-[9px] px-1 py-0.2 rounded bg-slate-700 text-slate-300">개인</span>';
+
+        const chip = document.createElement('div');
+        chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold';
+        chip.innerHTML = `
+          <span>${evName}</span>
+          ${typeBadge}
+          <button type="button" onclick="removeEventFromCurrentFormPlayer(${idx})" class="w-4 h-4 rounded-full bg-slate-700 hover:bg-red-500 hover:text-white flex items-center justify-center text-[11px] text-slate-400 leading-none ml-0.5 transition active:scale-90">×</button>
+        `;
+        container.appendChild(chip);
+      });
+    }
+
+    function addEventToCurrentFormPlayer() {
+      const input = document.getElementById('input-new-event');
+      const val = (input && input.value ? input.value : '').trim();
+      if (!val) return;
+
+      const isTeam = document.getElementById('new-event-team').checked;
+      const exists = formCurrentEvents.some(e => (typeof e === 'object' ? e.name : e) === val);
+      if (!exists) {
+        formCurrentEvents.push({ name: val, isTeam: isTeam });
+        renderFormEventsChips();
+      }
+      input.value = '';
+      input.focus();
+    }
+
+    function removeEventFromCurrentFormPlayer(idx) {
+      formCurrentEvents.splice(idx, 1);
+      renderFormEventsChips();
+    }
+
+    function openAddEditPlayerModal(playerId) {
+      const modal = document.getElementById('modal-player-form');
+      const title = document.getElementById('modal-player-form-title');
+      const idInput = document.getElementById('form-player-id');
+      const nameInput = document.getElementById('form-player-name');
+      const genderInput = document.getElementById('form-player-gender');
+      const birthInput = document.getElementById('form-player-birth');
+      const sportInput = document.getElementById('form-player-sport');
+      const eventInput = document.getElementById('form-player-event');
+
+      if (playerId) {
+        const p = playersData.find(x => x.id === playerId);
+        if (!p) return;
+        title.textContent = '선수 프로필 수정';
+        idInput.value = p.id;
+        nameInput.value = p.name || '';
+        setFormPlayerGender(p.gender || '남');
+        birthInput.value = p.birth || '2011-02-15';
+        sportInput.value = p.sport || '';
+        eventInput.value = p.mainEvent || '';
+        setPlayerPhotoPreview(p.photo || '');
+        formCurrentEvents = Array.isArray(p.events) ? [...p.events] : (playerId === 'yusin' ? ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'] : ['1Lap', '500m독주', '1km추발', '2km단체추발']);
+      } else {
+        title.textContent = '새 선수 등록';
+        idInput.value = '';
+        nameInput.value = '';
+        setFormPlayerGender('남');
+        birthInput.value = '2011-02-15';
+        sportInput.value = '육상';
+        eventInput.value = '단거리 400m';
+        setPlayerPhotoPreview('');
+        formCurrentEvents = ['100m', '200m', '400m', { name: '4x100mR', isTeam: true }];
+      }
+
+      renderFormEventsChips();
+      modal.classList.remove('hidden');
+    }
+
+    function closeAddEditPlayerModal() {
+      const modal = document.getElementById('modal-player-form');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function handleSavePlayer(e) {
+      e.preventDefault();
+      const id = document.getElementById('form-player-id').value;
+      const name = document.getElementById('form-player-name').value.trim();
+      const gender = document.getElementById('form-player-gender').value;
+      const birth = document.getElementById('form-player-birth').value;
+      const sport = document.getElementById('form-player-sport').value.trim();
+      const mainEvent = document.getElementById('form-player-event').value.trim();
+
+      if (!name) return;
+
+      const photoBase64 = document.getElementById('form-player-photo-base64').value || '';
+      if (id) {
+        const p = playersData.find(x => x.id === id);
+        if (p) {
+          p.name = name;
+          p.gender = gender;
+          p.birth = birth;
+          p.sport = sport;
+          p.mainEvent = mainEvent;
+          p.photo = photoBase64;
+          p.events = [...formCurrentEvents];
+        }
+      } else {
+        const newId = 'p_' + Date.now();
+        playersData.push({
+          id: newId,
+          name: name,
+          gender: gender,
+          birth: birth,
+          sport: sport,
+          mainEvent: mainEvent,
+          events: [...formCurrentEvents],
+          photo: photoBase64
+        });
+        if (!appData[newId]) appData[newId] = [];
+        currentPlayer = newId;
+      }
+
+      saveDataToStorage();
+      initPlayerSelectDropdown();
+      renderPlayerCards();
+      closeAddEditPlayerModal();
+      renderEventTabs();
+      renderCurrentView();
+    }
+
+    function deletePlayer(id) {
+      if (playersData.length <= 1) {
+        alert('최소 한 명의 선수는 남아있어야 합니다.');
+        return;
+      }
+      const p = playersData.find(x => x.id === id);
+      if (!confirm(`${p.name} 선수의 모든 기록과 프로필을 삭제하시겠습니까?`)) return;
+
+      playersData = playersData.filter(x => x.id !== id);
+      delete appData[id];
+
+      if (currentPlayer === id) {
+        currentPlayer = playersData[0].id;
+      }
+
+      saveDataToStorage();
+      initPlayerSelectDropdown();
+      renderPlayerCards();
+      renderEventTabs();
+      renderCurrentView();
+    }
+
+    // 11. Teammate Multi-Select & Batch Delete
+    function toggleTeammateEditMode() {
+      const btn = document.getElementById('btn-toggle-runner-del');
+      const cancelBtn = document.getElementById('btn-cancel-runner-del');
+      const addBtn = document.getElementById('btn-add-teammate');
+
+      if (!isTeammateEditMode) {
+        isTeammateEditMode = true;
+        selectedTeammatesToDelete.clear();
+        btn.textContent = '삭제';
+        btn.className = 'text-[11px] text-red-300 font-bold px-2.5 py-0.5 rounded-lg border border-red-500/60 bg-red-950/70 shadow-sm transition active:scale-95';
+        if (cancelBtn) cancelBtn.classList.remove('hidden');
+        if (addBtn) addBtn.classList.add('hidden');
+      } else {
+        if (selectedTeammatesToDelete.size > 0) {
+          savedTeammates = savedTeammates.filter(name => !selectedTeammatesToDelete.has(name));
+          saveTeammates();
+        }
+        cancelTeammateEditMode();
+      }
+      renderTeammateChips();
+    }
+
+    function cancelTeammateEditMode() {
+      isTeammateEditMode = false;
+      selectedTeammatesToDelete.clear();
+      const btn = document.getElementById('btn-toggle-runner-del');
+      const cancelBtn = document.getElementById('btn-cancel-runner-del');
+      const addBtn = document.getElementById('btn-add-teammate');
+      if (btn) {
+        btn.textContent = '편집';
+        btn.className = 'text-[11px] text-slate-300 hover:text-red-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95';
+      }
+      if (cancelBtn) cancelBtn.classList.add('hidden');
+      if (addBtn) addBtn.classList.remove('hidden');
+      renderTeammateChips();
+    }
+
+    function toggleSelectTeammateToDelete(name) {
+      if (selectedTeammatesToDelete.has(name)) {
+        selectedTeammatesToDelete.delete(name);
+      } else {
+        selectedTeammatesToDelete.add(name);
+      }
+
+      const btn = document.getElementById('btn-toggle-runner-del');
+      if (btn) {
+        const count = selectedTeammatesToDelete.size;
+        btn.textContent = count > 0 ? `삭제 (${count}명)` : '삭제';
+      }
+      renderTeammateChips();
+    }
+
+    function renderTeammateChips() {
+      const container = document.getElementById('relay-teammate-chips');
+      if (!container) return;
+      container.innerHTML = '';
+
+      savedTeammates.forEach(name => {
+        const isHero = name === '김유신' || name === '김별하';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+
+        if (isTeammateEditMode) {
+          const isSelected = selectedTeammatesToDelete.has(name);
+          btn.className = isSelected 
+            ? 'px-2.5 py-1 rounded-lg bg-red-600/30 text-red-200 border border-red-500 ring-2 ring-red-500/40 text-[11px] font-bold shadow-md transition active:scale-95'
+            : 'px-2.5 py-1 rounded-lg bg-slate-900/60 text-slate-500 border border-slate-800 text-[11px] font-medium transition active:scale-95';
+          btn.textContent = name;
+          btn.onclick = () => toggleSelectTeammateToDelete(name);
+        } else {
+          btn.className = isHero 
+            ? 'px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-bold shadow-sm active:scale-95 transition'
+            : 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:border-blue-500 text-[11px] font-medium active:scale-95 transition';
+          btn.textContent = name;
+          btn.onclick = () => insertRelayRunner(name);
+        }
+
+        container.appendChild(btn);
+      });
+    }
+
+    function promptAddNewTeammate() {
+      const name = prompt('새로 추가할 선수 이름을 입력하세요:');
+      if (name && name.trim()) {
+        const cleanName = name.trim();
+        if (!savedTeammates.includes(cleanName)) {
+          savedTeammates.push(cleanName);
+          saveTeammates();
+          renderTeammateChips();
+        }
+        insertRelayRunner(cleanName);
+      }
+    }
+
+    // 12. Settings & Backup/Export Functions
+    function openSettingsModal() {
+      document.getElementById('modal-settings').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('modal-settings').classList.add('hidden');
+    }
+
+    function exportToExcelExactFormat() {
+      const p = currentPlayer;
+      let csvContent = "\ufeff";
+      
+      if (p === 'yusin') {
+        const headers = ['날짜', '대회명', '종목', '순위', '기록', '풍속', '릴레이조', '비고'];
+        csvContent += headers.join(',') + '\n';
+        (appData.yusin || []).forEach(r => {
+          const secNum = parseFloat(r.seconds || 0);
+          const formattedSec = secNum > 0 ? secNum.toFixed(2) : '';
+          const row = [
+            `"${r.date || ''}"`,
+            `"${(r.meet || '').replace(/"/g, '""')}"`,
+            `"${r.event || ''}"`,
+            `"${r.rank || ''}"`,
+            `="${formattedSec}"`,
+            `"${r.wind || ''}"`,
+            `"${r.relay || (r.runners ? r.runners.join('/') : '')}"`,
+            `"${(r.note || '').replace(/"/g, '""')}"`
+          ];
+          csvContent += row.join(',') + '\n';
+        });
+      } else {
+        const headers = ['날짜', '대회명', '종목', '순위', '기록', '비고'];
+        csvContent += headers.join(',') + '\n';
+        (appData.byeolha || []).forEach(r => {
+          const secNum = parseFloat(r.seconds || 0);
+          const formattedSec = secNum > 0 ? secNum.toFixed(3) : '';
+          const row = [
+            `"${r.date || ''}"`,
+            `"${(r.meet || '').replace(/"/g, '""')}"`,
+            `"${r.event || ''}"`,
+            `"${r.rank || ''}"`,
+            `="${formattedSec}"`,
+            `"${(r.note || '').replace(/"/g, '""')}"`
+          ];
+          csvContent += row.join(',') + '\n';
+        });
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const pObj = playersData.find(x => x.id === p);
+      const pName = pObj ? pObj.name : '선수';
+      const today = new Date().toISOString().split('T')[0];
+      a.download = `${pName}_아이들기록지_내양식_${today}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportDataJson() {
+      const exportPayload = {
+        appData: appData,
+        playersData: playersData,
+        savedTeammates: savedTeammates,
+        exportedAt: new Date().toISOString()
+      };
+      const jsonStr = JSON.stringify(exportPayload, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const today = new Date().toISOString().split('T')[0];
+      a.download = `운동성장노트_전체백업_${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importDataJson(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          if (parsed.appData) appData = parsed.appData;
+          if (parsed.playersData) playersData = parsed.playersData;
+          if (parsed.savedTeammates) savedTeammates = parsed.savedTeammates;
+          saveDataToStorage();
+          initPlayerSelectDropdown();
+          renderEventTabs();
+          renderCurrentView();
+          alert('데이터를 성공적으로 복원했습니다!');
+          closeSettingsModal();
+        } catch (err) {
+          alert('올바른 백업 JSON 파일이 아닙니다.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+
+    // --- ANDROID BACK BUTTON INTERCEPT (History API) ---
+    function pushModalHistory(modalId) {
+      if (window.history && window.history.pushState) {
+        window.history.pushState({ modalOpen: modalId }, '');
+      }
+    }
+
+    window.addEventListener('popstate', (e) => {
+      if (exitModalOpen) {
+        cancelAppExit();
+        return;
+      }
+      if (openModalsStack.length > 0) {
+        const topModalId = openModalsStack.pop();
+        const m = document.getElementById(topModalId);
+        if (m) m.classList.add('hidden');
+      } else {
+        // No modals open: Show Exit Confirmation!
+        openAppExitModal();
+      }
+    });
+      // If modal was closed, we intercepted the back button successfully!
+    });
+
+    // Hook pushModalHistory into all open modal calls
+    const origOpenRecordModal = openRecordModal;
+    openRecordModal = function() {
+      pushModalHistory('modal-record');
+      origOpenRecordModal.apply(this, arguments);
+    };
+
+    const origOpenAddRecordForMeet = openAddRecordForMeet;
+    openAddRecordForMeet = function() {
+      pushModalHistory('modal-record');
+      origOpenAddRecordForMeet.apply(this, arguments);
+    };
+
+    const origOpenEditRecord = openEditRecord;
+    openEditRecord = function() {
+      pushModalHistory('modal-record');
+      origOpenEditRecord.apply(this, arguments);
+    };
+
+    const origOpenPlayerManageModal = openPlayerManageModal;
+    openPlayerManageModal = function() {
+      pushModalHistory('modal-players');
+      origOpenPlayerManageModal.apply(this, arguments);
+    };
+
+    const origOpenAddEditPlayerModal = openAddEditPlayerModal;
+    openAddEditPlayerModal = function() {
+      pushModalHistory('modal-player-form');
+      origOpenAddEditPlayerModal.apply(this, arguments);
+    };
+
+    const origOpenSettingsModal = openSettingsModal;
+    openSettingsModal = function() {
+      pushModalHistory('modal-settings');
+      origOpenSettingsModal.apply(this, arguments);
+    };
+
+    // --- GENDER UI TOGGLE ---
+    function setFormPlayerGender(g) {
+      document.getElementById('form-player-gender').value = g;
+      const btnM = document.getElementById('btn-gender-m');
+      const btnF = document.getElementById('btn-gender-f');
+      if (g === '남') {
+        btnM.className = 'py-1.5 rounded-lg font-bold text-center bg-blue-600 text-white transition';
+        btnF.className = 'py-1.5 rounded-lg font-medium text-center text-slate-400 hover:text-white transition';
+      } else {
+        btnM.className = 'py-1.5 rounded-lg font-medium text-center text-slate-400 hover:text-white transition';
+        btnF.className = 'py-1.5 rounded-lg font-bold text-center bg-pink-600 text-white transition';
+      }
+    }
+
+    // --- PHOTO UPLOAD & BASE64 PREVIEW ---
+    function handlePhotoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const b64 = evt.target.result;
+        setPlayerPhotoPreview(b64);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function setPlayerPhotoPreview(b64) {
+      document.getElementById('form-player-photo-base64').value = b64 || '';
+      const img = document.getElementById('player-photo-preview-img');
+      const icon = document.getElementById('player-photo-empty-icon');
+      const rmBtn = document.getElementById('btn-remove-photo');
+      if (b64) {
+        img.src = b64;
+        img.classList.remove('hidden');
+        icon.classList.add('hidden');
+        rmBtn.classList.remove('hidden');
+      } else {
+        img.src = '';
+        img.classList.add('hidden');
+        icon.classList.remove('hidden');
+        rmBtn.classList.add('hidden');
+      }
+    }
+
+    function removePlayerPhoto() {
+      setPlayerPhotoPreview('');
+      document.getElementById('form-player-photo-file').value = '';
+    }
+
+    // --- TEAM EVENT DETERMINATION & CHIPS ---
+    function isEventTeam(eventName) {
+      if (!eventName) return false;
+      const p = playersData.find(x => x.id === currentPlayer);
+      if (p && Array.isArray(p.events)) {
+        const found = p.events.find(ev => (typeof ev === 'object' ? ev.name : ev) === eventName);
+        if (found && typeof found === 'object' && found.isTeam !== undefined) {
+          return found.isTeam;
+        }
+      }
+      return eventName.includes('mR') || eventName.includes('릴레이') || eventName.includes('단체') || eventName.includes('추발');
+    }
+
+    // 13. Application Initialization
+    
+    const AUTH_API_ENDPOINT = "https://api.restful-api.dev/objects/ff808181a09d98f701a1fa08e73a09e8";
+    let realtimeAuthData = {};
+
+    async function loadRealtimeApprovals() {
+      const container = document.getElementById('approval-list-container');
+      if (container) container.innerHTML = '<div class="py-8 text-center text-slate-500 text-xs">신청 명단 확인 중...</div>';
+
+      try {
+        const res = await fetch(AUTH_API_ENDPOINT);
+        const json = await res.json();
+        realtimeAuthData = json.data || {};
+        renderApprovalList();
+        updatePendingBadge();
+      } catch (err) {
+        console.error('loadRealtimeApprovals error:', err);
+        if (container) container.innerHTML = '<div class="py-8 text-center text-red-400 text-xs">명단을 불러오지 못했습니다. 다시 시도해주세요.</div>';
+      }
+    }
+
+    function updatePendingBadge() {
+      const badge = document.getElementById('badge-pending-count');
+      if (!badge) return;
+      const hasPending = Object.values(realtimeAuthData).some(v => v && v.status === 'pending');
+      if (hasPending) badge.classList.remove('hidden');
+      else badge.classList.add('hidden');
+    }
+
+    function renderApprovalList() {
+      const container = document.getElementById('approval-list-container');
+      if (!container) return;
+
+      const keys = Object.keys(realtimeAuthData);
+      if (keys.length === 0) {
+        container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">아직 열람을 신청한 뷰어가 없습니다.</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      keys.forEach(nick => {
+        const item = realtimeAuthData[nick] || {};
+        const isApproved = item.status === 'approved';
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80 space-y-2.5 shadow-sm';
+
+        let statusBadge = '';
+        if (isApproved) {
+          let allowedText = '전체';
+          if (item.allowed === 'yusin') allowedText = '김유신만';
+          else if (item.allowed === 'byeolha') allowedText = '김별하만';
+          statusBadge = `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">승인됨 (${allowedText})</span>`;
+        } else {
+          statusBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">승인 대기중</span>';
+        }
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm font-bold text-white">${nick}</span>
+              ${statusBadge}
+            </div>
+            <span class="text-[10px] text-slate-500">${item.time || ''}</span>
+          </div>
+
+          <div class="grid grid-cols-4 gap-1 pt-1 text-[11px]">
+            <button type="button" onclick="setViewerPermission('${nick}', 'yusin')" class="py-1.5 rounded-lg border ${item.allowed === 'yusin' ? 'bg-blue-600 text-white font-bold border-blue-500' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-blue-500'} active:scale-95 transition">
+              유신만
+            </button>
+            <button type="button" onclick="setViewerPermission('${nick}', 'byeolha')" class="py-1.5 rounded-lg border ${item.allowed === 'byeolha' ? 'bg-pink-600 text-white font-bold border-pink-500' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-pink-500'} active:scale-95 transition">
+              별하만
+            </button>
+            <button type="button" onclick="setViewerPermission('${nick}', 'all')" class="py-1.5 rounded-lg border ${item.allowed === 'all' ? 'bg-indigo-600 text-white font-bold border-indigo-500' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-indigo-500'} active:scale-95 transition">
+              남매전체
+            </button>
+            <button type="button" onclick="setViewerPermission('${nick}', 'none')" class="py-1.5 rounded-lg border ${!isApproved ? 'bg-red-950/60 text-red-400 font-bold border-red-500/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-red-500'} active:scale-95 transition">
+              거절/깡통
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function setViewerPermission(nick, allowed) {
+      const isApproved = (allowed !== 'none');
+      realtimeAuthData[nick] = {
+        status: isApproved ? 'approved' : 'pending',
+        allowed: allowed,
+        time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      renderApprovalList();
+
+      try {
+        await fetch(AUTH_API_ENDPOINT, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
+        });
+        updatePendingBadge();
+      } catch (err) {
+        console.error('Update permission error:', err);
+        alert('권한 저장에 실패했습니다. 네트워크를 확인해주세요.');
+      }
+    }
+
+    function openViewerApprovalModal() {
+      pushModalHistory('modal-viewer-approvals');
+      document.getElementById('modal-viewer-approvals').classList.remove('hidden');
+      loadRealtimeApprovals();
+    }
+
+    function closeViewerApprovalModal() {
+      document.getElementById('modal-viewer-approvals').classList.add('hidden');
+    }
+
+    
+    // --- Update Notification Logic ---
+    const CURRENT_APP_VERSION = '2026.11.21.03';
+
+    function checkForUpdates() {
+      // Listen for Service Worker update
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          showUpdateToast();
+        });
+      }
+      
+      const lastVer = localStorage.getItem('ATHLETE_APP_LAST_VERSION');
+      if (lastVer && lastVer !== CURRENT_APP_VERSION) {
+        showUpdateToast();
+      }
+      localStorage.setItem('ATHLETE_APP_LAST_VERSION', CURRENT_APP_VERSION);
+    }
+
+    function showUpdateToast() {
+      const toast = document.getElementById('toast-new-version');
+      if (!toast) return;
+      toast.classList.remove('-translate-y-24', 'opacity-0', 'pointer-events-none');
+    }
+
+    function reloadForUpdate() {
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name));
+          window.location.reload(true);
+        });
+      } else {
+        window.location.reload(true);
+      }
+    }
+
+    // --- App Exit Confirmation Logic (Back button handler) ---
+    let exitModalOpen = false;
+
+    function openAppExitModal() {
+      exitModalOpen = true;
+      const modal = document.getElementById('modal-app-exit');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function cancelAppExit() {
+      exitModalOpen = false;
+      const modal = document.getElementById('modal-app-exit');
+      if (modal) modal.classList.add('hidden');
+      // Re-push history state
+      history.pushState({ page: 'main' }, '');
+    }
+
+    function confirmAppExit() {
+      exitModalOpen = false;
+      const modal = document.getElementById('modal-app-exit');
+      if (modal) modal.classList.add('hidden');
+      if (window.navigator && window.navigator.app && window.navigator.app.exitApp) {
+        window.navigator.app.exitApp();
+      } else {
+        window.history.go(-2);
+      }
+    }
+
+
+    // Service Worker Registration for PWA & Offline
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          reg.onupdatefound = () => {
+            const installingWorker = reg.installing;
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showUpdateToast();
+              }
+            };
+          };
+        }).catch(err => {
+          // SW registration failed (e.g. running on file:// protocol)
+          console.log('SW registration note:', err);
+        });
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      history.pushState({ page: 'main' }, '');
+      checkForUpdates();
+      loadRealtimeApprovals();
+      loadDataFromStorage();
+      initPlayerSelectDropdown();
+      renderEventTabs();
+      renderCurrentView();
+    });
+  </script>
+
+  <!-- Update Notification Toast -->
+  <div id="toast-new-version" class="fixed top-4 inset-x-4 z-50 max-w-sm mx-auto p-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 border border-blue-400 text-white shadow-2xl flex items-center justify-between gap-3 transform -translate-y-24 transition-all duration-300 opacity-0 pointer-events-none">
+    <div class="flex items-center gap-2.5">
+      <span class="text-xl">🔔</span>
+      <div>
+        <p class="text-xs font-bold text-white">새로운 버전 업데이트!</p>
+        <p class="text-[10px] text-blue-100">최신 기록 및 기능 개선이 배포되었습니다.</p>
+      </div>
+    </div>
+    <button type="button" onclick="reloadForUpdate()" class="px-3 py-1.5 rounded-xl bg-white text-blue-700 font-bold text-xs shadow-md active:scale-95 transition shrink-0">
+      새로고침
+    </button>
+  </div>
+
+  <!-- Exit Confirm Modal -->
+  <div id="modal-app-exit" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xs p-5 text-center space-y-4 shadow-2xl">
+      <div class="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-xl text-amber-400 mx-auto">
+        🚪
+      </div>
+      <div>
+        <h4 class="text-base font-bold text-white mb-1">앱을 종료하시겠습니까?</h4>
+        <p class="text-xs text-slate-400">운동 성장노트 앱을 닫고 종료합니다.</p>
+      </div>
+      <div class="grid grid-cols-2 gap-2 pt-1 text-xs">
+        <button type="button" onclick="cancelAppExit()" class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold border border-slate-700 transition active:scale-95">
+          취소
+        </button>
+        <button type="button" onclick="confirmAppExit()" class="py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold shadow-lg shadow-red-500/20 transition active:scale-95">
+          종료
+        </button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

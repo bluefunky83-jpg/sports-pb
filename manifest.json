@@ -1,0 +1,24 @@
+{
+  "name": "전남체육 운동 성장노트",
+  "short_name": "성장노트",
+  "description": "전남체육중고 학생선수(육상·사이클) 공식 경기 기록 및 성장 차트 관리 웹앱",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
