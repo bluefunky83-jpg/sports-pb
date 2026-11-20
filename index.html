@@ -50,25 +50,28 @@
 
     <!-- Center: Auth Buttons -->
     <div class="space-y-3 pb-8">
-      <!-- Google Sign In Button -->
-      <button type="button" onclick="handleGoogleSignIn()" class="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-800 font-bold text-sm flex items-center justify-center gap-3 shadow-xl transition active:scale-95">
+      <!-- Admin Start Button -->
+      <button type="button" onclick="handleAdminStart()" class="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-800 font-bold text-sm flex items-center justify-center gap-3 shadow-xl transition active:scale-95">
         <svg class="w-5 h-5" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
         </svg>
-        <span>Google 계정으로 시작하기</span>
+        <span>선수기록 관리자 시작하기</span>
       </button>
 
-      <!-- Admin Direct Login Button -->
-      <button type="button" onclick="handleAdminDirectSignIn()" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-blue-600/20 to-indigo-600/20 hover:from-blue-600/30 hover:to-indigo-600/30 text-blue-300 font-bold text-sm border border-blue-500/30 flex items-center justify-center gap-2 transition active:scale-95 shadow-md">
-        <span>👑 관리자 (지혜 님) 바로 입장</span>
+      <!-- Viewer Start Button -->
+      <button type="button" onclick="handleViewerStart()" class="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold text-sm border border-slate-700 flex items-center justify-center gap-2 transition active:scale-95 shadow-md">
+        <span>👀 뷰어 모드로 시작하기 (승인제)</span>
       </button>
 
-      <div class="pt-2 text-center">
-        <p class="text-[11px] text-slate-500">
-          학부모·코치님은 Google 로그인 후 승인 대기 상태로 진입합니다.
+      <div class="pt-3 text-center space-y-1">
+        <p class="text-[11px] text-slate-400">
+          선수 기록을 직접 등록·분석하려면 <button type="button" onclick="handleAdminStart()" class="text-blue-400 font-semibold underline underline-offset-2">관리자 시작하기</button>를 누르세요.
+        </p>
+        <p class="text-[10px] text-slate-500">
+          가족·지인 열람은 뷰어 모드로 시작 후 관리자 승인이 필요합니다.
         </p>
       </div>
     </div>
@@ -122,17 +125,37 @@
         <div>
           <h1 class="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
             운동 성장노트
-            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">전남체육</span>
           </h1>
         </div>
       </div>
       <div class="flex items-center gap-1.5">
-        <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="px-2.5 py-1.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center gap-1 transition active:scale-95">
+        <!-- Super Admin Center Button (최고관리자 지혜 님 전용) -->
+        <button type="button" id="btn-super-admin-top" onclick="openSuperAdminModal()" class="px-2.5 py-1.5 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 font-bold text-xs flex items-center gap-1 transition active:scale-95 hidden" title="최고관리자 센터">
+          <span>👑 최고관리자</span>
+        </button>
+
+        <!-- Admin Profile Button (일반 관리자용) -->
+        <button type="button" id="btn-admin-profile-top" onclick="openAdminProfileModal()" class="px-2.5 py-1.5 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold text-xs flex items-center gap-1 transition active:scale-95 hidden" title="선수기록 관리자 센터">
+          <span>🛡️ 관리자</span>
+        </button>
+
+        <!-- Viewer Approval Button (관리자/최고관리자만 노출!) -->
+        <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="px-2.5 py-1.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center gap-1 transition active:scale-95 hidden">
           <span>🔔 뷰어 승인</span>
           <span id="badge-pending-count" class="w-2 h-2 rounded-full bg-amber-400 hidden"></span>
         </button>
-        <button type="button" onclick="openSettingsModal()" class="p-2 text-slate-400 hover:text-white rounded-xl bg-slate-900 border border-slate-800 transition active:scale-95" title="설정 및 백업">
-        <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+
+        <!-- Viewer Mode Badge (뷰어일 때 노출) -->
+        <div id="badge-viewer-mode-top" class="px-2 py-1 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-semibold hidden">
+          <span>👀 뷰어 모드</span>
+        </div>
+
+        <!-- Settings Button -->
+        <button type="button" onclick="openSettingsModal()" class="p-2 text-slate-400 hover:text-white rounded-xl bg-slate-900 border border-slate-800 transition active:scale-95" title="설정 및 계정">
+          <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </button>
+      </div>
+    </header>
       </button>
     </header>
 
@@ -586,6 +609,175 @@
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
         전남체육 학생선수 운동 성장노트 v3.0
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Super Admin Center Modal (지혜 님 최고관리자 전용) -->
+  <div id="modal-super-admin-center" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👑</span>
+          <div>
+            <h3 class="text-base font-extrabold text-white flex items-center gap-1.5">
+              최고관리자 센터
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">지혜 님</span>
+            </h3>
+            <p class="text-[11px] text-slate-400">전체 사용자 및 서비스 통합 관제</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeSuperAdminModal()" class="text-slate-400 hover:text-white p-1">
+          <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto space-y-4 pr-1 text-xs no-scrollbar">
+        <!-- Stats Summary Grid -->
+        <div class="grid grid-cols-2 gap-2">
+          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
+            <span class="text-slate-400 text-[10px]">등록 선수</span>
+            <div class="text-lg font-black text-blue-400 mt-0.5" id="sa-stat-players">2명</div>
+            <span class="text-[9px] text-slate-500">김유신 · 김별하</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
+            <span class="text-slate-400 text-[10px]">총 경기 기록</span>
+            <div class="text-lg font-black text-emerald-400 mt-0.5" id="sa-stat-records">84건</div>
+            <span class="text-[9px] text-slate-500">육상 72건 · 사이클 12건</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
+            <span class="text-slate-400 text-[10px]">관리자 계정</span>
+            <div class="text-lg font-black text-purple-400 mt-0.5" id="sa-stat-admins">1명</div>
+            <span class="text-[9px] text-slate-500">bluefunky (지혜 님)</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
+            <span class="text-slate-400 text-[10px]">승인된 뷰어</span>
+            <div class="text-lg font-black text-amber-400 mt-0.5" id="sa-stat-viewers">0명</div>
+            <span class="text-[9px] text-slate-500">승인코드 발급 관리</span>
+          </div>
+        </div>
+
+        <!-- User Hierarchy Tree (관리자 > 뷰어1, 뷰어2...) -->
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-200 flex items-center gap-1.5">
+              <span>👥</span>
+              <span>사용자 권한 관리 트리</span>
+            </span>
+            <span class="text-[10px] text-purple-400 font-semibold">최고관리자 관제</span>
+          </div>
+
+          <div class="space-y-2 text-xs">
+            <!-- Super Admin Node -->
+            <div class="p-2.5 rounded-xl bg-purple-950/30 border border-purple-500/30 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-base">👑</span>
+                <div>
+                  <div class="font-bold text-purple-200">지혜 님 (최고관리자)</div>
+                  <div class="text-[10px] text-slate-400">bluefunky83@gmail.com · 전체 마스터 권한</div>
+                </div>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 bg-purple-500/20 text-purple-300 font-bold rounded-full">MASTER</span>
+            </div>
+
+            <!-- Admin Node -->
+            <div class="pl-3 border-l-2 border-slate-800 space-y-2 ml-3">
+              <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <div>
+                  <div class="font-semibold text-slate-200">🛡️ 선수 관리자: 지혜 님</div>
+                  <div class="text-[10px] text-slate-400">소속 선수: 김유신(육상), 김별하(사이클)</div>
+                </div>
+                <span class="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded">관리중</span>
+              </div>
+
+              <!-- Viewers Sub-tree -->
+              <div class="pl-3 border-l-2 border-slate-800 space-y-1.5 ml-2">
+                <div class="text-[10px] text-slate-400 font-bold pt-1">👀 하위 뷰어 목록 및 승인 관리</div>
+                <div id="sa-viewers-tree-container" class="space-y-1.5">
+                  <!-- Dynamically rendered viewers -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Master Passcode Manager -->
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-200 flex items-center gap-1.5">
+              <span>🔑</span>
+              <span>뷰어 열람 승인코드 관리</span>
+            </span>
+            <button type="button" onclick="saveMasterCodes()" class="text-[10px] px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition active:scale-95">코드 저장</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div class="bg-slate-900 p-2 rounded-xl border border-slate-800">
+              <span class="text-slate-400">유신 전용 코드</span>
+              <input type="text" id="sa-code-yusin" maxlength="4" value="1215" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-center font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-400">
+            </div>
+            <div class="bg-slate-900 p-2 rounded-xl border border-slate-800">
+              <span class="text-slate-400">별하 전용 코드</span>
+              <input type="text" id="sa-code-byeolha" maxlength="4" value="0520" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-center font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-400">
+            </div>
+          </div>
+        </div>
+
+        <!-- System Reset / Logout -->
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="handleLogout()" class="flex-1 py-2.5 rounded-xl border border-rose-500/30 bg-rose-950/20 text-rose-300 font-bold hover:bg-rose-900/30">
+            로그아웃
+          </button>
+          <button type="button" onclick="closeSuperAdminModal()" class="flex-1 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-500">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 6: Admin Profile & Management Center (일반 관리자용) -->
+  <div id="modal-admin-profile" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-indigo-500/40 rounded-3xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🛡️</span>
+          <div>
+            <h3 class="text-base font-bold text-white">선수기록 관리자 센터</h3>
+            <p class="text-[11px] text-slate-400" id="admin-center-email-display">관리자 모드</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeAdminProfileModal()" class="text-slate-400 hover:text-white p-1">
+          <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="text-[11px] font-bold text-indigo-300">내 관리 선수</div>
+          <div id="admin-my-players-list" class="space-y-1.5">
+            <!-- Render my players -->
+          </div>
+          <button type="button" onclick="closeAdminProfileModal(); openAddEditPlayerModal();" class="w-full py-2 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold transition active:scale-95 text-center block mt-2">
+            + 새 선수 추가 등록
+          </button>
+        </div>
+
+        <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="text-[11px] font-bold text-slate-300">빠른 관리 메뉴</div>
+          <button type="button" onclick="closeAdminProfileModal(); openViewerApprovalModal();" class="w-full py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>🔔</span><span>뷰어 승인 및 열람 관리</span></span>
+            <span class="text-slate-500">➔</span>
+          </button>
+          <button type="button" onclick="closeAdminProfileModal(); exportDataToExcel();" class="w-full py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>📊</span><span>내 선수 기록 엑셀 다운로드</span></span>
+            <span class="text-emerald-400 font-bold text-[10px]">CSV</span>
+          </button>
+        </div>
+
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="handleLogout()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700">로그아웃</button>
+          <button type="button" onclick="closeAdminProfileModal()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500">닫기</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2023,7 +2215,7 @@
       const pendingScreen = document.getElementById('screen-pending-approval');
 
       if (!authUserStr) {
-        // First visit: Show Login Gate
+        // Not logged in: Show Login Gate
         if (gate) gate.classList.remove('hidden');
         if (pendingScreen) pendingScreen.classList.add('hidden');
         return;
@@ -2032,17 +2224,17 @@
       const authUser = JSON.parse(authUserStr);
       if (gate) gate.classList.add('hidden');
 
-      if (authUser.role === 'admin') {
+      if (authUser.role === 'super_admin' || authUser.role === 'admin') {
         if (pendingScreen) pendingScreen.classList.add('hidden');
-        isMasterAdmin = true;
-        applyAuthModeUI();
+        isMasterAdmin = (authUser.role === 'super_admin');
+        applyAuthModeUI(authUser.role);
         initPlayerSelectDropdown();
         renderEventTabs();
         renderCurrentView();
       } else {
         // Viewer Role
         isMasterAdmin = false;
-        applyAuthModeUI();
+        applyAuthModeUI('viewer');
         if (!authUser.approved) {
           if (pendingScreen) {
             pendingScreen.classList.remove('hidden');
@@ -2060,60 +2252,270 @@
       }
     }
 
-    function handleGoogleSignIn() {
-      const inputId = prompt('구글 계정 이메일 또는 닉네임을 입력하세요:\n(예: bluefunky83@gmail.com, 하람아빠, 코치님)', 'bluefunky83@gmail.com');
+    function handleAdminStart() {
+      const inputId = prompt('선수기록 관리자(학부모·지도자) 계정 이메일을 입력하세요:\n(예: bluefunky83@gmail.com)', '');
       if (!inputId || !inputId.trim()) return;
 
       const clean = inputId.trim().toLowerCase();
-      // If it's Jihye's account or handle -> Automatic Master Admin!
-      if (clean.includes('bluefunky') || clean.includes('jihye') || clean.includes('지혜')) {
+      // Jihye's Master Account -> Super Admin!
+      if (clean.includes('bluefunky') || clean.includes('지혜') || clean.includes('shinjihye')) {
         const user = {
           id: 'admin_jihye',
-          name: '지혜 님 (관리자)',
+          name: '지혜 님 (최고관리자)',
           email: 'bluefunky83@gmail.com',
-          role: 'admin',
+          role: 'super_admin',
           approved: true,
           allowedPlayers: ['yusin', 'byeolha']
         };
         localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
         checkInitialAuthGate();
-        alert('👑 지혜 님 환영합니다! 최고 관리자로 로그인되었습니다.');
+        alert('👑 지혜 님 환영합니다!\n최고관리자 센터 및 전체 관리 권한으로 로그인되었습니다.');
         return;
       }
 
-      // Other viewers -> Pending approval
+      // Other General Admin (학부모 / 지도자)
       const user = {
-        id: 'user_' + Date.now(),
-        name: inputId.trim(),
-        email: clean.includes('@') ? clean : clean + '@gmail.com',
+        id: 'admin_' + Date.now(),
+        name: (inputId.includes('@') ? inputId.split('@')[0] : inputId.trim()) + ' 관리자',
+        email: inputId.trim(),
+        role: 'admin',
+        approved: true,
+        allowedPlayers: []
+      };
+      localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+      checkInitialAuthGate();
+      alert('🛡️ 관리자로 시작합니다!\n상단 [선수관리]에서 자녀 선수를 등록해 보세요.');
+    }
+
+    function handleViewerStart() {
+      const nick = prompt('열람용 닉네임이나 성함을 입력하세요 (예: 코치님, 하람아빠, 유신이삼촌):', '');
+      if (!nick || !nick.trim()) return;
+
+      const clean = nick.trim().toLowerCase();
+      if (clean.includes('bluefunky') || clean.includes('지혜')) {
+        alert('지혜 님은 [선수기록 관리자 시작하기]로 로그인해 주세요!');
+        return;
+      }
+
+      const user = {
+        id: 'viewer_' + Date.now(),
+        name: nick.trim(),
+        email: nick.trim() + '@viewer.local',
         role: 'viewer',
         approved: false,
         allowedPlayers: []
       };
 
-      localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
-      checkInitialAuthGate();
-    }
+      // Register to viewers list
+      registerViewerRequest(user);
 
-    function handleAdminDirectSignIn() {
-      const user = {
-        id: 'admin_jihye',
-        name: '지혜 님 (관리자)',
-        email: 'bluefunky83@gmail.com',
-        role: 'admin',
-        approved: true,
-        allowedPlayers: ['yusin', 'byeolha']
-      };
       localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
       checkInitialAuthGate();
-      alert('👑 지혜 님 환영합니다! 최고 관리자로 즉시 입장했습니다.');
     }
 
     function handleLogout() {
       localStorage.removeItem('ATHLETE_APP_AUTH_USER');
       localStorage.removeItem('ATHLETE_APP_IS_ADMIN');
-      checkInitialAuthGate();
+      closeSuperAdminModal();
+      closeAdminProfileModal();
       closeSettingsModal();
+      checkInitialAuthGate();
+    }
+
+    // Viewers Registry for Super Admin & Admins
+    const VIEWERS_REG_KEY = 'ATHLETE_GROWTH_VIEWERS_REG_V1';
+    function getRegisteredViewers() {
+      try {
+        const raw = localStorage.getItem(VIEWERS_REG_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return [
+        { id: 'v_1', name: '외할머니', approved: true, allowedPlayers: ['yusin', 'byeolha'], date: '2026-11-20' },
+        { id: 'v_2', name: '코치님', approved: true, allowedPlayers: ['yusin'], date: '2026-11-20' },
+        { id: 'v_3', name: '하람아빠', approved: false, allowedPlayers: [], date: '2026-11-21' }
+      ];
+    }
+    function saveRegisteredViewers(list) {
+      localStorage.setItem(VIEWERS_REG_KEY, JSON.stringify(list));
+    }
+    function registerViewerRequest(user) {
+      const list = getRegisteredViewers();
+      if (!list.some(v => v.name === user.name)) {
+        list.push({
+          id: user.id,
+          name: user.name,
+          approved: false,
+          allowedPlayers: [],
+          date: new Date().toISOString().split('T')[0]
+        });
+        saveRegisteredViewers(list);
+      }
+    }
+
+    // Super Admin Modal Logic
+    function openSuperAdminModal() {
+      updateSuperAdminStats();
+      renderSuperAdminViewersTree();
+      document.getElementById('modal-super-admin-center').classList.remove('hidden');
+    }
+    function closeSuperAdminModal() {
+      document.getElementById('modal-super-admin-center').classList.add('hidden');
+    }
+
+    function updateSuperAdminStats() {
+      const pCount = (playersData || []).length;
+      let totalRecs = 0;
+      Object.values(appData).forEach(arr => { totalRecs += (arr || []).length; });
+      const viewers = getRegisteredViewers();
+      const approvedViewers = viewers.filter(v => v.approved).length;
+
+      const elP = document.getElementById('sa-stat-players');
+      const elR = document.getElementById('sa-stat-records');
+      const elV = document.getElementById('sa-stat-viewers');
+      if (elP) elP.textContent = `${pCount}명`;
+      if (elR) elR.textContent = `${totalRecs}건`;
+      if (elV) elV.textContent = `${approvedViewers}명`;
+
+      const codeY = localStorage.getItem('ATHLETE_APP_CODE_YUSIN') || '1215';
+      const codeB = localStorage.getItem('ATHLETE_APP_CODE_BYEOLHA') || '0520';
+      const inpY = document.getElementById('sa-code-yusin');
+      const inpB = document.getElementById('sa-code-byeolha');
+      if (inpY) inpY.value = codeY;
+      if (inpB) inpB.value = codeB;
+    }
+
+    function saveMasterCodes() {
+      const inpY = document.getElementById('sa-code-yusin');
+      const inpB = document.getElementById('sa-code-byeolha');
+      if (inpY) localStorage.setItem('ATHLETE_APP_CODE_YUSIN', inpY.value.trim());
+      if (inpB) localStorage.setItem('ATHLETE_APP_CODE_BYEOLHA', inpB.value.trim());
+      alert('🔑 승인코드가 안전하게 저장되었습니다!');
+    }
+
+    function renderSuperAdminViewersTree() {
+      const c = document.getElementById('sa-viewers-tree-container');
+      if (!c) return;
+      const viewers = getRegisteredViewers();
+      if (!viewers.length) {
+        c.innerHTML = '<div class="text-[11px] text-slate-500 py-2">등록된 뷰어가 없습니다.</div>';
+        return;
+      }
+      c.innerHTML = viewers.map(v => `
+        <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-[11px]">
+          <div>
+            <div class="font-bold text-slate-200 flex items-center gap-1.5">
+              <span>${v.name}</span>
+              ${v.approved 
+                ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">승인완료</span>'
+                : '<span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">승인대기</span>'
+              }
+            </div>
+            <div class="text-[10px] text-slate-400 mt-0.5">열람: ${v.allowedPlayers && v.allowedPlayers.length ? v.allowedPlayers.map(id => id==='yusin'?'유신':'별하').join(', ') : '없음'} · ${v.date||''}</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button type="button" onclick="toggleViewerApproval('${v.id}')" class="px-2 py-1 rounded-lg ${v.approved ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-blue-600 text-white hover:bg-blue-500'} font-bold text-[10px] transition active:scale-95">
+              ${v.approved ? '해제' : '승인'}
+            </button>
+            <button type="button" onclick="deleteViewer('${v.id}')" class="p-1 rounded-lg hover:bg-rose-950/40 text-slate-500 hover:text-rose-400 transition" title="삭제">
+              🗑️
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleViewerApproval(id) {
+      const list = getRegisteredViewers();
+      const item = list.find(v => v.id === id);
+      if (item) {
+        item.approved = !item.approved;
+        if (item.approved && (!item.allowedPlayers || !item.allowedPlayers.length)) {
+          item.allowedPlayers = ['yusin', 'byeolha'];
+        }
+        saveRegisteredViewers(list);
+        renderSuperAdminViewersTree();
+        updateSuperAdminStats();
+      }
+    }
+
+    function deleteViewer(id) {
+      if (!confirm('이 뷰어를 삭제하시겠습니까?')) return;
+      let list = getRegisteredViewers().filter(v => v.id !== id);
+      saveRegisteredViewers(list);
+      renderSuperAdminViewersTree();
+      updateSuperAdminStats();
+    }
+
+    // Admin Profile Modal Logic
+    function openAdminProfileModal() {
+      const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+      if (authUserStr) {
+        const user = JSON.parse(authUserStr);
+        const emailDisp = document.getElementById('admin-center-email-display');
+        if (emailDisp) emailDisp.textContent = `${user.email || user.name} (선수 관리자)`;
+      }
+      renderAdminMyPlayers();
+      document.getElementById('modal-admin-profile').classList.remove('hidden');
+    }
+    function closeAdminProfileModal() {
+      document.getElementById('modal-admin-profile').classList.add('hidden');
+    }
+    function renderAdminMyPlayers() {
+      const c = document.getElementById('admin-my-players-list');
+      if (!c) return;
+      c.innerHTML = (playersData || []).map(p => `
+        <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-base">${p.sport === '육상' ? '🏃' : '🚴'}</span>
+            <div>
+              <div class="font-bold text-slate-200">${p.name} <span class="text-[10px] text-slate-400 font-normal">(${p.sport} · ${p.mainEvent || ''})</span></div>
+              <div class="text-[10px] text-slate-500">기록 ${(appData[p.id]||[]).length}건 관리중</div>
+            </div>
+          </div>
+          <button type="button" onclick="closeAdminProfileModal(); openAddEditPlayerModal('${p.id}');" class="text-indigo-400 hover:text-indigo-300 font-semibold text-[11px]">수정</button>
+        </div>
+      `).join('');
+    }
+
+    function applyAuthModeUI(role) {
+      const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+      let currentRole = role;
+      if (!currentRole && authUserStr) {
+        currentRole = JSON.parse(authUserStr).role;
+      }
+      if (!currentRole) currentRole = isMasterAdmin ? 'super_admin' : 'viewer';
+
+      const btnSuperAdmin = document.getElementById('btn-super-admin-top');
+      const btnAdminProfile = document.getElementById('btn-admin-profile-top');
+      const btnViewerApprove = document.getElementById('btn-viewer-approve-top');
+      const badgeViewerMode = document.getElementById('badge-viewer-mode-top');
+
+      const btnAddRecord = document.getElementById('btn-add-record-fixed');
+      const btnManagePlayers = document.getElementById('btn-manage-players-top');
+
+      if (currentRole === 'super_admin') {
+        if (btnSuperAdmin) btnSuperAdmin.classList.remove('hidden');
+        if (btnAdminProfile) btnAdminProfile.classList.add('hidden');
+        if (btnViewerApprove) btnViewerApprove.classList.remove('hidden');
+        if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
+        if (btnAddRecord) btnAddRecord.classList.remove('hidden');
+        if (btnManagePlayers) btnManagePlayers.classList.remove('hidden');
+      } else if (currentRole === 'admin') {
+        if (btnSuperAdmin) btnSuperAdmin.classList.add('hidden');
+        if (btnAdminProfile) btnAdminProfile.classList.remove('hidden');
+        if (btnViewerApprove) btnViewerApprove.classList.remove('hidden');
+        if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
+        if (btnAddRecord) btnAddRecord.classList.remove('hidden');
+        if (btnManagePlayers) btnManagePlayers.classList.remove('hidden');
+      } else {
+        // Viewer: 지혜 님 손그림 지침 완벽 반영 (🔔 뷰어 승인은 관리자만 노출!)
+        if (btnSuperAdmin) btnSuperAdmin.classList.add('hidden');
+        if (btnAdminProfile) btnAdminProfile.classList.add('hidden');
+        if (btnViewerApprove) btnViewerApprove.classList.add('hidden');
+        if (badgeViewerMode) badgeViewerMode.classList.remove('hidden');
+        if (btnAddRecord) btnAddRecord.classList.add('hidden');
+        if (btnManagePlayers) btnManagePlayers.classList.add('hidden');
+      }
     }
 
     function submitViewerAuthCode() {
@@ -2150,58 +2552,7 @@
     let isMasterAdmin = true;
 
     function toggleAuthMode() {
-      if (isMasterAdmin) {
-        // Switch to Viewer Mode
-        isMasterAdmin = false;
-        localStorage.setItem('ATHLETE_APP_IS_ADMIN', 'false');
-        checkInitialAuthGate();
-      applyAuthModeUI();
-        closeSettingsModal();
-        alert('👀 뷰어 모드로 전환되었습니다! (기록 추가 및 관리자 기능이 숨겨집니다)');
-      } else {
-        // Switch to Master Admin Mode
-        const inputPw = prompt('👑 관리자 비밀번호를 입력하세요:', '');
-        if (inputPw === null) return;
-        // Default pin is 1234 or empty for prototype convenience
-        if (inputPw === '1234' || inputPw === '' || inputPw === 'admin') {
-          isMasterAdmin = true;
-          localStorage.setItem('ATHLETE_APP_IS_ADMIN', 'true');
-          checkInitialAuthGate();
-      applyAuthModeUI();
-          closeSettingsModal();
-          alert('👑 최고 관리자로 로그인되었습니다!');
-        } else {
-          alert('비밀번호가 일치하지 않습니다.');
-        }
-      }
-    }
-
-    function applyAuthModeUI() {
-      const savedMode = localStorage.getItem('ATHLETE_APP_IS_ADMIN');
-      if (savedMode !== null) isMasterAdmin = (savedMode === 'true');
-
-      const lbl = document.getElementById('label-current-mode');
-      const btn = document.getElementById('btn-toggle-auth-mode');
-      const btnAddRecord = document.getElementById('btn-add-record-fixed');
-      const btnViewerApprove = document.getElementById('btn-viewer-approve-top');
-
-      if (isMasterAdmin) {
-        if (lbl) {
-          lbl.className = 'px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold text-[11px]';
-          lbl.textContent = '👑 최고 관리자';
-        }
-        if (btn) btn.innerHTML = '<span>👀 뷰어 모드로 전환 (로그아웃)</span>';
-        if (btnAddRecord) btnAddRecord.classList.remove('hidden');
-        if (btnViewerApprove) btnViewerApprove.classList.remove('hidden');
-      } else {
-        if (lbl) {
-          lbl.className = 'px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[11px]';
-          lbl.textContent = '👀 뷰어 모드';
-        }
-        if (btn) btn.innerHTML = '<span>👑 관리자로 로그인</span>';
-        if (btnAddRecord) btnAddRecord.classList.add('hidden');
-        if (btnViewerApprove) btnViewerApprove.classList.add('hidden');
-      }
+      handleLogout();
     }
 
     function exportToExcelExactFormat() {
