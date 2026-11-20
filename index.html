@@ -62,8 +62,8 @@
       </button>
 
       <!-- Admin Direct Login Button -->
-      <button type="button" onclick="handleAdminDirectSignIn()" class="w-full py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-blue-400 font-bold text-sm border border-blue-500/30 flex items-center justify-center gap-2 transition active:scale-95 shadow-md">
-        <span>👑 관리자 로그인</span>
+      <button type="button" onclick="handleAdminDirectSignIn()" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-blue-600/20 to-indigo-600/20 hover:from-blue-600/30 hover:to-indigo-600/30 text-blue-300 font-bold text-sm border border-blue-500/30 flex items-center justify-center gap-2 transition active:scale-95 shadow-md">
+        <span>👑 관리자 (지혜 님) 바로 입장</span>
       </button>
 
       <div class="pt-2 text-center">
@@ -2057,13 +2057,31 @@
     }
 
     function handleGoogleSignIn() {
-      const nick = prompt('구글 로그인에 사용할 닉네임이나 성함을 입력하세요 (예: 코치님, 하람아빠):', '');
-      if (!nick || !nick.trim()) return;
+      const inputId = prompt('구글 계정 이메일 또는 닉네임을 입력하세요:\n(예: bluefunky83@gmail.com, 하람아빠, 코치님)', 'bluefunky83@gmail.com');
+      if (!inputId || !inputId.trim()) return;
 
+      const clean = inputId.trim().toLowerCase();
+      // If it's Jihye's account or handle -> Automatic Master Admin!
+      if (clean.includes('bluefunky') || clean.includes('jihye') || clean.includes('지혜')) {
+        const user = {
+          id: 'admin_jihye',
+          name: '지혜 님 (관리자)',
+          email: 'bluefunky83@gmail.com',
+          role: 'admin',
+          approved: true,
+          allowedPlayers: ['yusin', 'byeolha']
+        };
+        localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+        checkInitialAuthGate();
+        alert('👑 지혜 님 환영합니다! 최고 관리자로 로그인되었습니다.');
+        return;
+      }
+
+      // Other viewers -> Pending approval
       const user = {
         id: 'user_' + Date.now(),
-        name: nick.trim(),
-        email: nick.trim() + '@gmail.com',
+        name: inputId.trim(),
+        email: clean.includes('@') ? clean : clean + '@gmail.com',
         role: 'viewer',
         approved: false,
         allowedPlayers: []
@@ -2074,21 +2092,17 @@
     }
 
     function handleAdminDirectSignIn() {
-      const pw = prompt('👑 관리자 비밀번호를 입력하세요:', '');
-      if (pw === '1234' || pw === '' || pw === 'admin') {
-        const user = {
-          id: 'admin_jihye',
-          name: '최고관리자',
-          role: 'admin',
-          approved: true,
-          allowedPlayers: ['yusin', 'byeolha']
-        };
-        localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
-        checkInitialAuthGate();
-        alert('👑 최고 관리자로 로그인되었습니다!');
-      } else {
-        alert('비밀번호가 일치하지 않습니다.');
-      }
+      const user = {
+        id: 'admin_jihye',
+        name: '지혜 님 (관리자)',
+        email: 'bluefunky83@gmail.com',
+        role: 'admin',
+        approved: true,
+        allowedPlayers: ['yusin', 'byeolha']
+      };
+      localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+      checkInitialAuthGate();
+      alert('👑 지혜 님 환영합니다! 최고 관리자로 즉시 입장했습니다.');
     }
 
     function handleLogout() {
