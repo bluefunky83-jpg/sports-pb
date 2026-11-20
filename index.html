@@ -2035,13 +2035,14 @@
       if (authUser.role === 'admin') {
         if (pendingScreen) pendingScreen.classList.add('hidden');
         isMasterAdmin = true;
-        checkInitialAuthGate();
-      applyAuthModeUI();
+        applyAuthModeUI();
+        initPlayerSelectDropdown();
+        renderEventTabs();
+        renderCurrentView();
       } else {
         // Viewer Role
         isMasterAdmin = false;
-        checkInitialAuthGate();
-      applyAuthModeUI();
+        applyAuthModeUI();
         if (!authUser.approved) {
           if (pendingScreen) {
             pendingScreen.classList.remove('hidden');
@@ -2052,6 +2053,9 @@
           }
         } else {
           if (pendingScreen) pendingScreen.classList.add('hidden');
+          initPlayerSelectDropdown();
+          renderEventTabs();
+          renderCurrentView();
         }
       }
     }
