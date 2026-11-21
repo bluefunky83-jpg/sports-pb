@@ -998,9 +998,9 @@
       }
     ];
 
-    const STORAGE_KEY = 'ATHLETE_GROWTH_APP_DATA_V3';
-    const PLAYERS_KEY = 'ATHLETE_GROWTH_PLAYERS_V3';
-    const TEAMMATES_KEY = 'ATHLETE_GROWTH_TEAMMATES_V3';
+    const STORAGE_KEY = 'STAGING_ATHLETE_GROWTH_APP_DATA_V3';
+    const PLAYERS_KEY = 'STAGING_ATHLETE_GROWTH_PLAYERS_V3';
+    const TEAMMATES_KEY = 'STAGING_ATHLETE_GROWTH_TEAMMATES_V3';
 
     let currentPlayer = 'yusin';
     let currentEvent = 'ALL_PB';
@@ -4209,7 +4209,7 @@
     });
 
     // Viewers Registry for Super Admin & Admins (완전 백지 클린 초기화!)
-    const VIEWERS_REG_KEY = 'ATHLETE_GROWTH_VIEWERS_CLEAN_V2';
+    const VIEWERS_REG_KEY = 'STAGING_ATHLETE_GROWTH_VIEWERS_CLEAN_V2';
     function getRegisteredViewers() {
       try {
         const raw = localStorage.getItem(VIEWERS_REG_KEY);
@@ -4900,7 +4900,7 @@
                 historyList.pop();
               }
             }
-            localStorage.setItem('ATHLETE_APP_PRE_RESTORE_BACKUP', JSON.stringify(backupEntry));
+            localStorage.setItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUP', JSON.stringify(backupEntry));
           } catch (backupErr) {
             console.warn('pre-restore auto backup failed:', backupErr);
           }
@@ -4924,7 +4924,7 @@
           let rollbackSaved = saveDataToStorage();
           if (!rollbackSaved) {
             try {
-              localStorage.removeItem('ATHLETE_APP_PRE_RESTORE_BACKUP');
+              localStorage.removeItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUP');
               localStorage.removeItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS');
             } catch (e) {}
             rollbackSaved = saveDataToStorage();
@@ -5296,9 +5296,9 @@
         const params = new URLSearchParams(window.location.search);
         let inviteCode = params.get('invite');
         if (inviteCode) {
-          localStorage.setItem('ATHLETE_PRESET_INVITE', inviteCode);
+          localStorage.setItem('STAGING_ATHLETE_PRESET_INVITE', inviteCode);
         } else {
-          inviteCode = localStorage.getItem('ATHLETE_PRESET_INVITE') || 'JIHYE-2026';
+          inviteCode = localStorage.getItem('STAGING_ATHLETE_PRESET_INVITE') || 'JIHYE-2026';
         }
 
         if (inviteCode) {
@@ -5853,11 +5853,11 @@
         });
       }
       
-      const lastVer = localStorage.getItem('ATHLETE_APP_LAST_VERSION');
+      const lastVer = localStorage.getItem('STAGING_ATHLETE_APP_LAST_VERSION');
       if (lastVer && lastVer !== CURRENT_APP_VERSION) {
         showUpdateToast();
       }
-      localStorage.setItem('ATHLETE_APP_LAST_VERSION', CURRENT_APP_VERSION);
+      localStorage.setItem('STAGING_ATHLETE_APP_LAST_VERSION', CURRENT_APP_VERSION);
     }
 
     function showUpdateToast() {
@@ -5909,7 +5909,7 @@
     // Service Worker Registration for PWA & Offline
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(reg => {
+        Promise.resolve(null) /* staging: sw disabled */.then(reg => {
           reg.onupdatefound = () => {
             const installingWorker = reg.installing;
             installingWorker.onstatechange = () => {
@@ -5942,8 +5942,8 @@
     // =========================================================================
     // STAGING ISOLATION, AUTH VERIFICATION, BACKUP POLICY, EXCEL XLSX, WITHDRAW
     // =========================================================================
-    const STAGING_ACCOUNTS_KEY = 'STAGING_AUTH_ACCOUNTS_DB_v1';
-    const STAGING_CLOUD_KEY = 'STAGING_CLOUD_AUTH_DB_v1';
+    const STAGING_ACCOUNTS_KEY = 'STAGING_AUTH_ACCOUNTS_DB_v2';
+    const STAGING_CLOUD_KEY = 'STAGING_CLOUD_AUTH_DB_v2';
     const STAGING_LAST_BACKUP_KEY = 'STAGING_LAST_BACKUP_AT_v1';
     const STAGING_NOTICE_ACK_KEY = 'STAGING_DATA_NOTICE_ACK_v1';
 
@@ -6421,7 +6421,7 @@
         try {
           const parsed = JSON.parse(options.body);
           const nextData = parsed && parsed.data ? parsed.data : parsed;
-          localStorage.setItem('STAGING_CLOUD_AUTH_DB_v1', JSON.stringify(nextData || {}));
+          localStorage.setItem('STAGING_CLOUD_AUTH_DB_v2', JSON.stringify(nextData || {}));
           realtimeAuthData = nextData || {};
         } catch (e) {}
         return {
@@ -6431,7 +6431,7 @@
         };
       }
       let cur = {};
-      try { cur = JSON.parse(localStorage.getItem('STAGING_CLOUD_AUTH_DB_v1') || '{}'); } catch (e) { cur = {}; }
+      try { cur = JSON.parse(localStorage.getItem('STAGING_CLOUD_AUTH_DB_v2') || '{}'); } catch (e) { cur = {}; }
       realtimeAuthData = cur;
       return {
         ok: true,
@@ -6449,6 +6449,290 @@
     openGoogleAuthModal = triggerGooglePromptManual;
     submitGoogleAuthModal = function(e) { if (e) e.preventDefault(); triggerGooglePromptManual(); };
     handleGoogleCredentialResponse = async function() { triggerGooglePromptManual(); };
+
+  
+    // =========================================================================
+    // UNIFIED STAGING SUPER ADMIN SOURCE & EXPLICIT TRANSFER SEARCH/ACCEPT FLOW
+    // =========================================================================
+    function getStagingActiveAdmins() {
+      const accounts = getStagingAccounts();
+      const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
+      const cloudAdmins = cloud._admins || {};
+      const list = [];
+      Object.values(accounts).forEach(acc => {
+        if (acc && acc.role === 'admin' && acc.status === 'active') {
+          const cAdm = cloudAdmins[acc.id] || {};
+          const players = Array.isArray(cAdm.players) ? cAdm.players : [];
+          const recordsObj = (cAdm.records && typeof cAdm.records === 'object') ? cAdm.records : {};
+          const recordsCount = Object.values(recordsObj).reduce((s, arr) => s + (Array.isArray(arr) ? arr.length : 0), 0);
+          list.push({
+            id: acc.id,
+            email: acc.email,
+            name: acc.name,
+            role: 'admin',
+            status: 'active',
+            players: players.map(p => ({
+              ...p,
+              recordsCount: Array.isArray(recordsObj[p.id]) ? recordsObj[p.id].length : 0
+            })),
+            playersCount: players.length,
+            recordsCount
+          });
+        }
+      });
+      return list;
+    }
+
+    updateSuperAdminStats = async function() {
+      initStagingSeedData();
+      const activeAdmins = getStagingActiveAdmins();
+      const extPlayersCount = activeAdmins.reduce((acc, a) => acc + a.playersCount, 0);
+      const extRecsCount = activeAdmins.reduce((acc, a) => acc + a.recordsCount, 0);
+
+      const pCount = (MASTER_PLAYERS_DATA || []).length + extPlayersCount;
+      const yusinRecs = Array.isArray(MASTER_APP_DATA['yusin']) ? MASTER_APP_DATA['yusin'].length : 72;
+      const byeolhaRecs = Array.isArray(MASTER_APP_DATA['byeolha']) ? MASTER_APP_DATA['byeolha'].length : 12;
+      const totalRecs = yusinRecs + byeolhaRecs + extRecsCount;
+
+      const accounts = getStagingAccounts();
+      const viewerKeys = Object.keys(realtimeAuthData || {}).filter(k => !k.startsWith('_'));
+      const approvedViewers = viewerKeys.filter(k => {
+        const v = realtimeAuthData[k];
+        if (!v || v.status !== 'approved' || !v.allowed || v.allowed === 'none') return false;
+        const vAcc = v.email ? accounts[v.email.toLowerCase()] : null;
+        return !vAcc || vAcc.status === 'active';
+      }).length;
+
+      const elA = document.getElementById('sa-stat-admins');
+      const elP = document.getElementById('sa-stat-players');
+      const elR = document.getElementById('sa-stat-records-badge');
+      const elV = document.getElementById('sa-stat-viewers');
+      // 일반 관리자 수만 별도 표시 (최고관리자 제외)
+      if (elA) elA.textContent = `${activeAdmins.length}명`;
+      if (elP) elP.textContent = `${pCount}명`;
+      if (elR) elR.textContent = `${totalRecs}건`;
+      if (elV) elV.textContent = `${approvedViewers}명`;
+    };
+
+    const _origRenderSuperAdminViewersTree = renderSuperAdminViewersTree;
+    renderSuperAdminViewersTree = function() {
+      initStagingSeedData();
+      const c = document.getElementById('sa-viewers-tree-container');
+      if (!c) return;
+      const activeAdmins = getStagingActiveAdmins();
+      const accounts = getStagingAccounts();
+      const superAcc = Object.values(accounts).find(a => a.role === 'super_admin' && a.status === 'active') || { name: '테스트 최고관리자', email: 'super@test.local' };
+
+      const viewerKeys = Object.keys(realtimeAuthData || {}).filter(k => !k.startsWith('_'));
+      const activeViewerEntries = viewerKeys.map(k => ({ key: k, v: realtimeAuthData[k] })).filter(({ v }) => {
+        if (!v || v.status !== 'approved' || !v.allowed || v.allowed === 'none') return false;
+        const vAcc = v.email ? accounts[v.email.toLowerCase()] : null;
+        return !vAcc || vAcc.status === 'active';
+      });
+      const superViewers = activeViewerEntries.filter(({ v }) => v.ownerAdminId === 'super_admin' || v.ownerAdminId === 'staging_super');
+      const yusinRecs = Array.isArray(MASTER_APP_DATA['yusin']) ? MASTER_APP_DATA['yusin'].length : 72;
+      const byeolhaRecs = Array.isArray(MASTER_APP_DATA['byeolha']) ? MASTER_APP_DATA['byeolha'].length : 12;
+
+      c.innerHTML = `
+        <div class="space-y-3 font-sans">
+          <div class="rounded-2xl bg-slate-900 border border-purple-500/30 p-3.5 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center text-sm font-black">👑</div>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-bold text-slate-100 text-xs">${superAcc.name}</span>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">최고관리자 (별도 구분)</span>
+                  </div>
+                  <div class="text-[10px] text-slate-400">${superAcc.email} · 김유신(${yusinRecs}건)·김별하(${byeolhaRecs}건) · 소속 뷰어 ${superViewers.length}명</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-[11px] font-bold text-slate-300 px-1 flex items-center justify-between">
+            <span>🛡️ 활성 일반 관리자 목록</span>
+            <span class="text-blue-300">${activeAdmins.length}명</span>
+          </div>
+
+          ${activeAdmins.length === 0 ? '<div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-center text-slate-500 text-xs">활성 상태인 일반 관리자가 없습니다.</div>' : activeAdmins.map(adm => {
+            const admViewers = activeViewerEntries.filter(({ v }) => v.ownerAdminId === adm.id);
+            return `
+              <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-bold text-white text-xs">${adm.name} <span class="text-[10px] text-emerald-400 font-normal">(${adm.status})</span></div>
+                    <div class="text-[10px] text-blue-300">${adm.email}</div>
+                  </div>
+                  <div class="text-right text-[10px] text-slate-400">
+                    <div>선수 ${adm.playersCount}명 · 기록 ${adm.recordsCount}건</div>
+                    <div>소속 뷰어 ${admViewers.length}명</div>
+                  </div>
+                </div>
+                ${adm.players.length > 0 ? `<div class="flex flex-wrap gap-1 pt-1">${adm.players.map(p => `<span class="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[10px] text-slate-300">${p.name} (${p.recordsCount}건)</span>`).join('')}</div>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    };
+
+    let stagingTransferSearchMatch = null;
+    let stagingTransferSelectedTarget = null;
+    let stagingTransferAccepted = false;
+
+    function resetTransferSelectionState() {
+      stagingTransferSearchMatch = null;
+      stagingTransferSelectedTarget = null;
+      stagingTransferAccepted = false;
+      const resEl = document.getElementById('withdraw-search-result');
+      const selEl = document.getElementById('withdraw-selected-target-box');
+      const accStep = document.getElementById('withdraw-accept-step');
+      const prevEl = document.getElementById('withdraw-final-preview');
+      const execBtn = document.getElementById('btn-execute-transfer-withdraw');
+      const accBtn = document.getElementById('btn-simulate-target-accept');
+      if (resEl) resEl.innerHTML = '';
+      if (selEl) { selEl.innerHTML = ''; selEl.classList.add('hidden'); }
+      if (accStep) accStep.classList.add('hidden');
+      if (prevEl) { prevEl.innerHTML = ''; prevEl.classList.add('hidden'); }
+      if (execBtn) execBtn.disabled = true;
+      if (accBtn) { accBtn.disabled = false; accBtn.textContent = '🤝 이전받는 관리자 명시적 수락 시뮬레이션 진행'; }
+    }
+
+    selectWithdrawMode = function(mode) {
+      const tp = document.getElementById('withdraw-transfer-panel');
+      const dp = document.getElementById('withdraw-delete-panel');
+      if (mode === 'transfer') {
+        tp.classList.remove('hidden'); dp.classList.add('hidden');
+        const emailInp = document.getElementById('withdraw-search-email');
+        if (emailInp) emailInp.value = '';
+        resetTransferSelectionState();
+        document.getElementById('withdraw-transfer-players').innerHTML = playersData.map(p => `<label class="flex items-center gap-2"><input type="checkbox" class="withdraw-transfer-chk" value="${p.id}" checked onchange="onTransferPlayersChanged()"><span>${p.name} (${(appData[p.id]||[]).length}건)</span></label>`).join('') || '<div class="text-slate-500">보유 선수 없음</div>';
+      } else {
+        dp.classList.remove('hidden'); tp.classList.add('hidden');
+        const totalRecs = Object.values(appData).reduce((a, b) => a + (Array.isArray(b) ? b.length : 0), 0);
+        document.getElementById('withdraw-delete-preview').innerHTML = `⚠️ <strong>영구 삭제 경고</strong><br>- 삭제 대상 선수: ${playersData.length}명<br>- 삭제 대상 기록: ${totalRecs}건<br>- 삭제된 데이터는 복구할 수 없으며, 다른 관리자의 데이터는 보존됩니다.`;
+      }
+    };
+
+    function onTransferPlayersChanged() {
+      if (stagingTransferAccepted) {
+        stagingTransferAccepted = false;
+        document.getElementById('withdraw-final-preview')?.classList.add('hidden');
+        const execBtn = document.getElementById('btn-execute-transfer-withdraw');
+        if (execBtn) execBtn.disabled = true;
+        const accBtn = document.getElementById('btn-simulate-target-accept');
+        if (accBtn) { accBtn.disabled = false; accBtn.textContent = '🤝 이전받는 관리자 명시적 수락 시뮬레이션 진행'; }
+      }
+    }
+
+    function searchTransferTargetAdmin() {
+      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
+      const query = (document.getElementById('withdraw-search-email')?.value || '').trim().toLowerCase();
+      resetTransferSelectionState();
+      const resEl = document.getElementById('withdraw-search-result');
+      if (!query) {
+        resEl.innerHTML = '<div class="text-rose-400">이전받을 관리자 이메일을 입력해 주세요.</div>';
+        return;
+      }
+      const accounts = getStagingAccounts();
+      const match = Object.values(accounts).find(a =>
+        a && a.email && a.email.toLowerCase() === query &&
+        a.role === 'admin' && a.status === 'active' &&
+        a.email.toLowerCase() !== (authUser.email || '').toLowerCase()
+      );
+      if (!match) {
+        resEl.innerHTML = '<div class="p-2 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300">등록된 관리자를 찾을 수 없습니다.</div>';
+        return;
+      }
+      stagingTransferSearchMatch = match;
+      resEl.innerHTML = `
+        <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-between gap-2">
+          <div>
+            <div class="font-bold text-white">${match.name}</div>
+            <div class="text-blue-300">${match.email}</div>
+          </div>
+          <button type="button" onclick="confirmSelectTransferTarget()" class="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold shrink-0">직접 선택</button>
+        </div>
+      `;
+    }
+
+    function confirmSelectTransferTarget() {
+      if (!stagingTransferSearchMatch) return;
+      stagingTransferSelectedTarget = stagingTransferSearchMatch;
+      stagingTransferAccepted = false;
+      const selEl = document.getElementById('withdraw-selected-target-box');
+      selEl.innerHTML = `✓ 선택된 이전 대상: <strong>${stagingTransferSelectedTarget.name}</strong> (${stagingTransferSelectedTarget.email})`;
+      selEl.classList.remove('hidden');
+      document.getElementById('withdraw-accept-step')?.classList.remove('hidden');
+      document.getElementById('withdraw-final-preview')?.classList.add('hidden');
+      const execBtn = document.getElementById('btn-execute-transfer-withdraw');
+      if (execBtn) execBtn.disabled = true;
+    }
+
+    function simulateTransferTargetAccept() {
+      if (!stagingTransferSelectedTarget) return;
+      stagingTransferAccepted = true;
+      const accBtn = document.getElementById('btn-simulate-target-accept');
+      if (accBtn) { accBtn.disabled = true; accBtn.textContent = '✅ 수락 완료 (로컬 시뮬레이션)'; }
+
+      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
+      const checkedPids = Array.from(document.querySelectorAll('.withdraw-transfer-chk:checked')).map(c => c.value);
+      const recCount = checkedPids.reduce((s, pid) => s + (Array.isArray(appData[pid]) ? appData[pid].length : 0), 0);
+      const tomb = getAdminTombstones(authUser.id);
+      const tombPlayers = Object.keys(tomb.deletedPlayers || {}).length;
+      const tombRecs = Object.keys(tomb.deletedRecords || {}).length;
+
+      const prevEl = document.getElementById('withdraw-final-preview');
+      prevEl.innerHTML = `
+        <div class="font-bold text-blue-300 mb-1">📋 최종 이전 확인 (로컬 시뮬레이션)</div>
+        <div>• 이전받을 관리자: <strong>${stagingTransferSelectedTarget.name}</strong> (${stagingTransferSelectedTarget.email})</div>
+        <div>• 이전 대상 선수: <strong>${checkedPids.length}명</strong></div>
+        <div>• 이전 대상 경기기록: <strong>${recCount}건</strong></div>
+        <div>• 관련 삭제이력: 선수 ${tombPlayers}건 · 기록 ${tombRecs}건</div>
+        <div class="text-emerald-300 mt-1">• 연결된 학부모 뷰어 권한도 함께 승계됩니다.</div>
+      `;
+      prevEl.classList.remove('hidden');
+      const execBtn = document.getElementById('btn-execute-transfer-withdraw');
+      if (execBtn) execBtn.disabled = false;
+    }
+
+    function cancelAdminTransferWithdraw() {
+      resetTransferSelectionState();
+      document.getElementById('modal-admin-withdraw')?.classList.add('hidden');
+    }
+
+    executeAdminTransferAndWithdraw = function() {
+      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
+      if (!stagingTransferSelectedTarget) { alert('이전받을 관리자를 검색해 직접 선택해 주세요.'); return; }
+      if (!stagingTransferAccepted) { alert('이전받는 관리자의 명시적 수락 절차를 먼저 진행해 주세요.'); return; }
+      const checkedPids = Array.from(document.querySelectorAll('.withdraw-transfer-chk:checked')).map(c => c.value);
+      const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
+      const targetAdm = cloud._admins[stagingTransferSelectedTarget.id];
+      if (!targetAdm) { alert('대상 관리자 정보를 찾을 수 없습니다.'); return; }
+      checkedPids.forEach(pid => {
+        const pl = playersData.find(p => p.id === pid);
+        if (pl && !(targetAdm.players || []).some(x => x.id === pid)) {
+          targetAdm.players = targetAdm.players || []; targetAdm.players.push(pl);
+          targetAdm.records = targetAdm.records || {}; targetAdm.records[pid] = appData[pid] || [];
+        }
+      });
+      Object.entries(cloud).forEach(([k, v]) => {
+        if (!k.startsWith('_') && v && v.ownerAdminId === authUser.id && checkedPids.includes(v.targetPlayer)) {
+          v.ownerAdminId = stagingTransferSelectedTarget.id;
+          v.coachChangedNotice = true;
+        }
+      });
+      delete cloud._admins[authUser.id];
+      saveStagingCloud(cloud);
+      const accounts = getStagingAccounts();
+      if (accounts[authUser.email.toLowerCase()]) { accounts[authUser.email.toLowerCase()].status = 'withdrawn'; saveStagingAccounts(accounts); }
+      localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
+      localStorage.removeItem('STAGING_CUSTOM_PLAYERS_' + authUser.id);
+      localStorage.removeItem('STAGING_CUSTOM_DATA_' + authUser.id);
+      alert('✅ [로컬 시뮬레이션] 선수·기록·학부모 권한 이전 및 관리자 탈퇴가 완료되었습니다.');
+      window.location.reload();
+    };
 
   </script>
 
@@ -6521,16 +6805,33 @@
           <div class="text-[11px] text-slate-400">본인 소유 선수·기록·삭제이력을 영구 삭제하고 탈퇴합니다.</div>
         </button>
       </div>
-      <div id="withdraw-transfer-panel" class="hidden space-y-2 p-3 rounded-2xl bg-slate-950 border border-slate-800">
-        <label class="block font-semibold text-slate-300">이전받을 관리자 선택</label>
-        <select id="withdraw-target-admin" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-white"></select>
+      <div id="withdraw-transfer-panel" class="hidden space-y-2.5 p-3 rounded-2xl bg-slate-950 border border-slate-800">
+        <div class="text-[10px] text-amber-300 bg-amber-950/40 border border-amber-500/30 rounded-xl p-2">
+          🧪 로컬 시뮬레이션 모드: 실제 다른 관리자의 서버 수락이 아닌 로컬 검수 절차로 동작합니다.
+        </div>
+        <label class="block font-semibold text-slate-300">이전받을 관리자 이메일 검색</label>
+        <div class="flex gap-1.5">
+          <input type="email" id="withdraw-search-email" placeholder="예: coach_b@test.local" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500">
+          <button type="button" onclick="searchTransferTargetAdmin()" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shrink-0">검색</button>
+        </div>
+        <div id="withdraw-search-result" class="text-[11px]"></div>
+        <div id="withdraw-selected-target-box" class="hidden p-2 rounded-xl bg-blue-950/40 border border-blue-500/40 text-blue-200 text-[11px]"></div>
+
         <label class="block font-semibold text-slate-300 pt-1">이전할 선수 선택</label>
         <div id="withdraw-transfer-players" class="space-y-1 max-h-28 overflow-y-auto"></div>
-        <label class="flex items-center gap-2 pt-1 text-[11px] text-emerald-300">
-          <input type="checkbox" id="withdraw-transfer-accept-sim" checked>
-          <span>이전받는 관리자 명시적 수락 확인 (로컬 시뮬레이션 · 서버 트랜잭션은 Supabase 연동 시 적용)</span>
-        </label>
-        <button type="button" onclick="executeAdminTransferAndWithdraw()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold">선수·기록·학부모 권한 이전 후 탈퇴</button>
+
+        <div id="withdraw-accept-step" class="hidden space-y-2 pt-1 border-t border-slate-800">
+          <button type="button" id="btn-simulate-target-accept" onclick="simulateTransferTargetAccept()" class="w-full py-2 rounded-xl bg-emerald-700/40 hover:bg-emerald-700/60 text-emerald-200 border border-emerald-500/40 font-bold">
+            🤝 이전받는 관리자 명시적 수락 시뮬레이션 진행
+          </button>
+        </div>
+
+        <div id="withdraw-final-preview" class="hidden space-y-2 p-2.5 rounded-xl bg-slate-900 border border-blue-500/40 text-[11px] text-slate-200"></div>
+
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="cancelAdminTransferWithdraw()" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold">취소</button>
+          <button type="button" id="btn-execute-transfer-withdraw" onclick="executeAdminTransferAndWithdraw()" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold disabled:opacity-40" disabled>이전 및 탈퇴 실행</button>
+        </div>
       </div>
       <div id="withdraw-delete-panel" class="hidden space-y-2 p-3 rounded-2xl bg-rose-950/30 border border-rose-500/40">
         <div id="withdraw-delete-preview" class="text-[11px] text-rose-200 leading-relaxed"></div>
