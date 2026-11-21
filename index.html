@@ -212,24 +212,24 @@
         </div>
       </div>
       <div class="flex items-center gap-1.5">
-        <!-- Admin Center Button (선수 관리자용 - 지혜 님 & 타 관리자) -->
-        <button type="button" id="btn-admin-profile-top" onclick="openAdminProfileModal()" class="px-2.5 py-1.5 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold text-xs flex items-center gap-1 transition active:scale-95 hidden" title="선수기록 관리자 센터">
+        <!-- Admin Center Button (선수 관리자용 - 지혜 님 & 타 관리자: 세로 32px 칼각) -->
+        <button type="button" id="btn-admin-profile-top" onclick="openAdminProfileModal()" class="h-8 px-2.5 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-95 hidden" title="선수기록 관리자 센터">
           <span>🛡️ 관리자</span>
         </button>
 
-        <!-- Viewer Approval Button (관리자/최고관리자만 노출!) -->
-        <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="px-2.5 py-1.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center gap-1 transition active:scale-95 hidden" title="뷰어 승인">
+        <!-- Viewer Approval Button (관리자/최고관리자만 노출: 세로 32px 칼각) -->
+        <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="h-8 px-2.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-95 hidden" title="뷰어 승인">
           <span>🔔 뷰어 승인</span>
           <span id="badge-pending-count" class="w-2 h-2 rounded-full bg-amber-400 hidden"></span>
         </button>
 
-        <!-- Super Admin Icon Button (지혜 님 전용 - 왕관 아이콘만!) -->
-        <button type="button" id="btn-super-admin-top" onclick="openSuperAdminModal()" class="w-8 h-8 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 flex items-center justify-center transition active:scale-95 hidden" title="최고관리자 관제실">
+        <!-- Super Admin Icon Button (지혜 님 전용 - 왕관 아이콘: 세로 32px 칼각) -->
+        <button type="button" id="btn-super-admin-top" onclick="openSuperAdminModal()" class="h-8 w-8 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 flex items-center justify-center transition active:scale-95 hidden" title="최고관리자 관제실">
           <span class="text-xs leading-none">👑</span>
         </button>
 
-        <!-- Settings Button -->
-        <button type="button" onclick="openSettingsModal()" class="w-8 h-8 text-slate-400 hover:text-white rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center transition active:scale-95" title="설정 및 계정">
+        <!-- Settings Button (설정: 세로 32px 칼각) -->
+        <button type="button" onclick="openSettingsModal()" class="h-8 w-8 text-slate-400 hover:text-white rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center transition active:scale-95" title="설정 및 계정">
           <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         </button>
       </div>
@@ -1149,6 +1149,56 @@
         btn.textContent = tab.label;
         container.appendChild(btn);
       });
+      initEventTabsDragScroll();
+    }
+
+    let isEventTabsDragInit = false;
+    function initEventTabsDragScroll() {
+      const slider = document.getElementById('event-tabs-container');
+      if (!slider || isEventTabsDragInit) return;
+      isEventTabsDragInit = true;
+
+      let isDown = false;
+      let startX;
+      let scrollLeft;
+      let hasDragged = false;
+
+      slider.style.cursor = 'grab';
+
+      slider.addEventListener('mousedown', (e) => {
+        isDown = true;
+        hasDragged = false;
+        slider.style.cursor = 'grabbing';
+        slider.classList.add('select-none');
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!isDown) return;
+        isDown = false;
+        slider.style.cursor = 'grab';
+        slider.classList.remove('select-none');
+      });
+
+      slider.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        if (Math.abs(walk) > 5) {
+          hasDragged = true;
+        }
+        slider.scrollLeft = scrollLeft - walk;
+      });
+
+      // Prevent accidental tab click when dragging
+      slider.addEventListener('click', (e) => {
+        if (hasDragged) {
+          e.preventDefault();
+          e.stopPropagation();
+          hasDragged = false;
+        }
+      }, true);
     }
 
     function selectEventTab(eventId) {
@@ -2334,38 +2384,7 @@
       input.focus();
     }
 
-    function setFormPlayerSport(sport, autoFillEvents = false) {
-      const sportInput = document.getElementById('form-player-sport');
-      if (sportInput) sportInput.value = sport;
-      const btnTrack = document.getElementById('btn-sport-track');
-      const btnCycle = document.getElementById('btn-sport-cycle');
 
-      if (sport === '육상') {
-        if (btnTrack) btnTrack.className = 'py-2 rounded-lg font-bold text-center bg-blue-600 text-white transition active:scale-95 shadow-sm';
-        if (btnCycle) btnCycle.className = 'py-2 rounded-lg font-medium text-center text-slate-400 hover:text-white transition active:scale-95';
-        renderMainEventOptions('육상', '단거리');
-        if (autoFillEvents) {
-          formCurrentEvents = [
-            '100m', '200m', '400m', 
-            { name: '4x100mR', isTeam: true }, 
-            { name: '4x400mR', isTeam: true }, 
-            { name: '4x400mR(Mixed)', isTeam: true }
-          ];
-        }
-      } else {
-        if (btnTrack) btnTrack.className = 'py-2 rounded-lg font-medium text-center text-slate-400 hover:text-white transition active:scale-95';
-        if (btnCycle) btnCycle.className = 'py-2 rounded-lg font-bold text-center bg-blue-600 text-white transition active:scale-95 shadow-sm';
-        renderMainEventOptions('사이클', '트랙');
-        if (autoFillEvents) {
-          formCurrentEvents = [
-            '1Lap', '500m독주', '1km추발', 
-            { name: '2km단체추발', isTeam: true },
-            '도로독주', '개인도로'
-          ];
-        }
-      }
-      renderFormEventsChips();
-    }
 
     function removeEventFromCurrentFormPlayer(idx) {
       formCurrentEvents.splice(idx, 1);
@@ -2760,31 +2779,16 @@
 
     function triggerGooglePromptManual() {
       if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-        let isDisplayed = false;
         try {
           google.accounts.id.prompt((notification) => {
-            if (notification.isDisplayed && notification.isDisplayed()) {
-              isDisplayed = true;
-            } else if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-              console.log('Google One Tap suppressed or dismissed:', notification.getNotDisplayedReason());
-              openGoogleAuthModal();
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              const reason = notification.getNotDisplayedReason ? notification.getNotDisplayedReason() : '';
+              console.log('Google One Tap suppressed or dismissed:', reason);
             }
           });
-          // Fallback: If prompt didn't show up within 500ms, open auth modal popup
-          setTimeout(() => {
-            if (!isDisplayed) {
-              const popup = document.getElementById('modal-google-auth-popup');
-              if (popup && popup.classList.contains('hidden')) {
-                openGoogleAuthModal();
-              }
-            }
-          }, 600);
         } catch (err) {
           console.warn('Google prompt error:', err);
-          openGoogleAuthModal();
         }
-      } else {
-        openGoogleAuthModal();
       }
     }
 
@@ -3951,7 +3955,7 @@
       const dummyNames = ['외할머니', '코치님', '하람아빠'];
       dummyNames.forEach(d => { delete realtimeAuthData[d]; });
 
-      const keys = Object.keys(realtimeAuthData).filter(k => !dummyNames.includes(k));
+      const keys = Object.keys(realtimeAuthData).filter(k => !k.startsWith('_') && !dummyNames.includes(k));
       if (keys.length === 0) {
         container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">아직 열람을 신청한 뷰어가 없습니다.</div>';
         return;
@@ -4241,7 +4245,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.03';
+    const CURRENT_APP_VERSION = '2026.11.21.05';
 
     function checkForUpdates() {
       // Listen for Service Worker update

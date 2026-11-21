@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sports-pb-cache-v2026.11.21.03';
+const CACHE_NAME = 'sports-pb-cache-v2026.11.21.05';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -35,8 +35,26 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Network First for HTML and dynamic scripts, Cache Fallback for offline PWA
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const isHtml = event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html');
+
+  if (isHtml) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
