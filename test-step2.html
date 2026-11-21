@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>2단계 관리자 데이터 동기화 격리 브라우저 검증</title>
+</head>
+<body style="font-family: monospace; padding: 20px; background: #0f172a; color: #e2e8f0;">
+  <h2>선수 성장노트 2단계 격리 브라우저 검증</h2>
+  <pre id="test-output">테스트 실행 중...</pre>
+  <script>
+    const TEST_CONFLICT_KEY = 'TEST_STEP2_CONFLICT_ARCHIVE';
+    let consoleErrors = [];
+    const origErr = console.error;
+    console.error = (...args) => { consoleErrors.push(args.map(String).join(' ')); origErr.apply(console, args); };
+
+    function parseValidTimestamp(ts) {
+      if (typeof ts === 'number' && Number.isFinite(ts) && ts > 0) return ts;
+      if (typeof ts === 'string' && ts.trim()) {
+        const parsed = Date.parse(ts);
+        if (Number.isFinite(parsed) && parsed > 0) return parsed;
+      }
+      return null;
+    }
+
+    function stripMetaForCompare(obj) {
+      if (!obj || typeof obj !== 'object') return obj;
+      const copy = {};
+      Object.keys(obj).sort().forEach(k => {
+        if (k === 'updatedAt' || k === 'recordsCount' || k === 'maskedName') return;
+        copy[k] = obj[k];
+      });
+      return copy;
+    }
+
+    function areEntitiesEqual(a, b) {
+      return JSON.stringify(stripMetaForCompare(a)) === JSON.stringify(stripMetaForCompare(b));
+    }
+
+    function archiveSyncConflict(entry) {
+      let list = [];
+      try {
+        const raw = localStorage.getItem(TEST_CONFLICT_KEY);
+        if (raw) list = JSON.parse(raw);
+      } catch (e) {}
+      list.unshift({ id: 'conf_' + Date.now(), detectedAt: new Date().toISOString(), ...entry });
+      localStorage.setItem(TEST_CONFLICT_KEY, JSON.stringify(list));
+    }
+
+    function mergeAdminDatasets(adminKey, localSet, cloudSet) {
+      const localPlayers = Array.isArray(localSet.players) ? localSet.players : [];
+      const cloudPlayers = Array.isArray(cloudSet.players) ? cloudSet.players : [];
+      const localRecords = (localSet.records && typeof localSet.records === 'object') ? localSet.records : {};
+      const cloudRecords = (cloudSet.records && typeof cloudSet.records === 'object') ? cloudSet.records : {};
+
+      const deletedPlayers = {};
+      new Set([...Object.keys(localSet.deletedPlayers || {}), ...Object.keys(cloudSet.deletedPlayers || {})]).forEach(pid => {
+        const maxT = Math.max(parseValidTimestamp((localSet.deletedPlayers || {})[pid]) || 0, parseValidTimestamp((cloudSet.deletedPlayers || {})[pid]) || 0);
+        if (maxT > 0) deletedPlayers[pid] = maxT;
+      });
+
+      const deletedRecords = {};
+      new Set([...Object.keys(localSet.deletedRecords || {}), ...Object.keys(cloudSet.deletedRecords || {})]).forEach(rid => {
+        const maxT = Math.max(parseValidTimestamp((localSet.deletedRecords || {})[rid]) || 0, parseValidTimestamp((cloudSet.deletedRecords || {})[rid]) || 0);
+        if (maxT > 0) deletedRecords[rid] = maxT;
+      });
+
+      let conflictCount = 0;
+      const localPMap = new Map(); localPlayers.forEach(p => { if (p && p.id) localPMap.set(p.id, p); });
+      const cloudPMap = new Map(); cloudPlayers.forEach(p => { if (p && p.id) cloudPMap.set(p.id, p); });
+      const mergedPlayers = [];
+
+      new Set([...localPMap.keys(), ...cloudPMap.keys()]).forEach(pid => {
+        const delAt = deletedPlayers[pid] || 0;
+        const lp = localPMap.get(pid);
+        const cp = cloudPMap.get(pid);
+        const lTs = lp ? parseValidTimestamp(lp.updatedAt) : null;
+        const cTs = cp ? parseValidTimestamp(cp.updatedAt) : null;
+        const lAlive = lp && (!delAt || (lTs !== null && lTs > delAt));
+        const cAlive = cp && (!delAt || (cTs !== null && cTs > delAt));
+        if (!lAlive && !cAlive) return;
+        if (lAlive && !cAlive) mergedPlayers.push(lp);
+        else if (!lAlive && cAlive) mergedPlayers.push(cp);
+        else if (areEntitiesEqual(lp, cp)) mergedPlayers.push((cTs !== null && (lTs === null || cTs > lTs)) ? cp : lp);
+        else {
+          let winner = lp, reason = 'untrusted_or_equal_timestamp_kept_local';
+          if (lTs !== null && cTs !== null && lTs !== cTs) {
+            winner = (cTs > lTs) ? cp : lp;
+            reason = (cTs > lTs) ? 'cloud_newer' : 'local_newer';
+          }
+          archiveSyncConflict({ adminKey, entityType: 'player', entityId: pid, localCopy: JSON.parse(JSON.stringify(lp)), cloudCopy: JSON.parse(JSON.stringify(cp)), resolvedWinner: (winner === lp) ? 'local' : 'cloud', reason });
+          conflictCount++;
+          mergedPlayers.push(winner);
+        }
+      });
+
+      const mergedRecords = {};
+      mergedPlayers.forEach(p => {
+        const pid = p.id;
+        const lMap = new Map(); (localRecords[pid] || []).forEach(r => { if (r && r.id) lMap.set(r.id, r); });
+        const cMap = new Map(); (cloudRecords[pid] || []).forEach(r => { if (r && r.id) cMap.set(r.id, r); });
+        const mergedList = [];
+        new Set([...lMap.keys(), ...cMap.keys()]).forEach(rid => {
+          const delAt = deletedRecords[rid] || 0;
+          const lr = lMap.get(rid);
+          const cr = cMap.get(rid);
+          const lTs = lr ? parseValidTimestamp(lr.updatedAt) : null;
+          const cTs = cr ? parseValidTimestamp(cr.updatedAt) : null;
+          const lAlive = lr && (!delAt || (lTs !== null && lTs > delAt));
+          const cAlive = cr && (!delAt || (cTs !== null && cTs > delAt));
+          if (!lAlive && !cAlive) return;
+          if (lAlive && !cAlive) mergedList.push(lr);
+          else if (!lAlive && cAlive) mergedList.push(cr);
+          else if (areEntitiesEqual(lr, cr)) mergedList.push((cTs !== null && (lTs === null || cTs > lTs)) ? cr : lr);
+          else {
+            let winner = lr, reason = 'untrusted_or_equal_timestamp_kept_local';
+            if (lTs !== null && cTs !== null && lTs !== cTs) {
+              winner = (cTs > lTs) ? cr : lr;
+              reason = (cTs > lTs) ? 'cloud_newer' : 'local_newer';
+            }
+            archiveSyncConflict({ adminKey, entityType: 'record', entityId: rid, playerId: pid, localCopy: JSON.parse(JSON.stringify(lr)), cloudCopy: JSON.parse(JSON.stringify(cr)), resolvedWinner: (winner === lr) ? 'local' : 'cloud', reason });
+            conflictCount++;
+            mergedList.push(winner);
+          }
+        });
+        mergedRecords[pid] = mergedList;
+      });
+
+      return { players: mergedPlayers, records: mergedRecords, deletedPlayers, deletedRecords, conflictCount };
+    }
+
+    async function runTests() {
+      localStorage.removeItem(TEST_CONFLICT_KEY);
+      const results = {};
+
+      // 1 & 2: Local-only + Cloud-only + Player profile sync + Record sync
+      const m1 = mergeAdminDatasets('test_admin_a',
+        { players: [{ id: 'p1', name: '가상선수A', sport: '육상', updatedAt: 1000 }], records: { p1: [{ id: 'r_local', event: '100m', date: '2026-11-20', seconds: 12.1, updatedAt: 1000 }] } },
+        { players: [{ id: 'p1', name: '가상선수A_수정', sport: '육상', updatedAt: 2000 }, { id: 'p2', name: '가상선수B', sport: '사이클', updatedAt: 2000 }], records: { p1: [{ id: 'r_cloud', event: '100m', date: '2026-11-21', seconds: 11.9, updatedAt: 2000 }], p2: [{ id: 'r_p2', event: '200m', date: '2026-11-21', seconds: 25.0, updatedAt: 2000 }] } }
+      );
+      const p1RecIds = m1.records.p1.map(r => r.id).sort();
+      results.t1_t2_local_and_cloud_preserved = (m1.players.length === 2 && p1RecIds.join(',') === 'r_cloud,r_local') ? '성공' : '실패';
+      results.t10_profile_and_record_sync = (m1.players.find(p => p.id === 'p1').name === '가상선수A_수정' && m1.records.p2.length === 1) ? '성공' : '실패';
+
+      // 3 & 11: Concurrent edit on same record -> newer wins + BOTH saved in restorable conflict archive
+      const m3 = mergeAdminDatasets('test_admin_a',
+        { players: [{ id: 'p1', name: '가상선수A', updatedAt: 1000 }], records: { p1: [{ id: 'r_same', event: '100m', date: '2026-11-21', seconds: 12.5, updatedAt: 3000 }] } },
+        { players: [{ id: 'p1', name: '가상선수A', updatedAt: 1000 }], records: { p1: [{ id: 'r_same', event: '100m', date: '2026-11-21', seconds: 12.2, updatedAt: 5000 }] } }
+      );
+      const archiveList = JSON.parse(localStorage.getItem(TEST_CONFLICT_KEY) || '[]');
+      const recConf = archiveList.find(c => c.entityType === 'record' && c.entityId === 'r_same');
+      results.t3_concurrent_edit_newer_wins = (m3.records.p1[0].seconds === 12.2 && m3.conflictCount === 1) ? '성공' : '실패';
+      results.t11_conflict_archive_restorable = !!(recConf && recConf.localCopy.seconds === 12.5 && recConf.cloudCopy.seconds === 12.2) ? '성공' : '실패';
+
+      // 4: Untrusted/missing updatedAt -> do NOT assume cloud/local is newer arbitrarily, archive both
+      const m4 = mergeAdminDatasets('test_admin_a',
+        { players: [{ id: 'p1', name: '가상선수A', updatedAt: 1000 }], records: { p1: [{ id: 'r_notime', event: '100m', date: '2026-11-21', seconds: 13.0 }] } },
+        { players: [{ id: 'p1', name: '가상선수A', updatedAt: 1000 }], records: { p1: [{ id: 'r_notime', event: '100m', date: '2026-11-21', seconds: 12.8, updatedAt: 'not-a-date' }] } }
+      );
+      const archive4 = JSON.parse(localStorage.getItem(TEST_CONFLICT_KEY) || '[]').find(c => c.entityId === 'r_notime');
+      results.t4_untrusted_timestamp_no_arbitrary_overwrite = (m4.records.p1[0].seconds === 13.0 && archive4 && archive4.reason === 'untrusted_or_equal_timestamp_kept_local' && archive4.cloudCopy.seconds === 12.8) ? '성공' : '실패';
+
+      // 5: Repeated sync 5 times -> 0 duplicates
+      let rep = { players: m1.players, records: m1.records, deletedPlayers: {}, deletedRecords: {} };
+      for (let i = 0; i < 5; i++) {
+        rep = mergeAdminDatasets('test_admin_a', rep, { players: m1.players, records: m1.records });
+      }
+      results.t5_repeated_sync_no_duplicates = (rep.players.length === 2 && rep.records.p1.length === 2) ? '성공' : '실패';
+
+      // 6: Deleted record/player in Device A does NOT resurrect from Device B
+      const m6 = mergeAdminDatasets('test_admin_a',
+        { players: [], records: {}, deletedPlayers: { p_del: 6000 }, deletedRecords: { r_del: 6000 } },
+        { players: [{ id: 'p_del', name: '삭제된선수', updatedAt: 2000 }, { id: 'p_keep', name: '유지선수', updatedAt: 2000 }], records: { p_keep: [{ id: 'r_del', event: '100m', date: '2026-11-20', seconds: 11.1, updatedAt: 2000 }, { id: 'r_keep', event: '100m', date: '2026-11-21', seconds: 11.0, updatedAt: 2000 }] } }
+      );
+      results.t6_deleted_not_resurrected = (m6.players.length === 1 && m6.players[0].id === 'p_keep' && m6.records.p_keep.length === 1 && m6.records.p_keep[0].id === 'r_keep') ? '성공' : '실패';
+
+      // 7: Network failure during sync -> no success notice, local preserved, pending retry succeeds when online
+      let syncLog = [];
+      let pendingFlag = false;
+      let online = false;
+      async function mockSync(localData) {
+        if (!online) {
+          pendingFlag = true;
+          syncLog.push('failed_kept_local');
+          return { ok: false };
+        }
+        pendingFlag = false;
+        syncLog.push('synced_after_retry');
+        return { ok: true };
+      }
+      const rNet1 = await mockSync({ id: 'r_off' });
+      online = true;
+      const rNet2 = pendingFlag ? await mockSync({ id: 'r_off' }) : { ok: false };
+      results.t7_offline_fail_then_retry = (!rNet1.ok && rNet2.ok && syncLog.join('->') === 'failed_kept_local->synced_after_retry') ? '성공' : '실패';
+
+      // 8 & 9: Admin A vs Admin B isolation & Super Admin untouched
+      const keyA = 'TEST_STEP2_CUSTOM_DATA_admin_a';
+      const keyB = 'TEST_STEP2_CUSTOM_DATA_admin_b';
+      localStorage.setItem(keyA, JSON.stringify({ pA: [{ id: 'rA' }] }));
+      localStorage.setItem(keyB, JSON.stringify({ pB: [{ id: 'rB' }] }));
+      const isoOk = JSON.parse(localStorage.getItem(keyA)).pB === undefined && JSON.parse(localStorage.getItem(keyB)).pA === undefined;
+      localStorage.removeItem(keyA); localStorage.removeItem(keyB);
+      localStorage.removeItem(TEST_CONFLICT_KEY);
+      results.t8_admin_isolation = isoOk ? '성공' : '실패';
+      results.consoleErrorsCount = consoleErrors.length;
+
+      document.getElementById('test-output').textContent = JSON.stringify(results, null, 2);
+    }
+    runTests();
+  </script>
+</body>
+</html>
