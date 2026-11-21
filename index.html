@@ -385,16 +385,10 @@
           </div>
         </div>
 
-        <!-- Meet Name (with Lock Button) -->
+        <!-- Meet Name -->
         <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="font-semibold text-slate-400">대회명 / 경기명 *</label>
-            <button type="button" id="btn-lock-meet" onclick="toggleLockMeet()" class="text-[11px] text-slate-400 hover:text-blue-400 flex items-center gap-1 transition">
-              <span id="lock-meet-icon">🔓</span>
-              <span id="lock-meet-text">대회명 고정</span>
-            </button>
-          </div>
-          <input type="text" id="input-meet" required placeholder="예: 제55회 전국소년체육대회" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          <label class="block font-semibold text-slate-400 mb-1">대회명 / 경기명 *</label>
+          <input type="text" id="input-meet" required placeholder="대회명 입력" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
         </div>
 
         <!-- Round / Stage (Smart Switched) -->
@@ -454,9 +448,9 @@
 
         <!-- Time Inputs (H : M : S) - Default 0.00 -->
         <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800/80">
-          <label class="block font-semibold text-slate-300 mb-2 flex items-center justify-between">
-            <span class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> 경기 기록 (시 : 분 : 초) *</span>
-            <span class="text-[10px] text-slate-500 font-normal">단거리는 초만 적어도 OK</span>
+          <label class="block font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>경기 기록 (시 : 분 : 초) *</span>
           </label>
           <div class="grid grid-cols-3 gap-2 text-center">
             <div>
@@ -481,19 +475,23 @@
         <div class="grid grid-cols-2 gap-2.5 items-start">
           <div>
             <label class="block font-semibold text-slate-400 mb-1">순위</label>
-            <input type="text" id="input-rank" placeholder="예: 1, 2, 3 (숫자만)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
-            <p class="text-[10px] text-slate-500 mt-1">※ 라운드는 위에서 선택, 등수만 입력</p>
+            <input type="number" id="input-rank" inputmode="numeric" placeholder="등수 (숫자만)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
           </div>
           <div id="field-wind-container">
             <label class="block font-semibold text-slate-400 mb-1">풍속 (m/s)</label>
-            <input type="text" id="input-wind" placeholder="예: 0.8, -0.2" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <div class="flex items-center gap-1.5">
+              <button type="button" id="btn-wind-sign" onclick="toggleWindSign()" class="px-3 py-2 rounded-xl bg-blue-600/30 text-blue-300 border border-blue-500/40 font-mono font-bold text-sm shrink-0 active:scale-95 transition">
+                +
+              </button>
+              <input type="number" step="0.1" id="input-wind-val" inputmode="decimal" placeholder="0.0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-blue-500">
+            </div>
           </div>
         </div>
 
         <!-- Note -->
         <div>
           <label class="block font-semibold text-slate-400 mb-1">비고 / 메모</label>
-          <input type="text" id="input-note" placeholder="예: 동메달 획득, 스타트 반응 좋았음, 로라 훈련" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          <input type="text" id="input-note" placeholder="" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
         </div>
 
         <!-- Modal Submit Actions -->
@@ -1703,6 +1701,34 @@
     }
 
     // 9. Record Form Functions (CRUD & Smart Switching)
+    let currentWindSign = '+';
+    function toggleWindSign() {
+      const btn = document.getElementById('btn-wind-sign');
+      if (currentWindSign === '+') {
+        currentWindSign = '-';
+        if (btn) {
+          btn.textContent = '-';
+          btn.className = 'px-3 py-2 rounded-xl bg-red-600/30 text-red-300 border border-red-500/40 font-mono font-bold text-sm shrink-0 active:scale-95 transition';
+        }
+      } else {
+        currentWindSign = '+';
+        if (btn) {
+          btn.textContent = '+';
+          btn.className = 'px-3 py-2 rounded-xl bg-blue-600/30 text-blue-300 border border-blue-500/40 font-mono font-bold text-sm shrink-0 active:scale-95 transition';
+        }
+      }
+    }
+    function setWindSign(sign) {
+      currentWindSign = sign === '-' ? '-' : '+';
+      const btn = document.getElementById('btn-wind-sign');
+      if (btn) {
+        btn.textContent = currentWindSign;
+        btn.className = currentWindSign === '-'
+          ? 'px-3 py-2 rounded-xl bg-red-600/30 text-red-300 border border-red-500/40 font-mono font-bold text-sm shrink-0 active:scale-95 transition'
+          : 'px-3 py-2 rounded-xl bg-blue-600/30 text-blue-300 border border-blue-500/40 font-mono font-bold text-sm shrink-0 active:scale-95 transition';
+      }
+    }
+
     function resetFormFields() {
       document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
       document.getElementById('input-meet').value = '';
@@ -1710,7 +1736,9 @@
       document.getElementById('time-m').value = '';
       document.getElementById('time-s').value = '';
       document.getElementById('input-rank').value = '';
-      document.getElementById('input-wind').value = '';
+      setWindSign('+');
+      const elWind = document.getElementById('input-wind-val');
+      if (elWind) elWind.value = '';
       document.getElementById('input-note').value = '';
       document.getElementById('relay-runner-1').value = '';
       document.getElementById('relay-runner-2').value = '';
@@ -1872,7 +1900,24 @@
 
       const numMatch = record.rank ? String(record.rank).match(/\d+/) : null;
       document.getElementById('input-rank').value = numMatch ? numMatch[0] : (record.rank || '');
-      document.getElementById('input-wind').value = record.wind || '';
+
+      if (record.wind) {
+        const wStr = String(record.wind).trim();
+        if (wStr.startsWith('-')) {
+          setWindSign('-');
+          const elW = document.getElementById('input-wind-val');
+          if (elW) elW.value = wStr.replace('-', '');
+        } else {
+          setWindSign('+');
+          const elW = document.getElementById('input-wind-val');
+          if (elW) elW.value = wStr.replace('+', '');
+        }
+      } else {
+        setWindSign('+');
+        const elW = document.getElementById('input-wind-val');
+        if (elW) elW.value = '';
+      }
+
       document.getElementById('input-note').value = record.note || '';
 
       if (record.runners && record.runners.length > 0) {
@@ -1931,7 +1976,14 @@
       const s = parseFloat(document.getElementById('time-s').value || 0);
       const totalSec = parseFloat((h * 3600 + m * 60 + s).toFixed(3));
       const rankVal = document.getElementById('input-rank').value.trim();
-      const windVal = document.getElementById('input-wind').value.trim();
+      const rawWind = (document.getElementById('input-wind-val')?.value || '').trim();
+      let windVal = '';
+      if (rawWind) {
+        const cleanNum = parseFloat(rawWind);
+        if (!isNaN(cleanNum)) {
+          windVal = (currentWindSign === '-' ? '-' : '+') + cleanNum.toFixed(1);
+        }
+      }
       const noteVal = document.getElementById('input-note').value.trim();
 
       if (!meetVal) {
@@ -1990,7 +2042,9 @@
         document.getElementById('time-m').value = '';
         document.getElementById('time-s').value = '';
         document.getElementById('input-rank').value = '';
-        document.getElementById('input-wind').value = '';
+        setWindSign('+');
+        const elW = document.getElementById('input-wind-val');
+        if (elW) elW.value = '';
         document.getElementById('input-note').value = '';
         updateTimePreview();
       } else {
@@ -2567,19 +2621,20 @@
       const email = payload.email.toLowerCase();
       const name = payload.name || payload.email.split('@')[0];
 
-      // Jihye's Master Account -> Super Admin!
-      if (email.includes('bluefunky') || email.includes('blindagape') || name.includes('지혜') || name.includes('shinjihye')) {
+      // Only bluefunky83 can be Super Admin! (지혜 님 지침: bluefunky83 외 최고 권한 전면 배제)
+      if (email === 'bluefunky83@gmail.com' || email === 'bluefunky83') {
         const user = {
           id: 'admin_jihye',
-          name: `${name} (최고관리자)`,
-          email: payload.email,
+          name: '지혜 님 (최고관리자)',
+          email: 'bluefunky83@gmail.com',
           role: 'super_admin',
           approved: true,
           allowedPlayers: ['yusin', 'byeolha']
         };
         localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
         checkInitialAuthGate();
-        alert(`👑 ${name} 님 환영합니다!\nGoogle 원터치 인증으로 최고관리자 로그인되었습니다.`);
+        renderCurrentView();
+        alert('👑 지혜 님 환영합니다!\nGoogle 공식 인증으로 최고관리자 로그인되었습니다.');
         return;
       }
 
@@ -2650,9 +2705,9 @@
     }
 
     function processLoginWithEmail(inputId) {
-      const clean = inputId.toLowerCase();
-      // Jihye's Master Account -> Super Admin!
-      if (clean.includes('bluefunky') || clean.includes('지혜') || clean.includes('shinjihye')) {
+      const clean = inputId.toLowerCase().trim();
+      // Only bluefunky83 can be Super Admin! (지혜 님 지침: bluefunky83 외 최고 권한 전면 배제)
+      if (clean === 'bluefunky83@gmail.com' || clean === 'bluefunky83') {
         const user = {
           id: 'admin_jihye',
           name: '지혜 님 (최고관리자)',
@@ -2663,6 +2718,7 @@
         };
         localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
         checkInitialAuthGate();
+        renderCurrentView();
         alert('👑 지혜 님 환영합니다!\n최고관리자 센터 및 전체 관리 권한으로 로그인되었습니다.');
         return;
       }
@@ -2871,14 +2927,14 @@
       checkInitialAuthGate();
     }
 
-    // Viewers Registry for Super Admin & Admins (클린 초기화: 더미 데이터 전격 퇴출!)
-    const VIEWERS_REG_KEY = 'ATHLETE_GROWTH_VIEWERS_REG_V1';
+    // Viewers Registry for Super Admin & Admins (완전 백지 클린 초기화!)
+    const VIEWERS_REG_KEY = 'ATHLETE_GROWTH_VIEWERS_CLEAN_V2';
     function getRegisteredViewers() {
       try {
         const raw = localStorage.getItem(VIEWERS_REG_KEY);
         if (raw) {
           const list = JSON.parse(raw);
-          return list.filter(v => v && v.name !== '외할머니' && v.name !== '코치님' && v.name !== '하람아빠');
+          return Array.isArray(list) ? list : [];
         }
       } catch (e) {}
       return [];
@@ -3045,21 +3101,21 @@
                 </div>
               </div>
 
+              <!-- 3. Pending Viewers for THIS admin (지혜 님 지침: 각 관리자 탭 아래에 승인대기자 귀속) -->
+              ${pendingViewers.length ? `
+                <div class="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-between text-xs mt-2">
+                  <div class="flex items-center gap-1.5 text-amber-300 font-bold">
+                    <span>⏳</span>
+                    <span>승인 대기 중 (${pendingViewers.length}명)</span>
+                  </div>
+                  <button type="button" onclick="closeSuperAdminModal(); openViewerApprovalModal();" class="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-[10px] hover:bg-amber-400 transition active:scale-95 shadow-sm">
+                    승인하기 →
+                  </button>
+                </div>
+              ` : ''}
+
             </div>
           </div>
-
-          ${pendingViewers.length ? `
-            <!-- Pending Viewers Quick Link -->
-            <div class="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/30 flex items-center justify-between text-xs">
-              <div class="flex items-center gap-2 text-amber-300 font-bold">
-                <span>⏳</span>
-                <span>승인 대기 중 뷰어 (${pendingViewers.length}명)</span>
-              </div>
-              <button type="button" onclick="closeSuperAdminModal(); openViewerApprovalModal();" class="px-3 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-[11px] hover:bg-amber-400 transition active:scale-95 shadow-sm">
-                승인하러 가기 →
-              </button>
-            </div>
-          ` : ''}
         </div>
       `;
     }
