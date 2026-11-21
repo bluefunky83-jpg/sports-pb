@@ -6876,7 +6876,21 @@
       const targetStableKey = getStableAdminId(stagingTransferSelectedTarget.email, stagingTransferSelectedTarget.name);
       const targetId = stagingTransferSelectedTarget.id;
 
-      // 1. Snapshot ALL localStorage keys that may be touched (distinguishing absent vs empty)
+      const extractAllowedPlayersList = (v) => {
+        if (!v || typeof v !== 'object') return [];
+        if (Array.isArray(v.allowedPlayers)) return v.allowedPlayers.filter(Boolean);
+        if (v.allowed && v.allowed !== 'none' && v.allowed !== 'all') return [v.allowed];
+        if (v.targetPlayer) return [v.targetPlayer];
+        return [];
+      };
+
+      const canonical = (r) => JSON.stringify({
+        id: r.id, date: r.date, event: r.event, kind: r.kind,
+        meet: r.meet, round: r.round, rank: r.rank, wind: r.wind,
+        seconds: r.seconds, note: r.note || '',
+        runners: Array.isArray(r.runners) ? r.runners : (r.runners || null)
+      });
+
       const keysToSnapshot = Array.from(new Set([
         STAGING_CLOUD_KEY,
         STAGING_ACCOUNTS_KEY,
@@ -6896,11 +6910,19 @@
       });
 
       const restoreSnapshots = () => {
+        const restoredKeys = [];
+        const failedKeys = [];
         snapshots.forEach(({ key, existed, raw }) => {
-          if (existed) localStorage.setItem(key, raw);
-          else localStorage.removeItem(key);
+          try {
+            if (existed) localStorage.setItem(key, raw);
+            else localStorage.removeItem(key);
+            restoredKeys.push(key);
+          } catch (rbErr) {
+            failedKeys.push({ key, error: rbErr && rbErr.message ? rbErr.message : String(rbErr) });
+          }
         });
         try { realtimeAuthData = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{}'); } catch (e) {}
+        return { allSucceeded: failedKeys.length === 0, restoredKeys, failedKeys };
       };
 
       try {
@@ -6914,13 +6936,12 @@
 
         targetAdm.players = Array.isArray(targetAdm.players) ? targetAdm.players : [];
         targetAdm.records = (targetAdm.records && typeof targetAdm.records === 'object') ? targetAdm.records : {};
-        const preTargetRecordIdsByPid = {};
+        const preTargetRecordCanonByPid = {};
         targetAdm.players.forEach(p => {
           const arr = Array.isArray(targetAdm.records[p.id]) ? targetAdm.records[p.id] : [];
-          preTargetRecordIdsByPid[p.id] = arr.map(r => r.id);
+          preTargetRecordCanonByPid[p.id] = arr.map(r => ({ id: r.id, canon: canonical(r) }));
         });
 
-        // Copy ALL owned players & records to target (preserving target's existing records)
         owned.players.forEach(pl => {
           if (!targetAdm.players.some(x => x.id === pl.id)) {
             targetAdm.players.push(JSON.parse(JSON.stringify(pl)));
@@ -6932,7 +6953,11 @@
           targetAdm.records[pl.id] = Array.from(byId.values());
         });
 
-        // Merge tombstones safely
+        // Optional test hook to verify record-content mismatch detection before commit
+        if (typeof window.__STAGING_MUTATE_BEFORE_VERIFY__ === 'function') {
+          window.__STAGING_MUTATE_BEFORE_VERIFY__(targetAdm);
+        }
+
         const targetLocalTomb = getAdminTombstones(targetStableKey);
         const mergedDelPlayers = mergeTombstoneMaps(
           mergeTombstoneMaps(targetAdm.deletedPlayers, targetLocalTomb.deletedPlayers),
@@ -6945,14 +6970,13 @@
         targetAdm.deletedPlayers = mergedDelPlayers;
         targetAdm.deletedRecords = mergedDelRecords;
 
-        // Transfer viewer permissions strictly based on allowedPlayers, merging if target already has same parent
         const transferredSet = new Set(allOwnedPids);
         const preTargetViewerEntries = {};
         Object.entries(cloud).forEach(([k, v]) => {
           if (!k.startsWith('_') && v && v.ownerAdminId === targetId && v.email) {
             preTargetViewerEntries[v.email.toLowerCase()] = {
               key: k,
-              allowed: Array.isArray(v.allowedPlayers) ? [...v.allowedPlayers] : []
+              allowed: extractAllowedPlayersList(v)
             };
           }
         });
@@ -6960,9 +6984,7 @@
         const expectedViewerScopes = [];
         Object.entries(cloud).forEach(([k, v]) => {
           if (k.startsWith('_') || !v || v.ownerAdminId !== authUser.id) return;
-          const allowedList = Array.isArray(v.allowedPlayers)
-            ? v.allowedPlayers.filter(Boolean)
-            : (v.allowed && v.allowed !== 'none' ? [v.allowed] : (v.targetPlayer ? [v.targetPlayer] : []));
+          const allowedList = extractAllowedPlayersList(v);
           const matchingPids = allowedList.filter(pid => transferredSet.has(pid));
           const remainingPids = allowedList.filter(pid => !transferredSet.has(pid));
           if (matchingPids.length === 0) return;
@@ -6975,12 +6997,13 @@
 
           if (existingTargetEntry) {
             const [tKey, tVal] = existingTargetEntry;
-            const tAllowed = Array.isArray(tVal.allowedPlayers) ? tVal.allowedPlayers.filter(Boolean) : [];
+            const tAllowed = extractAllowedPlayersList(tVal);
             const mergedAllowed = Array.from(new Set([...tAllowed, ...matchingPids]));
-            const tReq = Array.isArray(tVal.requestedPlayers) ? tVal.requestedPlayers.filter(Boolean) : [];
+            const tReq = Array.isArray(tVal.requestedPlayers) ? tVal.requestedPlayers.filter(Boolean) : tAllowed;
             tVal.allowedPlayers = mergedAllowed;
             tVal.requestedPlayers = Array.from(new Set([...tReq, ...mergedAllowed]));
             tVal.allowed = mergedAllowed.length > 1 ? 'all' : (mergedAllowed[0] || 'none');
+            if (!tVal.targetPlayer && mergedAllowed[0]) tVal.targetPlayer = mergedAllowed[0];
             tVal.coachChangedNotice = true;
 
             if (remainingPids.length === 0) {
@@ -6991,6 +7014,9 @@
             }
           } else if (remainingPids.length === 0) {
             v.ownerAdminId = targetId;
+            v.allowedPlayers = matchingPids;
+            v.allowed = matchingPids.length > 1 ? 'all' : matchingPids[0];
+            if (!v.targetPlayer && matchingPids[0]) v.targetPlayer = matchingPids[0];
             v.coachChangedNotice = true;
           } else {
             v.allowedPlayers = remainingPids;
@@ -7008,12 +7034,6 @@
           }
         });
 
-        // 2. Verify record-by-record ID + content + no-duplicates + pre-existing preservation + viewer merge
-        const canonical = (r) => JSON.stringify({
-          id: r.id, date: r.date, event: r.event, kind: r.kind,
-          meet: r.meet, round: r.round, rank: r.rank, wind: r.wind,
-          seconds: r.seconds, note: r.note || ''
-        });
         const verifyAllPlayers = allOwnedPids.every(pid => targetAdm.players.some(p => p.id === pid));
         const verifyAllRecs = allOwnedPids.every(pid => {
           const srcRecs = owned.records[pid] || [];
@@ -7023,15 +7043,15 @@
           const tgtMap = new Map(tgtRecs.map(r => [r.id, r]));
           return srcRecs.every(sr => tgtMap.has(sr.id) && canonical(tgtMap.get(sr.id)) === canonical(sr));
         });
-        const verifyPreTargetPreserved = Object.entries(preTargetRecordIdsByPid).every(([pid, ids]) => {
-          const tgtSet = new Set((targetAdm.records[pid] || []).map(r => r.id));
-          return ids.every(id => tgtSet.has(id));
+        const verifyPreTargetPreserved = Object.entries(preTargetRecordCanonByPid).every(([pid, list]) => {
+          const tgtMap = new Map((targetAdm.records[pid] || []).map(r => [r.id, r]));
+          return list.every(item => tgtMap.has(item.id) && canonical(tgtMap.get(item.id)) === item.canon);
         });
         const verifyTombP = Object.keys(owned.deletedPlayers).every(k => Boolean(targetAdm.deletedPlayers[k]));
         const verifyTombR = Object.keys(owned.deletedRecords).every(k => Boolean(targetAdm.deletedRecords[k]));
         const verifyNoLeftoverViewer = Object.values(cloud).every(v => {
           if (!v || typeof v !== 'object' || v.ownerAdminId !== authUser.id) return true;
-          const aList = Array.isArray(v.allowedPlayers) ? v.allowedPlayers : [];
+          const aList = extractAllowedPlayersList(v);
           return !aList.some(pid => transferredSet.has(pid));
         });
         const targetEmailCounts = {};
@@ -7044,17 +7064,17 @@
         const verifyViewerMerged = expectedViewerScopes.every(({ email, matchingPids }) => {
           if (targetEmailCounts[email] !== 1) return false;
           const entry = Object.values(cloud).find(v => v && v.ownerAdminId === targetId && (v.email || '').toLowerCase() === email);
-          if (!entry || !Array.isArray(entry.allowedPlayers)) return false;
+          if (!entry) return false;
+          const entryAllowed = extractAllowedPlayersList(entry);
           const preAllowed = (preTargetViewerEntries[email] && preTargetViewerEntries[email].allowed) || [];
-          return preAllowed.every(pid => entry.allowedPlayers.includes(pid)) &&
-                 matchingPids.every(pid => entry.allowedPlayers.includes(pid));
+          return preAllowed.every(pid => entryAllowed.includes(pid)) &&
+                 matchingPids.every(pid => entryAllowed.includes(pid));
         });
 
         if (!verifyAllPlayers || !verifyAllRecs || !verifyPreTargetPreserved || !verifyTombP || !verifyTombR || !verifyNoLeftoverViewer || !verifyViewerMerged) {
-          throw new Error('데이터 이전 정합성 검증(ID/내용/중복/권한병합)에 실패하여 원본을 보호했습니다.');
+          throw new Error('데이터 이전 정합성 검증(ID/내용/runners/기존기록/권한병합)에 실패하여 원본을 보호했습니다.');
         }
 
-        // 3. Persist target keys sequentially (mid-save error hook tests partial-write rollback!)
         saveAdminTombstones(targetStableKey, { deletedPlayers: mergedDelPlayers, deletedRecords: mergedDelRecords });
         localStorage.setItem('STAGING_CUSTOM_PLAYERS_v2_' + targetStableKey, JSON.stringify(targetAdm.players));
 
@@ -7064,7 +7084,6 @@
 
         localStorage.setItem('STAGING_CUSTOM_DATA_v2_' + targetStableKey, JSON.stringify(targetAdm.records));
 
-        // 4. ONLY AFTER all target saves & checks succeed, withdraw source admin
         delete cloud._admins[authUser.id];
         if (owned.stableKey !== authUser.id) delete cloud._admins[owned.stableKey];
         saveStagingCloud(cloud);
@@ -7081,11 +7100,16 @@
         localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + owned.stableKey);
         localStorage.removeItem('STAGING_ATHLETE_APP_TOMBSTONES_' + owned.stableKey);
 
-        alert('✅ [로컬 시뮬레이션] 전체 선수·기록(ID·내용 검증 완료)·삭제이력·학부모 권한 이전 및 관리자 탈퇴가 완료되었습니다.');
+        alert('✅ [로컬 시뮬레이션] 전체 선수·기록(ID·내용·runners 검증 완료)·삭제이력·학부모 권한 이전 및 관리자 탈퇴가 완료되었습니다.');
         window.location.reload();
       } catch (err) {
-        restoreSnapshots();
-        alert('❌ 이전 중 오류가 발생해 모든 저장 키를 롤백했습니다. 원본·대상 데이터와 계정은 그대로 유지됩니다.\n사유: ' + (err && err.message ? err.message : err));
+        const rb = restoreSnapshots();
+        window.__STAGING_LAST_ROLLBACK_RESULT__ = rb;
+        if (rb.allSucceeded) {
+          alert('❌ 이전 중 오류가 발생해 모든 저장 키(' + rb.restoredKeys.length + '건)를 롤백했습니다. 원본·대상 데이터와 계정은 그대로 유지됩니다.\n사유: ' + (err && err.message ? err.message : err));
+        } else {
+          alert('⚠️ 이전 중 오류가 발생해 롤백을 시도했으나 일부 저장 키 복구에 실패했습니다.\n복구 성공: ' + rb.restoredKeys.length + '건 / 복구 실패: ' + rb.failedKeys.map(f => f.key).join(', ') + '\n원본 오류: ' + (err && err.message ? err.message : err));
+        }
       }
     };
 
