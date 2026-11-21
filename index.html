@@ -3341,16 +3341,16 @@
         authUser.ownerAdminId = ownerAdminId;
       }
 
-      await registerViewerRequestAsync(viewerNick, selected, ownerAdminId);
-
       localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
+      await registerViewerRequestAsync(viewerNick, selected, ownerAdminId, authUser.email);
+
       closeViewerAddPlayerModal();
       closeSettingsModal();
       checkInitialAuthGate();
       alert(`📨 [${targetName}] 열람 신청이 담당 관리자에게 전송되었습니다!`);
     }
 
-    async function registerViewerRequestAsync(nick, targetPlayer, ownerAdminId) {
+    async function registerViewerRequestAsync(nick, targetPlayer, ownerAdminId, explicitEmail) {
       const nowStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
       const resolvedOwner = ownerAdminId || 'super_admin';
       const list = getRegisteredViewers();
@@ -3400,12 +3400,16 @@
 
         const wasApproved = prev.status === 'approved' && prev.allowed && prev.allowed !== 'none';
         let currentEmail = prev.email || '';
-        try {
-          const curUser = JSON.parse(localStorage.getItem('ATHLETE_APP_AUTH_USER') || '{}');
-          if (curUser && curUser.email && !curUser.email.endsWith('@viewer.local')) {
-            currentEmail = curUser.email;
-          }
-        } catch (e) {}
+        if (explicitEmail && !explicitEmail.endsWith('@viewer.local')) {
+          currentEmail = explicitEmail;
+        } else {
+          try {
+            const curUser = JSON.parse(localStorage.getItem('ATHLETE_APP_AUTH_USER') || '{}');
+            if (curUser && curUser.email && !curUser.email.endsWith('@viewer.local')) {
+              currentEmail = curUser.email;
+            }
+          } catch (e) {}
+        }
 
         latestData[nick] = {
           ...prev,
@@ -4905,7 +4909,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.22';
+    const CURRENT_APP_VERSION = '2026.11.21.23';
 
     function checkForUpdates() {
       // Listen for Service Worker update
