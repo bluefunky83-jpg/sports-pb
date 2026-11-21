@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.32</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.33</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.32
+        선수 성장노트 v2026.11.21.33
       </div>
     </div>
   </div>
@@ -4792,26 +4792,28 @@
             initial = [item.allowed];
           }
           if (Array.isArray(item.requestedPlayers)) {
-            item.requestedPlayers.forEach(p => { if (!initial.includes(p)) initial.push(p); });
+            item.requestedPlayers.forEach(p => { if (myPlayerIds.includes(p) && !initial.includes(p)) initial.push(p); });
           } else if (item.targetPlayer === 'all') {
             myPlayerIds.forEach(p => { if (!initial.includes(p)) initial.push(p); });
-          } else if (item.targetPlayer && !initial.includes(item.targetPlayer)) {
+          } else if (item.targetPlayer && myPlayerIds.includes(item.targetPlayer) && !initial.includes(item.targetPlayer)) {
             initial.push(item.targetPlayer);
           }
+          initial = initial.filter(p => myPlayerIds.includes(p));
           pendingViewerSelections[nick] = initial;
         }
 
-        const selectedArr = pendingViewerSelections[nick] || [];
+        const selectedArr = (pendingViewerSelections[nick] || []).filter(p => myPlayerIds.includes(p));
         const isCurrentlyApproved = item.status === 'approved' && item.allowed && item.allowed !== 'none';
 
         const card = document.createElement('div');
         card.className = 'p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 space-y-2.5 shadow-md';
 
-        const reqArr = Array.isArray(item.requestedPlayers) && item.requestedPlayers.length > 0
+        const rawReqArr = Array.isArray(item.requestedPlayers) && item.requestedPlayers.length > 0
           ? item.requestedPlayers
           : (item.targetPlayer === 'all' ? myPlayerIds : [item.targetPlayer || item.allowed || myPlayerIds[0] || '']);
+        const reqArr = rawReqArr.filter(pid => myPlayerIds.includes(pid));
         const reqLabels = reqArr.filter(Boolean).map(pid => getPlayerDisplayLabel(pid));
-        const reqPlayer = reqLabels.length > 0 ? reqLabels.join(' · ') : '선수';
+        const reqPlayer = reqLabels.length > 0 ? reqLabels.join(' · ') : (myPlayerIds[0] ? getPlayerDisplayLabel(myPlayerIds[0]) : '선수');
 
         let statusBadge = '';
         if (item.pendingAdditional && isCurrentlyApproved) {
@@ -5147,7 +5149,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.32';
+    const CURRENT_APP_VERSION = '2026.11.21.33';
 
     function checkForUpdates() {
       // Listen for Service Worker update
