@@ -162,20 +162,13 @@
             </div>
           </div>
 
-          <!-- Viewer-only: Select Target Athlete -->
-          <div id="signup-field-viewer-target" class="space-y-2 hidden">
-            <label class="block text-[11px] font-semibold text-amber-300">열람 신청할 선수 선택</label>
-            <div class="grid grid-cols-2 gap-2 text-xs">
-              <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-amber-400/50">
-                <input type="radio" name="signup-viewer-target" value="yusin" checked class="text-amber-500">
-                <span class="text-slate-200 font-bold">🏃 김유신 <span class="text-[10px] text-slate-400 font-normal">(육상)</span></span>
-              </label>
-              <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-amber-400/50">
-                <input type="radio" name="signup-viewer-target" value="byeolha" class="text-amber-500">
-                <span class="text-slate-200 font-bold">🚴 김별하 <span class="text-[10px] text-slate-400 font-normal">(사이클)</span></span>
-              </label>
-            </div>
-            <p class="text-[10px] text-slate-400">선수 관리자(지혜 님)의 승인 후 전체 기록이 열립니다.</p>
+          <!-- Viewer-only: Admin Invite Code Input (지혜 님 지침 완벽 반영!) -->
+          <div id="signup-field-viewer-invite" class="space-y-1.5 hidden">
+            <label class="block text-[11px] font-semibold text-amber-300">관리자 초대코드 *</label>
+            <input type="text" id="signup-viewer-invite-input" placeholder="관리자에게 전달받은 초대코드 입력" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-amber-500/40 text-xs text-white focus:outline-none focus:border-amber-400 font-mono tracking-wider transition">
+            <p class="text-[10px] text-slate-400 leading-relaxed">
+              선수 관리자(지혜 님)가 전달한 초대코드를 입력하면 해당 관리자 아래로 배정되어 열람 승인을 받을 수 있습니다.
+            </p>
           </div>
 
           <button type="submit" id="btn-signup-submit" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/20 transition active:scale-95">
@@ -314,6 +307,16 @@
         </h3>
         <button type="button" onclick="closeViewerApprovalModal()" class="text-slate-400 hover:text-white p-1">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="px-4 py-2.5 bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-1.5">
+          <span class="text-blue-400 font-bold">🔑 내 관리자 초대코드:</span>
+          <span class="font-mono font-bold text-white bg-slate-900 px-2 py-0.5 rounded border border-blue-500/40 tracking-wider">JIHYE-2026</span>
+        </div>
+        <button type="button" onclick="copyAdminInviteCode()" class="text-[10px] font-bold text-blue-300 hover:text-white px-2 py-1 rounded bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 transition active:scale-95">
+          코드 복사
         </button>
       </div>
 
@@ -719,13 +722,13 @@
     </div>
   </div>
 
-  <!-- Modal: Viewer Add Player Modal (뷰어 모드 전용 선수 추가 신청) -->
+  <!-- Modal: Viewer Add Player Modal (뷰어 모드: 선수 조회 후 열람 신청) -->
   <div id="modal-viewer-add-player" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-5 space-y-4">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span>👀</span>
-          <span>열람할 선수 추가 신청</span>
+          <span>열람할 선수 조회 및 신청</span>
         </h3>
         <button type="button" onclick="closeViewerAddPlayerModal()" class="text-slate-400 hover:text-white p-1">
           <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -733,27 +736,25 @@
       </div>
 
       <div class="space-y-3 text-xs">
-        <p class="text-slate-400">추가로 기록을 열람할 선수를 선택해 주세요.<br>관리자(지혜 님) 승인 후 열람이 가능합니다.</p>
-        <div class="space-y-2">
-          <label class="flex items-center gap-3 p-3 rounded-2xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-blue-500/50">
-            <input type="radio" name="viewer-add-target" value="yusin" checked class="text-blue-600">
-            <div>
-              <div class="font-bold text-slate-200">🏃 김유신 (육상)</div>
-              <div class="text-[10px] text-slate-400">단거리 400m · 100m · 200m</div>
-            </div>
-          </label>
-          <label class="flex items-center gap-3 p-3 rounded-2xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-pink-500/50">
-            <input type="radio" name="viewer-add-target" value="byeolha" class="text-pink-600">
-            <div>
-              <div class="font-bold text-slate-200">🚴 김별하 (사이클)</div>
-              <div class="text-[10px] text-slate-400">트랙 독주 · 500m · 1km추발</div>
-            </div>
-          </label>
+        <div class="space-y-1">
+          <label class="block font-semibold text-slate-300">선수 이름 조회</label>
+          <div class="flex gap-2">
+            <input type="text" id="input-search-viewer-player" placeholder="선수 이름 입력 (예: 김유신, 김별하)" onkeydown="if(event.key==='Enter')searchAthleteForViewer()" class="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500">
+            <button type="button" onclick="searchAthleteForViewer()" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition active:scale-95">
+              조회
+            </button>
+          </div>
+        </div>
+
+        <div id="viewer-search-result-container" class="space-y-2 pt-1">
+          <div class="p-3 text-center text-slate-500 text-[11px] rounded-2xl bg-slate-950/60 border border-slate-800">
+            선수 이름을 입력하고 [조회]를 눌러주세요.
+          </div>
         </div>
 
         <div class="pt-2 flex gap-2">
           <button type="button" onclick="closeViewerAddPlayerModal()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700">취소</button>
-          <button type="button" onclick="submitViewerAddPlayer()" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 shadow-md">열람 신청하기</button>
+          <button type="button" id="btn-submit-viewer-add" onclick="submitViewerAddPlayer()" disabled class="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-500 font-bold cursor-not-allowed transition">열람 신청하기</button>
         </div>
       </div>
     </div>
@@ -2630,7 +2631,7 @@
       const noticeAdmin = document.getElementById('signup-notice-admin');
       const noticeViewer = document.getElementById('signup-notice-viewer');
       const fieldSport = document.getElementById('signup-field-admin-sport');
-      const fieldTarget = document.getElementById('signup-field-viewer-target');
+      const fieldInvite = document.getElementById('signup-field-viewer-invite');
       const btnSubmit = document.getElementById('btn-signup-submit');
 
       if (role === 'admin') {
@@ -2639,7 +2640,7 @@
         if (noticeAdmin) noticeAdmin.classList.remove('hidden');
         if (noticeViewer) noticeViewer.classList.add('hidden');
         if (fieldSport) fieldSport.classList.remove('hidden');
-        if (fieldTarget) fieldTarget.classList.add('hidden');
+        if (fieldInvite) fieldInvite.classList.add('hidden');
         if (btnSubmit) btnSubmit.textContent = '선수 관리자 가입 완료하고 시작하기';
       } else {
         if (btnAdmin) btnAdmin.className = 'py-2.5 px-2 rounded-xl bg-slate-950 text-slate-400 border border-slate-800 font-bold text-center hover:text-slate-200 transition active:scale-95';
@@ -2647,8 +2648,8 @@
         if (noticeAdmin) noticeAdmin.classList.add('hidden');
         if (noticeViewer) noticeViewer.classList.remove('hidden');
         if (fieldSport) fieldSport.classList.add('hidden');
-        if (fieldTarget) fieldTarget.classList.remove('hidden');
-        if (btnSubmit) btnSubmit.textContent = '열람 뷰어 가입 및 승인 신청하기';
+        if (fieldInvite) fieldInvite.classList.remove('hidden');
+        if (btnSubmit) btnSubmit.textContent = '열람 뷰어 가입 완료하기';
       }
     }
 
@@ -2674,24 +2675,33 @@
         checkInitialAuthGate();
         alert(`🎉 ${name} 관리자님, 회원가입이 완료되었습니다!\n상단 [선수관리]에서 첫 자녀 선수를 등록해 보세요.`);
       } else {
-        // Viewer Sign-up
-        const targetPlayer = document.querySelector('input[name="signup-viewer-target"]:checked')?.value || 'yusin';
-        const targetName = targetPlayer === 'yusin' ? '김유신 (육상)' : '김별하 (사이클)';
+        // Viewer Sign-up with Admin Invite Code
+        const inviteInp = document.getElementById('signup-viewer-invite-input');
+        const inviteCode = (inviteInp ? inviteInp.value : '').trim().toUpperCase();
+
+        if (!inviteCode) {
+          alert('선수 관리자(지혜 님)에게 전달받은 초대코드를 입력해 주세요!');
+          if (inviteInp) inviteInp.focus();
+          return;
+        }
+
         const user = {
           id: 'viewer_' + Date.now(),
           name: name,
           email: email,
           role: 'viewer',
           approved: false,
-          targetPlayer: targetPlayer,
+          adminCode: inviteCode,
+          targetPlayer: 'yusin',
           allowedPlayers: []
         };
 
-        await registerViewerRequestAsync(name, targetPlayer);
+        await registerViewerRequestAsync(name, 'yusin');
 
         localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
         checkInitialAuthGate();
-        alert(`📨 ${targetName} 열람 승인 신청이 관리자(지혜 님)에게 전송되었습니다!`);
+        alert(`🎉 ${name} 뷰어님, 가입이 완료되었습니다!\n열람할 선수를 조회해 관리자(지혜 님)에게 승인을 신청하세요.`);
+        openViewerAddPlayerModal();
       }
     }
 
@@ -2722,8 +2732,9 @@
     }
 
     async function submitViewerAddPlayer() {
-      const selected = document.querySelector('input[name="viewer-add-target"]:checked')?.value || 'yusin';
-      const targetName = selected === 'yusin' ? '김유신 (육상)' : '김별하 (사이클)';
+      const selected = selectedViewerSearchPlayer || 'yusin';
+      const targetAthlete = MASTER_PLAYERS_DATA.find(p => p.id === selected);
+      const targetName = targetAthlete ? `${targetAthlete.name} (${targetAthlete.sport})` : '김유신';
 
       let authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
       let authUser = authUserStr ? JSON.parse(authUserStr) : null;
@@ -2752,7 +2763,7 @@
       closeViewerAddPlayerModal();
       closeSettingsModal();
       checkInitialAuthGate();
-      alert(`📨 ${targetName} 열람 신청이 관리자(지혜 님)에게 전송되었습니다!`);
+      alert(`📨 [${targetName}] 열람 신청이 관리자(지혜 님)에게 전송되었습니다!`);
     }
 
     async function registerViewerRequestAsync(nick, targetPlayer) {
@@ -2802,18 +2813,17 @@
       checkInitialAuthGate();
     }
 
-    // Viewers Registry for Super Admin & Admins
+    // Viewers Registry for Super Admin & Admins (클린 초기화: 더미 데이터 전격 퇴출!)
     const VIEWERS_REG_KEY = 'ATHLETE_GROWTH_VIEWERS_REG_V1';
     function getRegisteredViewers() {
       try {
         const raw = localStorage.getItem(VIEWERS_REG_KEY);
-        if (raw) return JSON.parse(raw);
+        if (raw) {
+          const list = JSON.parse(raw);
+          return list.filter(v => v && v.name !== '외할머니' && v.name !== '코치님' && v.name !== '하람아빠');
+        }
       } catch (e) {}
-      return [
-        { id: 'v_user_test', name: '유신', targetPlayer: 'yusin', approved: false, allowedPlayers: [], date: '2026-11-21', time: '방금 신청' },
-        { id: 'v_1', name: '외할머니', targetPlayer: 'all', approved: true, allowedPlayers: ['yusin', 'byeolha'], date: '2026-11-20', time: '어제' },
-        { id: 'v_2', name: '코치님', targetPlayer: 'yusin', approved: true, allowedPlayers: ['yusin'], date: '2026-11-20', time: '어제' }
-      ];
+      return [];
     }
     function saveRegisteredViewers(list) {
       localStorage.setItem(VIEWERS_REG_KEY, JSON.stringify(list));
@@ -3340,11 +3350,87 @@
       else badge.classList.add('hidden');
     }
 
+    function copyAdminInviteCode() {
+      const code = 'JIHYE-2026';
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+          alert('🔑 관리자 초대코드 [JIHYE-2026]가 복사되었습니다!\n가족이나 코치님께 전달해 주세요.');
+        }).catch(() => {
+          prompt('초대코드를 복사하세요:', code);
+        });
+      } else {
+        prompt('초대코드를 복사하세요:', code);
+      }
+    }
+
+    let selectedViewerSearchPlayer = null;
+
+    function searchAthleteForViewer() {
+      const inp = document.getElementById('input-search-viewer-player');
+      const query = (inp ? inp.value : '').trim().toLowerCase();
+      const container = document.getElementById('viewer-search-result-container');
+      const btnSubmit = document.getElementById('btn-submit-viewer-add');
+      if (!container) return;
+
+      selectedViewerSearchPlayer = null;
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.className = 'flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-500 font-bold cursor-not-allowed transition';
+      }
+
+      if (!query) {
+        container.innerHTML = '<div class="p-3 text-center text-slate-500 text-[11px] rounded-2xl bg-slate-950/60 border border-slate-800">선수 이름을 입력하고 [조회]를 눌러주세요.</div>';
+        return;
+      }
+
+      // Filter among master players
+      const matched = MASTER_PLAYERS_DATA.filter(p => p.name.includes(query) || (p.sport && p.sport.includes(query)) || query.includes(p.name));
+
+      if (matched.length === 0) {
+        container.innerHTML = `
+          <div class="p-3 text-center text-amber-400 text-[11px] rounded-2xl bg-amber-950/30 border border-amber-500/30 space-y-1">
+            <div>검색된 선수가 없습니다.</div>
+            <div class="text-[10px] text-slate-400">'김유신' 또는 '김별하'로 조회해 보세요.</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = matched.map((p, idx) => `
+        <label class="flex items-center gap-3 p-3 rounded-2xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-blue-500/50 transition">
+          <input type="radio" name="viewer-search-target-radio" value="${p.id}" ${idx === 0 ? 'checked' : ''} onchange="onViewerSelectSearchTarget('${p.id}')" class="text-blue-600">
+          <div>
+            <div class="font-bold text-slate-200 flex items-center gap-1.5">
+              <span>${p.sport.includes('육상') ? '🏃' : '🚴'}</span>
+              <span>${p.name}</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">${p.sport}</span>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-0.5">${p.mainEvent || ''} · ${p.birth || ''}</div>
+          </div>
+        </label>
+      `).join('');
+
+      onViewerSelectSearchTarget(matched[0].id);
+    }
+
+    function onViewerSelectSearchTarget(playerId) {
+      selectedViewerSearchPlayer = playerId;
+      const btnSubmit = document.getElementById('btn-submit-viewer-add');
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.className = 'flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition active:scale-95 shadow-md';
+      }
+    }
+
     function renderApprovalList() {
       const container = document.getElementById('approval-list-container');
       if (!container) return;
 
-      const keys = Object.keys(realtimeAuthData);
+      // Filter out dummy names: 외할머니, 코치님, 하람아빠
+      const dummyNames = ['외할머니', '코치님', '하람아빠'];
+      dummyNames.forEach(d => { delete realtimeAuthData[d]; });
+
+      const keys = Object.keys(realtimeAuthData).filter(k => !dummyNames.includes(k));
       if (keys.length === 0) {
         container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">아직 열람을 신청한 뷰어가 없습니다.</div>';
         return;
@@ -3360,12 +3446,17 @@
         let statusBadge = '';
         if (isApproved) {
           let allowedText = '전체';
-          if (item.allowed === 'yusin') allowedText = '김유신만';
-          else if (item.allowed === 'byeolha') allowedText = '김별하만';
+          if (item.allowed === 'yusin') allowedText = '김유신';
+          else if (item.allowed === 'byeolha') allowedText = '김별하';
+          else if (item.allowed === 'all') allowedText = '전체 (2인)';
           statusBadge = `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">승인됨 (${allowedText})</span>`;
         } else {
           statusBadge = '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">승인 대기중</span>';
         }
+
+        const isAll = item.allowed === 'all';
+        const hasYusin = isAll || item.allowed === 'yusin';
+        const hasByeolha = isAll || item.allowed === 'byeolha';
 
         card.innerHTML = `
           <div class="flex items-center justify-between">
@@ -3376,23 +3467,65 @@
             <span class="text-[10px] text-slate-500">${item.time || ''}</span>
           </div>
 
+          <!-- Buttons strictly per Jihye's directive: [전체] | [김유신] | [김별하] | [삭제] -->
           <div class="grid grid-cols-4 gap-1 pt-1 text-[11px]">
-            <button type="button" onclick="setViewerPermission('${nick}', 'yusin')" class="py-1.5 rounded-lg border ${item.allowed === 'yusin' ? 'bg-blue-600 text-white font-bold border-blue-500' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-blue-500'} active:scale-95 transition">
-              유신만
+            <button type="button" onclick="setViewerPermission('${nick}', 'all')" class="py-1.5 rounded-lg border ${isAll ? 'bg-indigo-600 text-white font-bold border-indigo-500 shadow-sm' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-indigo-500'} active:scale-95 transition">
+              전체
             </button>
-            <button type="button" onclick="setViewerPermission('${nick}', 'byeolha')" class="py-1.5 rounded-lg border ${item.allowed === 'byeolha' ? 'bg-pink-600 text-white font-bold border-pink-500' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-pink-500'} active:scale-95 transition">
-              별하만
+            <button type="button" onclick="toggleViewerSinglePlayer('${nick}', 'yusin')" class="py-1.5 rounded-lg border ${hasYusin ? 'bg-blue-600 text-white font-bold border-blue-500 shadow-sm' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-blue-500'} active:scale-95 transition">
+              김유신
             </button>
-            <button type="button" onclick="setViewerPermission('${nick}', 'all')" class="py-1.5 rounded-lg border ${item.allowed === 'all' ? 'bg-indigo-600 text-white font-bold border-indigo-500' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-indigo-500'} active:scale-95 transition">
-              남매전체
+            <button type="button" onclick="toggleViewerSinglePlayer('${nick}', 'byeolha')" class="py-1.5 rounded-lg border ${hasByeolha ? 'bg-pink-600 text-white font-bold border-pink-500 shadow-sm' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-pink-500'} active:scale-95 transition">
+              김별하
             </button>
-            <button type="button" onclick="setViewerPermission('${nick}', 'none')" class="py-1.5 rounded-lg border ${!isApproved ? 'bg-red-950/60 text-red-400 font-bold border-red-500/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-red-500'} active:scale-95 transition">
-              거절/깡통
+            <button type="button" onclick="deleteViewerFromApproval('${nick}')" class="py-1.5 rounded-lg border bg-rose-950/40 text-rose-300 font-bold border-rose-500/40 hover:bg-rose-900/50 active:scale-95 transition">
+              삭제
             </button>
           </div>
         `;
         container.appendChild(card);
       });
+    }
+
+    async function toggleViewerSinglePlayer(nick, target) {
+      const item = realtimeAuthData[nick] || {};
+      let cur = item.allowed || 'none';
+      let next = 'none';
+
+      if (target === 'yusin') {
+        if (cur === 'all') next = 'byeolha';
+        else if (cur === 'yusin') next = 'none';
+        else if (cur === 'byeolha') next = 'all';
+        else next = 'yusin';
+      } else if (target === 'byeolha') {
+        if (cur === 'all') next = 'yusin';
+        else if (cur === 'byeolha') next = 'none';
+        else if (cur === 'yusin') next = 'all';
+        else next = 'byeolha';
+      }
+
+      await setViewerPermission(nick, next);
+    }
+
+    async function deleteViewerFromApproval(nick) {
+      if (!confirm(`[${nick}] 뷰어를 열람 목록에서 삭제하시겠습니까?\n삭제 즉시 열람 권한이 차단됩니다.`)) return;
+
+      delete realtimeAuthData[nick];
+      const list = getRegisteredViewers().filter(v => v.name !== nick);
+      saveRegisteredViewers(list);
+
+      renderApprovalList();
+      updatePendingBadge();
+
+      try {
+        await fetch(AUTH_API_ENDPOINT, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
+        });
+      } catch (err) {
+        console.error('deleteViewer error:', err);
+      }
     }
 
     async function setViewerPermission(nick, allowed) {
