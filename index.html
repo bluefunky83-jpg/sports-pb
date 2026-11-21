@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.35</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.36</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.35
+        선수 성장노트 v2026.11.21.36
       </div>
     </div>
   </div>
@@ -3201,7 +3201,7 @@
       localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
       syncAdminToCloud(user);
       checkInitialAuthGate();
-      alert(`🎉 ${name} 관리자님, Google 계정으로 로그인되었습니다!\n상단 [선수관리]에서 첫 자녀 선수를 등록해 보세요.`);
+      alert(`🎉 ${name} 관리자님, Google 계정으로 로그인되었습니다!`);
     }
 
     function handleGoogleOneClickLogin() {
@@ -5168,7 +5168,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.35';
+    const CURRENT_APP_VERSION = '2026.11.21.36';
 
     function checkForUpdates() {
       // Listen for Service Worker update
