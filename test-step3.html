@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>3단계 입력 데이터 검증 격리 브라우저 테스트</title>
+</head>
+<body style="font-family: monospace; padding: 20px; background: #0f172a; color: #e2e8f0;">
+  <h2>선수 성장노트 3단계 격리 브라우저 검증</h2>
+  <pre id="test-output">테스트 실행 중...</pre>
+  <script>
+    const TEST_KEY = 'TEST_STEP3_RECORDS';
+    let consoleErrors = [];
+    const origErr = console.error;
+    console.error = (...args) => { consoleErrors.push(args.map(String).join(' ')); origErr.apply(console, args); };
+
+    function getEventTimeBounds(eventName) {
+      const ev = String(eventName || '').trim();
+      const shortEvents = ['100m', '200m', '300m', '1Lap', '500m독주', '4x100mR'];
+      const midEvents = ['400m', '4x400mR', '4x400mR(Mixed)', '1km추발', '2km단체추발'];
+      if (shortEvents.includes(ev)) return { min: 5, max: 600, label: `${ev} (5초 ~ 10분)` };
+      if (midEvents.includes(ev)) return { min: 20, max: 3600, label: `${ev} (20초 ~ 1시간)` };
+      return { min: 1, max: 86400, label: `${ev || '기타 종목'} (1초 ~ 24시간)` };
+    }
+
+    function validateRecordInput({ meetVal, eventName, hRaw, mRaw, sRaw, windRaw, windSign, rankRaw }) {
+      const cleanMeet = String(meetVal || '').trim();
+      if (!cleanMeet) return { ok: false, reason: '대회명을 입력해주세요.' };
+      const hStr = String(hRaw ?? '').trim();
+      const mStr = String(mRaw ?? '').trim();
+      const sStr = String(sRaw ?? '').trim();
+      if (hStr === '' && mStr === '' && sStr === '') return { ok: false, reason: '기록 시간을 입력해주세요.' };
+      const numPattern = /^-?\d+(\.\d+)?$/;
+      if ((hStr !== '' && !numPattern.test(hStr)) || (mStr !== '' && !numPattern.test(mStr)) || (sStr !== '' && !numPattern.test(sStr))) {
+        return { ok: false, reason: '기록 시간에는 숫자만 입력할 수 있습니다.' };
+      }
+      const hNum = hStr === '' ? 0 : Number(hStr);
+      const mNum = mStr === '' ? 0 : Number(mStr);
+      const sNum = sStr === '' ? 0 : Number(sStr);
+      if (!Number.isFinite(hNum) || !Number.isFinite(mNum) || !Number.isFinite(sNum) || hNum < 0 || mNum < 0 || sNum < 0) {
+        return { ok: false, reason: '기록 시간에는 음수를 입력할 수 없습니다.' };
+      }
+      if (hStr !== '' && !Number.isInteger(hNum)) return { ok: false, reason: '시간(시)은 정수만 입력할 수 있습니다.' };
+      if (mStr !== '' && !Number.isInteger(mNum)) return { ok: false, reason: '분은 정수만 입력할 수 있습니다.' };
+      if (mNum >= 60) return { ok: false, reason: '분은 0~59 사이의 값을 입력해주세요.' };
+      if (sNum >= 60) return { ok: false, reason: '초는 0 이상 60 미만의 값을 입력해주세요.' };
+      if (sStr.includes('.') && sStr.split('.')[1].length > 3) return { ok: false, reason: '초는 소수점 셋째 자리(0.001초)까지만 입력할 수 있습니다.' };
+      const totalSec = parseFloat((hNum * 3600 + mNum * 60 + sNum).toFixed(3));
+      if (totalSec === 0) return { ok: false, reason: '0초 기록은 저장할 수 없습니다. 경기 기록이 없다면 입력을 취소해 주세요.' };
+      const bounds = getEventTimeBounds(eventName);
+      if (totalSec < bounds.min || totalSec > bounds.max) return { ok: false, reason: `${bounds.label} 허용 범위를 벗어난 기록입니다.` };
+      let windVal = '';
+      const wStr = String(windRaw ?? '').trim();
+      if (wStr !== '') {
+        if (!numPattern.test(wStr)) return { ok: false, reason: '풍속에는 숫자만 입력할 수 있습니다.' };
+        const wNum = Number(wStr);
+        if (!Number.isFinite(wNum) || wNum < 0) return { ok: false, reason: '풍속 부호는 왼쪽 +/- 버튼으로 선택하고 숫자는 0 이상으로 입력해주세요.' };
+        const signedWind = (windSign === '-' ? -1 : 1) * wNum;
+        if (signedWind < -20.0 || signedWind > 20.0) return { ok: false, reason: '풍속은 -20.0 ~ +20.0 m/s 범위 내에서 입력해주세요.' };
+        windVal = (windSign === '-' ? '-' : '+') + wNum.toFixed(1);
+      }
+      const rkStr = String(rankRaw ?? '').trim();
+      if (rkStr !== '') {
+        const isPosInt = /^[1-9]\d{0,2}$/.test(rkStr);
+        const isStatus = /^(실격|기권|DNS|DNF)$/i.test(rkStr);
+        const isRoundRank = /^(예선|준결|준결승|결승)\s+[1-9]\d{0,2}$/.test(rkStr);
+        if (!isPosInt && !isStatus && !isRoundRank) return { ok: false, reason: '순위는 1 이상의 정수 또는 실격·기권·DNS·DNF만 입력할 수 있습니다.' };
+      }
+      return { ok: true, totalSec, windVal, rankVal: rkStr };
+    }
+
+    function runTests() {
+      localStorage.removeItem(TEST_KEY);
+      const results = {};
+
+      // 1. Normal record save
+      const n1 = validateRecordInput({ meetVal: '가상대회', eventName: '100m', hRaw: '', mRaw: '', sRaw: '11.23', windRaw: '0.8', windSign: '+', rankRaw: '1' });
+      const n2 = validateRecordInput({ meetVal: '가상사이클', eventName: '1km추발', hRaw: '', mRaw: '1', sRaw: '34.847', windRaw: '', windSign: '+', rankRaw: '' });
+      results.t1_normal_save = (n1.ok && n1.totalSec === 11.23 && n1.windVal === '+0.8' && n2.ok && n2.totalSec === 94.847) ? '성공' : '실패';
+
+      // 2. Min/Max bounds per event
+      const bShortMinOk = validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '5', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const bShortMinBad = !validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '4.9', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const bShortMaxOk = validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '10', sRaw: '0', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const bShortMaxBad = !validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '10', sRaw: '1', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const bMidBad = !validateRecordInput({ meetVal: 'A', eventName: '400m', hRaw: '', mRaw: '', sRaw: '19.9', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      results.t2_event_bounds = (bShortMinOk && bShortMinBad && bShortMaxOk && bShortMaxBad && bMidBad) ? '성공' : '실패';
+
+      // 3. Negative, non-numeric, invalid unit
+      const badNeg = !validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '-11.2', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const badNaN = !validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: 'abc', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const badMinDec = !validateRecordInput({ meetVal: 'A', eventName: '400m', hRaw: '', mRaw: '1.5', sRaw: '10', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const badSec60 = !validateRecordInput({ meetVal: 'A', eventName: '400m', hRaw: '', mRaw: '', sRaw: '60', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const badMin60 = !validateRecordInput({ meetVal: 'A', eventName: '400m', hRaw: '', mRaw: '60', sRaw: '10', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      results.t3_invalid_units_blocked = (badNeg && badNaN && badMinDec && badSec60 && badMin60) ? '성공' : '실패';
+
+      // 4. Decimal 3 digits allowed, 4 digits blocked
+      const dec3Ok = validateRecordInput({ meetVal: 'A', eventName: '1Lap', hRaw: '', mRaw: '', sRaw: '31.151', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const dec4Bad = !validateRecordInput({ meetVal: 'A', eventName: '1Lap', hRaw: '', mRaw: '', sRaw: '31.1519', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      results.t4_decimal_3_places = (dec3Ok && dec4Bad) ? '성공' : '실패';
+
+      // 5. Empty vs Zero distinction
+      const rEmpty = validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '', windRaw: '', windSign: '+', rankRaw: '' });
+      const rZero = validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '0', windRaw: '', windSign: '+', rankRaw: '' });
+      results.t5_empty_vs_zero = (!rEmpty.ok && !rZero.ok && rEmpty.reason !== rZero.reason && rEmpty.reason.includes('입력해주세요') && rZero.reason.includes('0초')) ? '성공' : '실패';
+
+      // 6. Wind empty + range
+      const wEmpty = validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '12.0', windRaw: '', windSign: '+', rankRaw: '' }).ok;
+      const wNegSign = validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '12.0', windRaw: '1.1', windSign: '-', rankRaw: '' });
+      const wDirectNeg = !validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '12.0', windRaw: '-1.1', windSign: '+', rankRaw: '' }).ok;
+      const wOver = !validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '12.0', windRaw: '25.0', windSign: '+', rankRaw: '' }).ok;
+      results.t6_wind_validation = (wEmpty && wNegSign.ok && wNegSign.windVal === '-1.1' && wDirectNeg && wOver) ? '성공' : '실패';
+
+      // 7. Rank + Tie sorting
+      const rkOk1 = validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '12.0', windRaw: '', windSign: '+', rankRaw: 'DNS' }).ok;
+      const rkOk2 = validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '12.0', windRaw: '', windSign: '+', rankRaw: '예선 95' }).ok;
+      const rkBad0 = !validateRecordInput({ meetVal: 'A', eventName: '100m', hRaw: '', mRaw: '', sRaw: '12.0', windRaw: '', windSign: '+', rankRaw: '0' }).ok;
+      const tieArr = [{ id: 'a', seconds: 11.5 }, { id: 'b', seconds: 11.5 }, { id: 'c', seconds: 11.8 }].sort((x, y) => x.seconds - y.seconds);
+      results.t7_rank_and_tie = (rkOk1 && rkOk2 && rkBad0 && tieArr[0].seconds === 11.5) ? '성공' : '실패';
+
+      // 8. Edit mode validation fail preserves existing record
+      let testStore = [{ id: 'rec_keep', date: '2026-11-21', meet: '기존대회', event: '100m', seconds: 12.34, rank: '1', wind: '+0.5' }];
+      localStorage.setItem(TEST_KEY, JSON.stringify(testStore));
+      const editCheck = validateRecordInput({ meetVal: '기존대회', eventName: '100m', hRaw: '', mRaw: '', sRaw: '-5', windRaw: '', windSign: '+', rankRaw: '' });
+      if (editCheck.ok) {
+        testStore[0].seconds = editCheck.totalSec;
+        localStorage.setItem(TEST_KEY, JSON.stringify(testStore));
+      }
+      const afterEdit = JSON.parse(localStorage.getItem(TEST_KEY));
+      results.t8_edit_fail_preserves_existing = (!editCheck.ok && afterEdit[0].seconds === 12.34) ? '성공' : '실패';
+
+      // 9. Regression check against all real event min/max shapes
+      const regressionSamples = [
+        ['100m', 0, 0, 11.08, '0.8', '+', '예선 26'],
+        ['100m', 0, 0, 14.59, '', '+', ''],
+        ['200m', 0, 0, 24.15, '0.6', '-', '예선 95'],
+        ['200m', 0, 0, 54.97, '', '+', ''],
+        ['300m', 0, 0, 43.11, '', '+', ''],
+        ['400m', 0, 0, 52.89, '', '+', '결승 3'],
+        ['400m', 0, 1, 11.42, '', '+', ''],
+        ['4x100mR', 0, 0, 45.8, '', '+', '결승 1'],
+        ['4x400mR', 0, 3, 32.33, '', '+', '결승 2'],
+        ['4x400mR(Mixed)', 0, 4, 42.24, '', '+', ''],
+        ['1Lap', 0, 0, 31.151, '', '+', ''],
+        ['500m독주', 0, 0, 49.742, '', '+', ''],
+        ['1km추발', 0, 1, 34.847, '', '+', ''],
+        ['2km단체추발', 0, 2, 56.2, '', '+', '']
+      ];
+      const allPass = regressionSamples.every(([ev, h, m, s, w, ws, rk]) =>
+        validateRecordInput({ meetVal: '회귀테스트', eventName: ev, hRaw: h ? String(h) : '', mRaw: m ? String(m) : '', sRaw: String(s), windRaw: w, windSign: ws, rankRaw: rk }).ok
+      );
+      results.t9_existing_records_regression = allPass ? '성공' : '실패';
+
+      localStorage.removeItem(TEST_KEY);
+      results.consoleErrorsCount = consoleErrors.length;
+      document.getElementById('test-output').textContent = JSON.stringify(results, null, 2);
+    }
+    runTests();
+  </script>
+</body>
+</html>
