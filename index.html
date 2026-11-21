@@ -3211,17 +3211,21 @@
       }
       saveRegisteredViewers(list);
 
-      realtimeAuthData[nick] = {
-        status: 'pending',
-        allowed: targetPlayer,
-        time: nowStr
-      };
-
       try {
+        const resGet = await fetch(AUTH_API_ENDPOINT);
+        const jsonGet = await resGet.json();
+        const latestData = (jsonGet && jsonGet.data) ? { ...jsonGet.data } : {};
+        latestData[nick] = {
+          status: 'pending',
+          allowed: targetPlayer,
+          time: nowStr
+        };
+        realtimeAuthData = latestData;
+
         await fetch(AUTH_API_ENDPOINT, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
+          body: JSON.stringify({ name: 'sports_pb_auth', data: latestData })
         });
       } catch (e) {
         console.warn('API sync warning:', e);
@@ -4426,7 +4430,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.10';
+    const CURRENT_APP_VERSION = '2026.11.21.11';
 
     function checkForUpdates() {
       // Listen for Service Worker update
