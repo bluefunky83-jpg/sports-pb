@@ -3789,6 +3789,9 @@
       }
     }
 
+    // Pending selections map for each viewer card: { [nick]: ['yusin', 'byeolha'] }
+    let pendingViewerSelections = {};
+
     function renderApprovalList() {
       const container = document.getElementById('approval-list-container');
       if (!container) return;
@@ -3806,26 +3809,43 @@
       container.innerHTML = '';
       keys.forEach(nick => {
         const item = realtimeAuthData[nick] || {};
-        const isApproved = item.status === 'approved' && item.allowed && item.allowed !== 'none';
+
+        // Initialize pending selections if not set
+        if (!pendingViewerSelections[nick]) {
+          let initial = [];
+          if (Array.isArray(item.allowedPlayers)) {
+            initial = [...item.allowedPlayers];
+          } else if (item.allowed === 'all') {
+            initial = ['yusin', 'byeolha'];
+          } else if (item.allowed === 'yusin') {
+            initial = ['yusin'];
+          } else if (item.allowed === 'byeolha') {
+            initial = ['byeolha'];
+          }
+          pendingViewerSelections[nick] = initial;
+        }
+
+        const selectedArr = pendingViewerSelections[nick] || [];
+        const isCurrentlyApproved = item.status === 'approved' && item.allowed && item.allowed !== 'none';
+
         const card = document.createElement('div');
         card.className = 'p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 space-y-2.5 shadow-md';
 
         const reqPlayer = item.targetPlayer === 'byeolha' ? '김별하 (사이클)' : (item.targetPlayer === 'all' ? '전체 (유신/별하)' : '김유신 (육상)');
 
         let statusBadge = '';
-        if (isApproved) {
-          let allowedText = '전체';
+        if (isCurrentlyApproved) {
+          let allowedText = '전체 (2인)';
           if (item.allowed === 'yusin') allowedText = '김유신';
           else if (item.allowed === 'byeolha') allowedText = '김별하';
-          else if (item.allowed === 'all') allowedText = '전체 (2인)';
           statusBadge = `<span class="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">✅ 승인됨 (${allowedText})</span>`;
         } else {
           statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">⏳ 승인 대기중</span>';
         }
 
-        const isAll = item.allowed === 'all';
-        const isYusin = item.allowed === 'yusin';
-        const isByeolha = item.allowed === 'byeolha';
+        const isYusin = selectedArr.includes('yusin');
+        const isByeolha = selectedArr.includes('byeolha');
+        const isAll = isYusin && isByeolha;
 
         card.innerHTML = `
           <div class="flex items-center justify-between">
@@ -3836,7 +3856,7 @@
             <span class="text-[10px] text-slate-400 font-mono">${item.time || ''}</span>
           </div>
 
-          <!-- Target Athlete Badge (지혜 님 3번 지침: 누구 열람 요청한건지 명확히 표출) -->
+          <!-- Target Athlete Badge -->
           <div class="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between text-xs">
             <span class="text-slate-400 text-[11px]">신청 대상 선수:</span>
             <span class="font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/30 text-[11px] flex items-center gap-1">
@@ -3844,58 +3864,76 @@
             </span>
           </div>
 
-          <!-- Buttons strictly per Jihye's directive: [전체] | [김유신] | [김별하] | [삭제] -->
-          <div class="grid grid-cols-4 gap-1.5 pt-1 text-xs">
-            <button type="button" onclick="setViewerPermission('${nick}', 'all')" class="py-2 rounded-xl border ${isAll ? 'bg-indigo-600 text-white font-black border-indigo-400 shadow-md ring-2 ring-indigo-400/50' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-indigo-500'} active:scale-95 transition">
-              전체
-            </button>
-            <button type="button" onclick="setViewerPermission('${nick}', 'yusin')" class="py-2 rounded-xl border ${isYusin ? 'bg-blue-600 text-white font-black border-blue-400 shadow-md ring-2 ring-blue-400/50' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-blue-500'} active:scale-95 transition">
-              김유신
-            </button>
-            <button type="button" onclick="setViewerPermission('${nick}', 'byeolha')" class="py-2 rounded-xl border ${isByeolha ? 'bg-pink-600 text-white font-black border-pink-400 shadow-md ring-2 ring-pink-400/50' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-pink-500'} active:scale-95 transition">
-              김별하
-            </button>
-            <button type="button" onclick="deleteViewerFromApproval('${nick}')" class="py-2 rounded-xl border bg-rose-950/40 text-rose-300 font-bold border-rose-500/40 hover:bg-rose-900/50 active:scale-95 transition">
-              삭제
-            </button>
+          <!-- Multi-select toggle buttons (선택 후 저장 방식) -->
+          <div class="space-y-2 pt-1">
+            <div class="grid grid-cols-3 gap-1.5 text-xs">
+              <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'all')" class="py-2 rounded-xl border ${isAll ? 'bg-indigo-600 text-white font-black border-indigo-400 shadow-md ring-2 ring-indigo-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-indigo-500'} active:scale-95 transition">
+                전체
+              </button>
+              <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'yusin')" class="py-2 rounded-xl border ${isYusin ? 'bg-blue-600 text-white font-black border-blue-400 shadow-md ring-2 ring-blue-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-blue-500'} active:scale-95 transition">
+                김유신
+              </button>
+              <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'byeolha')" class="py-2 rounded-xl border ${isByeolha ? 'bg-pink-600 text-white font-black border-pink-400 shadow-md ring-2 ring-pink-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-pink-500'} active:scale-95 transition">
+                김별하
+              </button>
+            </div>
+
+            <!-- Action buttons: [💾 선택 저장] & [삭제] -->
+            <div class="flex gap-1.5 pt-0.5">
+              <button type="button" onclick="saveViewerPermission('${nick}')" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition flex items-center justify-center gap-1.5">
+                <span>💾</span><span>선택 저장</span>
+              </button>
+              <button type="button" onclick="deleteViewerFromApproval('${nick}')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/50 text-xs font-semibold active:scale-95 transition">
+                삭제
+              </button>
+            </div>
           </div>
         `;
         container.appendChild(card);
       });
     }
 
-    async function toggleViewerSinglePlayer(nick, target) {
-      await setViewerPermission(nick, target);
-    }
+    function toggleViewerPlayerPending(nick, target) {
+      if (!pendingViewerSelections[nick]) pendingViewerSelections[nick] = [];
+      let arr = pendingViewerSelections[nick];
 
-    async function deleteViewerFromApproval(nick) {
-      if (!confirm(`[${nick}] 뷰어를 열람 목록에서 삭제하시겠습니까?\n삭제 즉시 열람 권한이 차단됩니다.`)) return;
-
-      delete realtimeAuthData[nick];
-      const list = getRegisteredViewers().filter(v => v.name !== nick);
-      saveRegisteredViewers(list);
+      if (target === 'all') {
+        if (arr.includes('yusin') && arr.includes('byeolha')) {
+          pendingViewerSelections[nick] = [];
+        } else {
+          pendingViewerSelections[nick] = ['yusin', 'byeolha'];
+        }
+      } else if (target === 'yusin') {
+        if (arr.includes('yusin')) {
+          pendingViewerSelections[nick] = arr.filter(x => x !== 'yusin');
+        } else {
+          pendingViewerSelections[nick] = [...arr, 'yusin'];
+        }
+      } else if (target === 'byeolha') {
+        if (arr.includes('byeolha')) {
+          pendingViewerSelections[nick] = arr.filter(x => x !== 'byeolha');
+        } else {
+          pendingViewerSelections[nick] = [...arr, 'byeolha'];
+        }
+      }
 
       renderApprovalList();
-      updatePendingBadge();
-      updateSuperAdminStats();
-
-      try {
-        await fetch(AUTH_API_ENDPOINT, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
-        });
-      } catch (err) {
-        console.error('deleteViewer error:', err);
-      }
     }
 
-    async function setViewerPermission(nick, allowed) {
-      const isApproved = (allowed && allowed !== 'none');
+    async function saveViewerPermission(nick) {
+      const selectedArr = pendingViewerSelections[nick] || [];
+      const isApproved = selectedArr.length > 0;
+
+      let allowedStr = 'none';
+      if (selectedArr.includes('yusin') && selectedArr.includes('byeolha')) allowedStr = 'all';
+      else if (selectedArr.includes('yusin')) allowedStr = 'yusin';
+      else if (selectedArr.includes('byeolha')) allowedStr = 'byeolha';
+
       realtimeAuthData[nick] = {
         ...(realtimeAuthData[nick] || {}),
         status: isApproved ? 'approved' : 'pending',
-        allowed: allowed,
+        allowed: allowedStr,
+        allowedPlayers: [...selectedArr],
         approved: isApproved,
         time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
       };
@@ -3905,10 +3943,7 @@
       const existing = list.find(v => v.name === nick);
       if (existing) {
         existing.approved = isApproved;
-        if (allowed === 'all') existing.allowedPlayers = ['yusin', 'byeolha'];
-        else if (allowed === 'yusin') existing.allowedPlayers = ['yusin'];
-        else if (allowed === 'byeolha') existing.allowedPlayers = ['byeolha'];
-        else existing.allowedPlayers = [];
+        existing.allowedPlayers = [...selectedArr];
         saveRegisteredViewers(list);
       }
 
@@ -3926,8 +3961,32 @@
         console.error('Update permission error:', err);
       }
 
-      const targetText = allowed === 'all' ? '전체 (2인)' : (allowed === 'byeolha' ? '김별하' : '김유신');
-      alert(`✅ [${nick}] 님의 열람 권한이 [${targetText}]으로 승인 저장되었습니다!\n상대방 폰의 모래시계 화면이 실시간으로 자동 해제됩니다.`);
+      const targetText = isApproved ? (allowedStr === 'all' ? '전체 (2인)' : (allowedStr === 'byeolha' ? '김별하' : '김유신')) : '승인 대기';
+      alert(`✅ [${nick}] 님의 열람 권한이 [${targetText}]으로 저장되었습니다!\n상대방 폰에 실시간으로 즉시 적용됩니다.`);
+    }
+
+    async function deleteViewerFromApproval(nick) {
+      if (!confirm(`[${nick}] 뷰어를 열람 목록에서 삭제하시겠습니까?\n삭제 즉시 열람 권한이 차단됩니다.`)) return;
+
+      delete realtimeAuthData[nick];
+      delete pendingViewerSelections[nick];
+
+      const list = getRegisteredViewers().filter(v => v.name !== nick);
+      saveRegisteredViewers(list);
+
+      renderApprovalList();
+      updatePendingBadge();
+      updateSuperAdminStats();
+
+      try {
+        await fetch(AUTH_API_ENDPOINT, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
+        });
+      } catch (err) {
+        console.error('deleteViewer error:', err);
+      }
     }
 
     // --- Viewer Real-time Approval Polling (지혜 님 3번 지침 완벽 반영!) ---
