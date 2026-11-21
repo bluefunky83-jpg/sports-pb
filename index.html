@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.33</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.34</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.33
+        선수 성장노트 v2026.11.21.34
       </div>
     </div>
   </div>
@@ -4016,19 +4016,23 @@
       const c = document.getElementById('admin-approved-viewers-list');
       if (!c) return;
       const scopeId = getCurrentAdminScopeId();
+      const myPlayers = getCurrentAdminPlayersList();
+      const myPlayerIds = myPlayers.map(p => p.id);
       const dummyNames = ['외할머니', '코치님', '하람아빠'];
       const approvedKeys = Object.keys(realtimeAuthData).filter(k => {
         if (k.startsWith('_') || dummyNames.includes(k)) return false;
         const v = realtimeAuthData[k];
-        return v && isViewerOwnedByCurrentAdmin(v, scopeId) && v.status === 'approved' && v.allowed && v.allowed !== 'none';
+        if (!v || !isViewerOwnedByCurrentAdmin(v, scopeId) || v.status !== 'approved' || !v.allowed || v.allowed === 'none') return false;
+        const allowedList = Array.isArray(v.allowedPlayers) && v.allowedPlayers.length > 0
+          ? v.allowedPlayers
+          : (v.allowed === 'all' ? myPlayerIds : [v.allowed]);
+        return allowedList.some(pid => myPlayerIds.includes(pid));
       });
       if (approvedKeys.length === 0) {
         c.innerHTML = '<div class="py-4 text-center text-slate-500 text-[11px]">승인된 뷰어가 없습니다.</div>';
         return;
       }
       c.innerHTML = '';
-      const myPlayers = getCurrentAdminPlayersList();
-      const myPlayerIds = myPlayers.map(p => p.id);
 
       approvedKeys.forEach(nick => {
         const item = realtimeAuthData[nick] || {};
@@ -5149,7 +5153,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.33';
+    const CURRENT_APP_VERSION = '2026.11.21.34';
 
     function checkForUpdates() {
       // Listen for Service Worker update
