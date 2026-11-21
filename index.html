@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.29</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.30</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.29
+        선수 성장노트 v2026.11.21.30
       </div>
     </div>
   </div>
@@ -1004,6 +1004,10 @@
     let isTeammateEditMode = false;
     let selectedTeammatesToDelete = new Set();
 
+    // Pure Master Data Snapshot (must be captured BEFORE loadDataFromStorage!)
+    const MASTER_PLAYERS_DATA = JSON.parse(JSON.stringify(playersData));
+    const MASTER_APP_DATA = JSON.parse(JSON.stringify(appData));
+
     function getStableAdminId(email, name) {
       const base = (email && email.includes('@')) ? email.trim().toLowerCase() : (name || 'user').trim().toLowerCase();
       return 'admin_' + base.replace(/[^a-z0-9가-힣._-]/g, '_');
@@ -1019,7 +1023,7 @@
           localStorage.setItem('CUSTOM_DATA_' + stableKey, JSON.stringify(appData));
           localStorage.setItem('CUSTOM_PLAYERS_' + stableKey, JSON.stringify(playersData));
           syncAdminToCloud(authUser);
-        } else {
+        } else if (authUser && authUser.role === 'super_admin') {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
           localStorage.setItem(PLAYERS_KEY, JSON.stringify(playersData));
         }
@@ -2861,9 +2865,6 @@
 
     
     // --- Role-based Data Isolation ---
-    const MASTER_PLAYERS_DATA = JSON.parse(JSON.stringify(playersData));
-    const MASTER_APP_DATA = JSON.parse(JSON.stringify(appData));
-
     function syncDataForUserRole(user) {
       if (!user) return;
       if (user.role === 'super_admin') {
@@ -5037,7 +5038,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.29';
+    const CURRENT_APP_VERSION = '2026.11.21.30';
 
     function checkForUpdates() {
       // Listen for Service Worker update
