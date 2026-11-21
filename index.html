@@ -2645,12 +2645,11 @@
         }
       });
 
-      const selectedModalEvent = document.getElementById('form-record-event')?.value;
       const newEntry = {
         id: editingRecordId || ('rec_' + Date.now()),
         date: dateVal,
         meet: meetVal,
-        event: selectedModalEvent || (currentEvent === 'ALL_PB' ? (getPlayerEvents(currentPlayer)[0] || '100m') : currentEvent),
+        event: targetEvent,
         kind: selectedKind,
         round: selectedRound,
         seconds: totalSec,
