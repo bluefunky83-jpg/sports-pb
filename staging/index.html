@@ -6705,6 +6705,162 @@
 
     executeAdminTransferAndWithdraw = function() {
       const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
+      if (!stagingTransferSelectedTarget) { alert('이전받을 관리자를 검색해 직접 선택해 주세요.'); return; }
+      if (!stagingTransferAccepted) { alert('이전받는 관리자의 명시적 수락 절차를 먼저 진행해 주세요.'); return; }
+      const checkedPids = Array.from(document.querySelectorAll('.withdraw-transfer-chk:checked')).map(c => c.value);
+      const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
+      const targetAdm = cloud._admins[stagingTransferSelectedTarget.id];
+      if (!targetAdm) { alert('대상 관리자 정보를 찾을 수 없습니다.'); return; }
+      checkedPids.forEach(pid => {
+        const pl = playersData.find(p => p.id === pid);
+        if (pl && !(targetAdm.players || []).some(x => x.id === pid)) {
+          targetAdm.players = targetAdm.players || []; targetAdm.players.push(pl);
+          targetAdm.records = targetAdm.records || {}; targetAdm.records[pid] = appData[pid] || [];
+        }
+      });
+      Object.entries(cloud).forEach(([k, v]) => {
+        if (!k.startsWith('_') && v && v.ownerAdminId === authUser.id && checkedPids.includes(v.targetPlayer)) {
+          v.ownerAdminId = stagingTransferSelectedTarget.id;
+          v.coachChangedNotice = true;
+        }
+      });
+      delete cloud._admins[authUser.id];
+      saveStagingCloud(cloud);
+      const accounts = getStagingAccounts();
+      if (accounts[authUser.email.toLowerCase()]) { accounts[authUser.email.toLowerCase()].status = 'withdrawn'; saveStagingAccounts(accounts); }
+      localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
+      localStorage.removeItem('STAGING_CUSTOM_PLAYERS_v2_' + authUser.id);
+      localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + authUser.id);
+      alert('✅ [로컬 시뮬레이션] 선수·기록·학부모 권한 이전 및 관리자 탈퇴가 완료되었습니다.');
+      window.location.reload();
+    };
+
+  
+    // =========================================================================
+    // TRANSACTIONAL ADMIN DATA TRANSFER, TOMBSTONE MERGE & VIEWER SCOPE PRESERVATION
+    // =========================================================================
+    function getOwnedAdminDataset(authUser) {
+      if (!authUser || authUser.role !== 'admin') return { players: [], records: {}, deletedPlayers: {}, deletedRecords: {} };
+      const stableKey = getStableAdminId(authUser.email, authUser.name);
+      const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
+      const cloudAdm = (cloud._admins && (cloud._admins[authUser.id] || cloud._admins[stableKey])) || null;
+
+      let localPlayers = [];
+      let localRecords = {};
+      try { localPlayers = JSON.parse(localStorage.getItem('STAGING_CUSTOM_PLAYERS_v2_' + stableKey) || '[]'); } catch (e) {}
+      try { localRecords = JSON.parse(localStorage.getItem('STAGING_CUSTOM_DATA_v2_' + stableKey) || '{}'); } catch (e) {}
+
+      const filterPlayers = (arr) => (Array.isArray(arr) ? arr : []).filter(p => p && p.id && p.id !== 'yusin' && p.id !== 'byeolha');
+      const ownPlayers = filterPlayers(localPlayers.length ? localPlayers : (cloudAdm ? cloudAdm.players : []));
+      const ownPlayerIds = new Set(ownPlayers.map(p => p.id));
+
+      const ownRecords = {};
+      ownPlayerIds.forEach(pid => {
+        const srcRecs = (localRecords && Array.isArray(localRecords[pid])) ? localRecords[pid]
+          : (cloudAdm && cloudAdm.records && Array.isArray(cloudAdm.records[pid])) ? cloudAdm.records[pid] : [];
+        ownRecords[pid] = JSON.parse(JSON.stringify(srcRecs));
+      });
+
+      const localTomb = getAdminTombstones(stableKey);
+      const deletedPlayers = Object.assign({}, (cloudAdm && cloudAdm.deletedPlayers) || {}, localTomb.deletedPlayers || {});
+      const deletedRecords = Object.assign({}, (cloudAdm && cloudAdm.deletedRecords) || {}, localTomb.deletedRecords || {});
+      return { players: ownPlayers, records: ownRecords, deletedPlayers, deletedRecords, stableKey };
+    }
+
+    function mergeTombstoneMaps(baseMap, incomingMap) {
+      const merged = Object.assign({}, baseMap || {});
+      Object.entries(incomingMap || {}).forEach(([k, v]) => {
+        if (!merged[k]) {
+          merged[k] = v;
+        } else {
+          const tBase = Number(merged[k].deletedAt || 0);
+          const tInc = Number((v && v.deletedAt) || 0);
+          if (tInc > tBase) merged[k] = v;
+        }
+      });
+      return merged;
+    }
+
+    openAdminWithdrawModal = function() {
+      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
+      if (!authUser || !authUser.email) return;
+      if (authUser.role === 'super_admin') { alert('👑 최고관리자 계정은 일반 탈퇴 절차로 삭제할 수 없도록 보호되어 있습니다.'); return; }
+      if (authUser.role === 'viewer') {
+        if (!confirm('정말 뷰어 회원 탈퇴를 진행하시겠습니까?\n열람 권한이 즉시 정리되며 기존 계정으로 재로그인할 수 없습니다.')) return;
+        const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{}');
+        findAllViewerCloudEntries(cloud, authUser).forEach(({ key }) => delete cloud[key]);
+        saveStagingCloud(cloud);
+        const accounts = getStagingAccounts();
+        if (accounts[authUser.email.toLowerCase()]) { accounts[authUser.email.toLowerCase()].status = 'withdrawn'; saveStagingAccounts(accounts); }
+        localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
+        alert('✅ 뷰어 회원 탈퇴가 완료되었습니다.');
+        window.location.reload(); return;
+      }
+      const owned = getOwnedAdminDataset(authUser);
+      const totalRecs = Object.values(owned.records).reduce((a, b) => a + (Array.isArray(b) ? b.length : 0), 0);
+      const tombCnt = Object.keys(owned.deletedPlayers).length + Object.keys(owned.deletedRecords).length;
+      document.getElementById('withdraw-summary-box').innerHTML = `<div>계정: <strong>${authUser.email}</strong></div><div>보유 선수: <strong>${owned.players.length}명</strong> / 경기기록: <strong>${totalRecs}건</strong> / 삭제이력: <strong>${tombCnt}건</strong></div>`;
+      document.getElementById('withdraw-transfer-panel').classList.add('hidden');
+      document.getElementById('withdraw-delete-panel').classList.add('hidden');
+      document.getElementById('modal-admin-withdraw').classList.remove('hidden');
+    };
+
+    selectWithdrawMode = function(mode) {
+      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
+      const owned = getOwnedAdminDataset(authUser);
+      const tp = document.getElementById('withdraw-transfer-panel');
+      const dp = document.getElementById('withdraw-delete-panel');
+      if (mode === 'transfer') {
+        tp.classList.remove('hidden'); dp.classList.add('hidden');
+        const emailInp = document.getElementById('withdraw-search-email');
+        if (emailInp) emailInp.value = '';
+        resetTransferSelectionState();
+        const playersHtml = owned.players.map(p => {
+          const cnt = (owned.records[p.id] || []).length;
+          return `<label class="flex items-center gap-2"><input type="checkbox" class="withdraw-transfer-chk" value="${p.id}" checked onchange="onTransferPlayersChanged()"><span>${p.name} (${cnt}건)</span></label>`;
+        }).join('') || '<div class="text-slate-500">보유 선수 없음</div>';
+        document.getElementById('withdraw-transfer-players').innerHTML = playersHtml +
+          '<div class="text-[10px] text-amber-300 pt-1">⚠️ 일반 관리자 탈퇴 시 소유한 모든 선수·기록이 전체 이전되어야 합니다. 일부만 선택한 상태에서는 탈퇴할 수 없습니다.</div>';
+      } else {
+        dp.classList.remove('hidden'); tp.classList.add('hidden');
+        const totalRecs = Object.values(owned.records).reduce((a, b) => a + (Array.isArray(b) ? b.length : 0), 0);
+        document.getElementById('withdraw-delete-preview').innerHTML = `⚠️ <strong>영구 삭제 경고</strong><br>- 삭제 대상 선수: ${owned.players.length}명<br>- 삭제 대상 기록: ${totalRecs}건<br>- 삭제된 데이터는 복구할 수 없으며, 다른 관리자의 데이터는 보존됩니다.`;
+      }
+    };
+
+    simulateTransferTargetAccept = function() {
+      if (!stagingTransferSelectedTarget) return;
+      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
+      const owned = getOwnedAdminDataset(authUser);
+      const checkedPids = Array.from(document.querySelectorAll('.withdraw-transfer-chk:checked')).map(c => c.value);
+      if (checkedPids.length !== owned.players.length) {
+        alert(`일부 선수만 선택한 상태에서는 탈퇴할 수 없습니다.\n소유한 전체 선수(${owned.players.length}명)를 모두 선택해 주세요.`);
+        return;
+      }
+      stagingTransferAccepted = true;
+      const accBtn = document.getElementById('btn-simulate-target-accept');
+      if (accBtn) { accBtn.disabled = true; accBtn.textContent = '✅ 수락 완료 (로컬 시뮬레이션)'; }
+
+      const recCount = checkedPids.reduce((s, pid) => s + (Array.isArray(owned.records[pid]) ? owned.records[pid].length : 0), 0);
+      const tombPlayers = Object.keys(owned.deletedPlayers || {}).length;
+      const tombRecs = Object.keys(owned.deletedRecords || {}).length;
+
+      const prevEl = document.getElementById('withdraw-final-preview');
+      prevEl.innerHTML = `
+        <div class="font-bold text-blue-300 mb-1">📋 최종 이전 확인 (로컬 시뮬레이션)</div>
+        <div>• 이전받을 관리자: <strong>${stagingTransferSelectedTarget.name}</strong> (${stagingTransferSelectedTarget.email})</div>
+        <div>• 이전 대상 선수: <strong>${checkedPids.length}명</strong> (전체 필수)</div>
+        <div>• 이전 대상 경기기록: <strong>${recCount}건</strong></div>
+        <div>• 관련 삭제이력: 선수 ${tombPlayers}건 · 기록 ${tombRecs}건</div>
+        <div class="text-emerald-300 mt-1">• 학부모 뷰어 권한(allowedPlayers 기준)만 승계되며 권한 확대는 없습니다.</div>
+      `;
+      prevEl.classList.remove('hidden');
+      const execBtn = document.getElementById('btn-execute-transfer-withdraw');
+      if (execBtn) execBtn.disabled = false;
+    };
+
+    executeAdminTransferAndWithdraw = function() {
+      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
       if (!authUser || authUser.role !== 'admin') return;
       if (!stagingTransferSelectedTarget) { alert('이전받을 관리자를 검색해 직접 선택해 주세요.'); return; }
       if (!stagingTransferAccepted) { alert('이전받는 관리자의 명시적 수락 절차를 먼저 진행해 주세요.'); return; }
