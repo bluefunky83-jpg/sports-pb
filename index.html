@@ -314,14 +314,19 @@
         </button>
       </div>
 
-      <div class="px-4 py-2.5 bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
-        <div class="flex items-center gap-1.5">
-          <span class="text-blue-400 font-bold">🔑 내 관리자 초대코드:</span>
-          <span class="font-mono font-bold text-white bg-slate-900 px-2 py-0.5 rounded border border-blue-500/40 tracking-wider">JIHYE-2026</span>
+      <div class="px-4 py-2.5 bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border-b border-slate-800 flex items-center justify-between text-xs gap-1.5">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="text-blue-400 font-bold shrink-0">🔑 초대코드:</span>
+          <span class="font-mono font-bold text-white bg-slate-900 px-2 py-0.5 rounded border border-blue-500/40 tracking-wider text-[11px]">JIHYE-2026</span>
         </div>
-        <button type="button" onclick="copyAdminInviteCode()" class="text-[10px] font-bold text-blue-300 hover:text-white px-2 py-1 rounded bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 transition active:scale-95">
-          코드 복사
-        </button>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" onclick="copyAdminInviteCode()" class="text-[10px] font-bold text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 transition active:scale-95">
+            코드 복사
+          </button>
+          <button type="button" onclick="shareKakaoInviteLink()" class="text-[10px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 px-2.5 py-1 rounded-lg transition active:scale-95 shadow flex items-center gap-1">
+            <span>💬</span><span>카톡 초대</span>
+          </button>
+        </div>
       </div>
 
       <div class="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
@@ -3438,6 +3443,56 @@
       }
     }
 
+    function shareKakaoInviteLink() {
+      const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=JIHYE-2026`;
+      const shareTitle = '🏃 운동 성장노트 — 선수 기록 열람 초대';
+      const shareText = `[운동 성장노트]\n지혜 님이 선수 경기 기록 열람에 초대했습니다!\n아래 링크를 누르면 초대코드가 자동 입력되어 바로 신청할 수 있습니다 👇\n${inviteUrl}`;
+
+      if (navigator.share) {
+        navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: inviteUrl
+        }).catch(err => {
+          if (err.name !== 'AbortError') copyInviteUrlFallback(inviteUrl);
+        });
+      } else {
+        copyInviteUrlFallback(inviteUrl);
+      }
+    }
+
+    function copyInviteUrlFallback(url) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          alert('💬 카톡 초대 링크가 클립보드에 복사되었습니다!\n카카오톡 대화방에 붙여넣어 보내주세요.\n\n상대방이 링크를 누르면 초대코드가 자동 입력됩니다.');
+        }).catch(() => {
+          prompt('카톡 초대 링크를 복사하세요:', url);
+        });
+      } else {
+        prompt('카톡 초대 링크를 복사하세요:', url);
+      }
+    }
+
+    function checkInviteParamOnLoad() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const inviteCode = params.get('invite');
+        if (inviteCode) {
+          setTimeout(() => {
+            switchAuthTab('signup');
+            switchSignupRole('viewer');
+            const inp = document.getElementById('signup-viewer-invite-input');
+            if (inp) {
+              inp.value = inviteCode;
+              inp.classList.add('ring-2', 'ring-amber-400');
+            }
+          }, 300);
+        }
+      } catch (e) {
+        console.warn('checkInviteParamOnLoad note:', e);
+      }
+    }
+
     let selectedViewerSearchPlayer = null;
 
     function searchAthleteForViewer() {
@@ -3752,6 +3807,7 @@
       renderEventTabs();
       renderCurrentView();
       initGoogleOneTap();
+      checkInviteParamOnLoad();
     });
   </script>
 
