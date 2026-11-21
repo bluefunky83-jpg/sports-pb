@@ -281,28 +281,16 @@
   <div id="modal-viewer-approvals" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
       <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
+        <div class="flex items-center gap-2">
           <span>🔔</span>
-          <span>뷰어 열람 승인 관리</span>
-        </h3>
+          <h3 class="text-base font-bold text-white">뷰어 열람 승인 관리</h3>
+          <button type="button" onclick="shareKakaoInviteLink()" class="ml-1 text-[11px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 px-2 py-0.5 rounded-lg transition active:scale-95 shadow flex items-center gap-1">
+            <span>💬</span><span>앱초대</span>
+          </button>
+        </div>
         <button type="button" onclick="closeViewerApprovalModal()" class="text-slate-400 hover:text-white p-1">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
-      </div>
-
-      <div class="px-4 py-2.5 bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border-b border-slate-800 flex items-center justify-between text-xs gap-1.5">
-        <div class="flex items-center gap-1.5 min-w-0">
-          <span class="text-blue-400 font-bold shrink-0">🔑 초대코드:</span>
-          <span class="font-mono font-bold text-white bg-slate-900 px-2 py-0.5 rounded border border-blue-500/40 tracking-wider text-[11px]">JIHYE-2026</span>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="copyAdminInviteCode()" class="text-[10px] font-bold text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 transition active:scale-95">
-            코드 복사
-          </button>
-          <button type="button" onclick="shareKakaoInviteLink()" class="text-[10px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 px-2.5 py-1 rounded-lg transition active:scale-95 shadow flex items-center gap-1">
-            <span>💬</span><span>카톡 초대</span>
-          </button>
-        </div>
       </div>
 
       <div class="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
@@ -593,7 +581,7 @@
 
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block font-semibold text-slate-400 mb-1">운동 대분류 *</label>
+            <label class="block font-semibold text-slate-400 mb-1">종목 대분류 *</label>
             <input type="hidden" id="form-player-sport" value="육상">
             <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
               <button type="button" id="btn-sport-track" onclick="setFormPlayerSport('육상', true)" class="py-2 rounded-lg font-bold text-center bg-blue-600 text-white transition active:scale-95 shadow-sm">🏃 육상</button>
@@ -602,22 +590,25 @@
           </div>
           <div>
             <label class="block font-semibold text-slate-400 mb-1">주종목 *</label>
-            <input type="text" id="form-player-event" placeholder="주종목 입력" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <input type="hidden" id="form-player-event" value="단거리">
+            <div id="form-player-main-event-container" class="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+              <!-- Dynamically populated buttons according to sport -->
+            </div>
           </div>
         </div>
 
-        <!-- Event Categories Management (Add / Delete) -->
+        <!-- Event Categories Management (Toggle Chips) -->
         <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
           <label class="block font-semibold text-blue-400 text-xs flex items-center justify-between">
             <span>🏃 출전 세부 종목 탭 관리</span>
-            <span class="text-[10px] text-slate-500">상단 탭에 반영</span>
+            <span class="text-[10px] text-slate-500">터치해서 On/Off</span>
           </label>
           <div class="flex flex-wrap gap-1.5" id="form-player-events-chips">
-            <!-- Dynamically populated chips with (x) delete -->
+            <!-- Dynamically populated toggle chips -->
           </div>
-          <div class="space-y-1.5 pt-1">
+          <div class="space-y-1.5 pt-1.5 border-t border-slate-900 mt-2">
             <div class="flex gap-1.5">
-              <input type="text" id="input-new-event" placeholder="새 종목명 입력" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+              <input type="text" id="input-new-event" placeholder="새 종목명 입력" class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
               <button type="button" onclick="addEventToCurrentFormPlayer()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs whitespace-nowrap active:scale-95 transition">
                 + 종목 추가
               </button>
@@ -2177,33 +2168,144 @@
       closePlayerManageModal();
     }
 
-    // 10-1. Player Profile Form: Event Add/Delete Management
+    // 10-1. Player Profile Form: Event Add/Delete & Catalog Toggle Management
+    const SPORT_MAIN_EVENTS = {
+      '육상': ['단거리'],
+      '사이클': ['트랙']
+    };
+
+    const EVENT_CATALOG = {
+      '육상_단거리': [
+        { name: '100m', isTeam: false },
+        { name: '200m', isTeam: false },
+        { name: '400m', isTeam: false },
+        { name: '4x100mR', isTeam: true },
+        { name: '4x400mR', isTeam: true },
+        { name: '4x400mR(Mixed)', isTeam: true }
+      ],
+      '사이클_트랙': [
+        { name: '1Lap', isTeam: false },
+        { name: '500m독주', isTeam: false },
+        { name: '1km추발', isTeam: false },
+        { name: '2km단체추발', isTeam: true },
+        { name: '도로독주', isTeam: false },
+        { name: '개인도로', isTeam: false }
+      ]
+    };
+
+    function renderMainEventOptions(sport, selectedEvent = null) {
+      const container = document.getElementById('form-player-main-event-container');
+      const hiddenInput = document.getElementById('form-player-event');
+      if (!container) return;
+
+      const options = SPORT_MAIN_EVENTS[sport] || ['단거리'];
+      const current = (selectedEvent && options.includes(selectedEvent)) ? selectedEvent : options[0];
+      if (hiddenInput) hiddenInput.value = current;
+
+      container.innerHTML = options.map(opt => {
+        const isSel = (opt === current);
+        return `
+          <button type="button" onclick="setFormPlayerMainEvent('${opt}')" class="flex-1 py-2 rounded-lg font-bold text-center text-xs transition active:scale-95 ${isSel ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white bg-slate-900'}">
+            ${opt}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function setFormPlayerMainEvent(eventVal) {
+      const hiddenInput = document.getElementById('form-player-event');
+      if (hiddenInput) hiddenInput.value = eventVal;
+      const sport = document.getElementById('form-player-sport').value || '육상';
+      renderMainEventOptions(sport, eventVal);
+      renderFormEventsChips();
+    }
+
     function renderFormEventsChips() {
       const container = document.getElementById('form-player-events-chips');
       if (!container) return;
       container.innerHTML = '';
 
-      if (!formCurrentEvents || formCurrentEvents.length === 0) {
-        container.innerHTML = '<span class="text-[11px] text-slate-500">등록된 출전 종목이 없습니다.</span>';
-        return;
-      }
+      const sport = document.getElementById('form-player-sport').value || '육상';
+      const mainEvent = document.getElementById('form-player-event').value || (sport === '육상' ? '단거리' : '트랙');
+      const catalogKey = `${sport}_${mainEvent}`;
+      const catalog = EVENT_CATALOG[catalogKey] || EVENT_CATALOG['육상_단거리'];
 
-      formCurrentEvents.forEach((ev, idx) => {
+      // 1. Catalog Toggle Chips
+      catalog.forEach(catItem => {
+        const isSelected = formCurrentEvents.some(ev => {
+          const evName = typeof ev === 'object' ? ev.name : ev;
+          return evName === catItem.name;
+        });
+
+        const badgeText = catItem.isTeam ? '단체' : '개인';
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.onclick = () => toggleCatalogEvent(catItem.name, catItem.isTeam);
+
+        if (isSelected) {
+          chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs border border-blue-400 shadow-sm transition active:scale-95';
+          chip.innerHTML = `
+            <span>✓</span>
+            <span>${catItem.name}</span>
+            <span class="text-[9px] px-1 py-0.2 rounded bg-blue-800 text-blue-200">${badgeText}</span>
+          `;
+        } else {
+          chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 text-slate-400 hover:text-slate-200 text-xs border border-slate-800 transition active:scale-95';
+          chip.innerHTML = `
+            <span class="text-slate-600">+</span>
+            <span>${catItem.name}</span>
+            <span class="text-[9px] px-1 py-0.2 rounded bg-slate-950 text-slate-500">${badgeText}</span>
+          `;
+        }
+        container.appendChild(chip);
+      });
+
+      // 2. Custom Extra Events not in catalog
+      const customEvents = formCurrentEvents.filter(ev => {
         const evName = typeof ev === 'object' ? ev.name : ev;
-        const isTeam = typeof ev === 'object' ? ev.isTeam : (evName.includes('mR') || evName.includes('릴레이') || evName.includes('단체'));
-        const typeBadge = isTeam 
-          ? '<span class="text-[9px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40">단체</span>'
-          : '<span class="text-[9px] px-1 py-0.2 rounded bg-slate-700 text-slate-300">개인</span>';
+        return !catalog.some(c => c.name === evName);
+      });
+
+      customEvents.forEach(ev => {
+        const evName = typeof ev === 'object' ? ev.name : ev;
+        const isTeam = typeof ev === 'object' ? ev.isTeam : false;
+        const badgeText = isTeam ? '단체' : '개인';
 
         const chip = document.createElement('div');
-        chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold';
+        chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-950/80 border border-indigo-500/50 text-indigo-200 text-xs font-semibold';
         chip.innerHTML = `
+          <span>✓</span>
           <span>${evName}</span>
-          ${typeBadge}
-          <button type="button" onclick="removeEventFromCurrentFormPlayer(${idx})" class="w-4 h-4 rounded-full bg-slate-700 hover:bg-red-500 hover:text-white flex items-center justify-center text-[11px] text-slate-400 leading-none ml-0.5 transition active:scale-90">×</button>
+          <span class="text-[9px] px-1 py-0.2 rounded bg-indigo-900 text-indigo-300">${badgeText}</span>
+          <button type="button" onclick="removeCustomEvent('${evName}')" class="w-4 h-4 rounded-full bg-indigo-800 hover:bg-red-500 hover:text-white flex items-center justify-center text-[11px] text-indigo-200 leading-none ml-0.5 transition active:scale-90">×</button>
         `;
         container.appendChild(chip);
       });
+    }
+
+    function toggleCatalogEvent(name, isTeam) {
+      const idx = formCurrentEvents.findIndex(ev => {
+        const evName = typeof ev === 'object' ? ev.name : ev;
+        return evName === name;
+      });
+
+      if (idx >= 0) {
+        formCurrentEvents.splice(idx, 1);
+      } else {
+        formCurrentEvents.push({ name: name, isTeam: isTeam });
+      }
+      renderFormEventsChips();
+    }
+
+    function removeCustomEvent(name) {
+      const idx = formCurrentEvents.findIndex(ev => {
+        const evName = typeof ev === 'object' ? ev.name : ev;
+        return evName === name;
+      });
+      if (idx >= 0) {
+        formCurrentEvents.splice(idx, 1);
+        renderFormEventsChips();
+      }
     }
 
     function addEventToCurrentFormPlayer() {
@@ -2226,34 +2328,32 @@
       if (sportInput) sportInput.value = sport;
       const btnTrack = document.getElementById('btn-sport-track');
       const btnCycle = document.getElementById('btn-sport-cycle');
-      const eventInput = document.getElementById('form-player-event');
 
       if (sport === '육상') {
         if (btnTrack) btnTrack.className = 'py-2 rounded-lg font-bold text-center bg-blue-600 text-white transition active:scale-95 shadow-sm';
         if (btnCycle) btnCycle.className = 'py-2 rounded-lg font-medium text-center text-slate-400 hover:text-white transition active:scale-95';
+        renderMainEventOptions('육상', '단거리');
         if (autoFillEvents) {
-          if (eventInput && (!eventInput.value || eventInput.value === '트랙 독주')) eventInput.value = '단거리 400m';
           formCurrentEvents = [
             '100m', '200m', '400m', 
             { name: '4x100mR', isTeam: true }, 
             { name: '4x400mR', isTeam: true }, 
             { name: '4x400mR(Mixed)', isTeam: true }
           ];
-          renderFormEventsChips();
         }
       } else {
         if (btnTrack) btnTrack.className = 'py-2 rounded-lg font-medium text-center text-slate-400 hover:text-white transition active:scale-95';
         if (btnCycle) btnCycle.className = 'py-2 rounded-lg font-bold text-center bg-blue-600 text-white transition active:scale-95 shadow-sm';
+        renderMainEventOptions('사이클', '트랙');
         if (autoFillEvents) {
-          if (eventInput && (!eventInput.value || eventInput.value === '단거리 400m')) eventInput.value = '트랙 독주';
           formCurrentEvents = [
             '1Lap', '500m독주', '1km추발', 
             { name: '2km단체추발', isTeam: true },
             '도로독주', '개인도로'
           ];
-          renderFormEventsChips();
         }
       }
+      renderFormEventsChips();
     }
 
     function removeEventFromCurrentFormPlayer(idx) {
@@ -2269,7 +2369,6 @@
       const genderInput = document.getElementById('form-player-gender');
       const birthInput = document.getElementById('form-player-birth');
       const sportInput = document.getElementById('form-player-sport');
-      const eventInput = document.getElementById('form-player-event');
 
       if (playerId) {
         const p = playersData.find(x => x.id === playerId);
@@ -2280,7 +2379,7 @@
         setFormPlayerGender(p.gender || '남');
         birthInput.value = p.birth || '2011-02-15';
         setFormPlayerSport(p.sport || '육상', false);
-        eventInput.value = p.mainEvent || '';
+        renderMainEventOptions(p.sport || '육상', p.mainEvent || (p.sport === '육상' ? '단거리' : '트랙'));
         setPlayerPhotoPreview(p.photo || '');
         formCurrentEvents = Array.isArray(p.events) ? [...p.events] : (playerId === 'yusin' ? ['100m', '200m', '400m', { name: '4x100mR', isTeam: true }, { name: '4x400mR', isTeam: true }, { name: '4x400mR(Mixed)', isTeam: true }] : ['1Lap', '500m독주', '1km추발', { name: '2km단체추발', isTeam: true }]);
       } else {
@@ -2290,6 +2389,7 @@
         setFormPlayerGender('남');
         birthInput.value = '2011-02-15';
         setFormPlayerSport('육상', true);
+        renderMainEventOptions('육상', '단거리');
         setPlayerPhotoPreview('');
       }
 
@@ -3576,23 +3676,10 @@
       else badge.classList.add('hidden');
     }
 
-    function copyAdminInviteCode() {
-      const code = 'JIHYE-2026';
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(code).then(() => {
-          alert('🔑 관리자 초대코드 [JIHYE-2026]가 복사되었습니다!\n가족이나 코치님께 전달해 주세요.');
-        }).catch(() => {
-          prompt('초대코드를 복사하세요:', code);
-        });
-      } else {
-        prompt('초대코드를 복사하세요:', code);
-      }
-    }
-
     function shareKakaoInviteLink() {
-      const inviteUrl = `${window.location.origin}${window.location.pathname}?invite=JIHYE-2026`;
+      const inviteUrl = `${window.location.origin}${window.location.pathname}`;
       const shareTitle = '🏃 운동 성장노트 — 선수 기록 열람 초대';
-      const shareText = `[운동 성장노트]\n지혜 님이 선수 경기 기록 열람에 초대했습니다!\n아래 링크를 누르면 초대코드가 자동 입력되어 바로 신청할 수 있습니다 👇\n${inviteUrl}`;
+      const shareText = `[운동 성장노트]\n선수 경기 기록 열람에 초대합니다!\n아래 링크로 접속해 열람을 신청해 주세요 👇\n${inviteUrl}`;
 
       if (navigator.share) {
         navigator.share({
@@ -3610,12 +3697,12 @@
     function copyInviteUrlFallback(url) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(() => {
-          alert('💬 카톡 초대 링크가 클립보드에 복사되었습니다!\n카카오톡 대화방에 붙여넣어 보내주세요.\n\n상대방이 링크를 누르면 초대코드가 자동 입력됩니다.');
+          alert('💬 앱 초대 링크가 클립보드에 복사되었습니다!\n대화방에 붙여넣어 보내주세요.');
         }).catch(() => {
-          prompt('카톡 초대 링크를 복사하세요:', url);
+          prompt('초대 링크를 복사하세요:', url);
         });
       } else {
-        prompt('카톡 초대 링크를 복사하세요:', url);
+        prompt('초대 링크를 복사하세요:', url);
       }
     }
 
