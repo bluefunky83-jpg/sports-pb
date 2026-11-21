@@ -48,13 +48,13 @@
 
     <!-- Main Auth Card -->
     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto">
-      <!-- Tabs: Login vs Sign up -->
-      <div class="flex p-1 rounded-2xl bg-slate-950 border border-slate-800">
-        <button type="button" id="tab-auth-login" onclick="switchAuthTab('login')" class="flex-1 py-2 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-md transition">
-          로그인
+      <!-- Tabs: Admin Login vs Viewer Login -->
+      <div id="login-role-tabs" class="flex p-1 rounded-2xl bg-slate-950 border border-slate-800">
+        <button type="button" id="tab-login-role-admin" onclick="switchLoginRole('admin')" class="flex-1 py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-md transition">
+          🛡️ 선수 관리자 로그인
         </button>
-        <button type="button" id="tab-auth-signup" onclick="switchAuthTab('signup')" class="flex-1 py-2 rounded-xl font-bold text-xs text-slate-400 hover:text-slate-200 transition">
-          회원가입
+        <button type="button" id="tab-login-role-viewer" onclick="switchLoginRole('viewer')" class="flex-1 py-2.5 rounded-xl font-bold text-xs text-slate-400 hover:text-slate-200 transition">
+          👀 열람 뷰어 로그인
         </button>
       </div>
 
@@ -106,10 +106,22 @@
             로그인
           </button>
         </form>
+
+        <!-- Bottom Sign-up Link -->
+        <div class="pt-2 border-t border-slate-800/80 text-center">
+          <span class="text-[11px] text-slate-400">아직 계정이 없으신가요?</span>
+          <button type="button" onclick="switchAuthTab('signup')" class="ml-1.5 text-[11px] font-bold text-blue-400 hover:text-blue-300 underline underline-offset-2 transition">
+            회원가입
+          </button>
+        </div>
       </div>
 
       <!-- VIEW 2: Sign-up Form -->
       <div id="auth-view-signup" class="space-y-3.5 hidden">
+        <div class="flex items-center justify-between pb-1 border-b border-slate-800">
+          <span class="text-xs font-bold text-white">📝 회원가입</span>
+          <button type="button" onclick="switchAuthTab('login')" class="text-[11px] text-slate-400 hover:text-white font-semibold">← 로그인으로 돌아가기</button>
+        </div>
         <!-- Role Toggle for Sign-up -->
         <div>
           <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">가입 유형 선택</label>
@@ -2885,29 +2897,33 @@
       }
     }
 
-    // --- Auth Tab Switching (Login vs Sign-up) ---
+    // --- Auth Tab Switching (Login vs Sign-up) & Login Role (Admin vs Viewer) ---
+    let currentLoginRole = 'admin';
+
+    function switchLoginRole(role) {
+      currentLoginRole = role;
+      const btnAdmin = document.getElementById('tab-login-role-admin');
+      const btnViewer = document.getElementById('tab-login-role-viewer');
+      if (role === 'admin') {
+        if (btnAdmin) btnAdmin.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-md transition';
+        if (btnViewer) btnViewer.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs text-slate-400 hover:text-slate-200 transition';
+      } else {
+        if (btnAdmin) btnAdmin.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs text-slate-400 hover:text-slate-200 transition';
+        if (btnViewer) btnViewer.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md transition';
+      }
+    }
+
     function switchAuthTab(tab) {
-      const btnLogin = document.getElementById('tab-auth-login');
-      const btnSignup = document.getElementById('tab-auth-signup');
+      const roleTabs = document.getElementById('login-role-tabs');
       const viewLogin = document.getElementById('auth-view-login');
       const viewSignup = document.getElementById('auth-view-signup');
 
       if (tab === 'login') {
-        if (btnLogin) {
-          btnLogin.className = 'flex-1 py-2 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-md transition';
-        }
-        if (btnSignup) {
-          btnSignup.className = 'flex-1 py-2 rounded-xl font-bold text-xs text-slate-400 hover:text-slate-200 transition';
-        }
+        if (roleTabs) roleTabs.classList.remove('hidden');
         if (viewLogin) viewLogin.classList.remove('hidden');
         if (viewSignup) viewSignup.classList.add('hidden');
       } else {
-        if (btnLogin) {
-          btnLogin.className = 'flex-1 py-2 rounded-xl font-bold text-xs text-slate-400 hover:text-slate-200 transition';
-        }
-        if (btnSignup) {
-          btnSignup.className = 'flex-1 py-2 rounded-xl font-bold text-xs bg-blue-600 text-white shadow-md transition';
-        }
+        if (roleTabs) roleTabs.classList.add('hidden');
         if (viewLogin) viewLogin.classList.add('hidden');
         if (viewSignup) viewSignup.classList.remove('hidden');
       }
@@ -3027,6 +3043,57 @@
         return;
       }
 
+      // If Viewer login tab is selected (or matchedViewer exists when viewer tab selected)
+      if (currentLoginRole === 'viewer') {
+        // Check cloud for existing viewer record by email or name
+        let remoteMatch = null;
+        try {
+          const res = await fetch(AUTH_API_ENDPOINT);
+          const json = await res.json();
+          if (json && json.data) {
+            realtimeAuthData = { ...json.data };
+            for (const [k, v] of Object.entries(json.data)) {
+              if (!k.startsWith('_') && v && (v.email === payload.email || k === name)) {
+                remoteMatch = { nick: k, ...v };
+                break;
+              }
+            }
+          }
+        } catch (e) {}
+
+        if (remoteMatch && remoteMatch.status === 'approved') {
+          const user = {
+            id: 'viewer_' + getStableAdminId(payload.email, remoteMatch.nick),
+            name: remoteMatch.nick,
+            email: payload.email,
+            role: 'viewer',
+            approved: true,
+            ownerAdminId: remoteMatch.ownerAdminId || 'super_admin',
+            allowedPlayers: Array.isArray(remoteMatch.allowedPlayers) ? remoteMatch.allowedPlayers : (remoteMatch.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteMatch.allowed])
+          };
+          localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+          checkInitialAuthGate();
+          alert(`👀 ${remoteMatch.nick} 뷰어님, 로그인되었습니다.`);
+          return;
+        }
+
+        const user = {
+          id: 'viewer_' + getStableAdminId(payload.email, name),
+          name: remoteMatch ? remoteMatch.nick : name,
+          email: payload.email,
+          role: 'viewer',
+          approved: false,
+          targetPlayer: remoteMatch?.targetPlayer || '',
+          allowedPlayers: []
+        };
+        localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+        checkInitialAuthGate();
+        if (!remoteMatch) {
+          openViewerAddPlayerModal(true);
+        }
+        return;
+      }
+
       // General Parent / Coach Admin
       const user = {
         id: getStableAdminId(payload.email, name),
@@ -3091,6 +3158,24 @@
         checkInitialAuthGate();
         renderCurrentView();
         alert('👑 지혜 님 환영합니다!\n최고관리자 센터 및 전체 관리 권한으로 로그인되었습니다.');
+        return;
+      }
+
+      // If Viewer login tab is selected in email login
+      if (currentLoginRole === 'viewer') {
+        const nick = inputId.includes('@') ? inputId.split('@')[0] : inputId;
+        const user = {
+          id: 'viewer_' + getStableAdminId(inputId, nick),
+          name: nick,
+          email: inputId,
+          role: 'viewer',
+          approved: false,
+          targetPlayer: '',
+          allowedPlayers: []
+        };
+        localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+        checkInitialAuthGate();
+        openViewerAddPlayerModal(true);
         return;
       }
 
@@ -4820,7 +4905,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.20';
+    const CURRENT_APP_VERSION = '2026.11.21.21';
 
     function checkForUpdates() {
       // Listen for Service Worker update
