@@ -1117,6 +1117,11 @@
     function switchPlayer(playerId) {
       currentPlayer = playerId;
       currentEvent = 'ALL_PB';
+      // 선수 변경 시 이전 선수 필터 초기화 (유신 ➔ 별하 영향 방지)
+      filterKind = 'ALL';
+      filterYear = 'ALL';
+      filterPeriodYears = 'ALL';
+      searchMeet = '';
       const sel = document.getElementById('select-player');
       if (sel) sel.value = playerId;
       renderEventTabs();
@@ -1419,7 +1424,7 @@
           </div>
           <div class="flex items-center gap-1.5">
             <input type="text" id="search-meet" value="${searchMeet.replace(/"/g, '&quot;')}" oninput="updateFilters('search')" placeholder="대회명 검색..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
-            ${hasAnyFilter ? `<button type="button" onclick="resetAllFilters()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-bold whitespace-nowrap transition active:scale-95">초기화</button>` : ''}
+            <button type="button" onclick="resetAllFilters()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-bold whitespace-nowrap transition active:scale-95">초기화</button>
           </div>
         </div>
 
@@ -4388,7 +4393,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.08';
+    const CURRENT_APP_VERSION = '2026.11.21.09';
 
     function checkForUpdates() {
       // Listen for Service Worker update
