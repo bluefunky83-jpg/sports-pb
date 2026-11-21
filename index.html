@@ -3223,7 +3223,7 @@
         realtimeAuthData = latestData;
 
         await fetch(AUTH_API_ENDPOINT, {
-          method: 'PUT',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'sports_pb_auth', data: latestData })
         });
@@ -3267,7 +3267,7 @@
         };
 
         await fetch(AUTH_API_ENDPOINT, {
-          method: 'PUT',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'sports_pb_auth', data: data })
         });
@@ -3940,7 +3940,7 @@
 
     // 13. Application Initialization
     
-    const AUTH_API_ENDPOINT = "https://api.restful-api.dev/objects/ff808181a09d98f701a1fa08e73a09e8";
+    const AUTH_API_ENDPOINT = "https://textdb.dev/api/data/sports_pb_auth_bluefunky83_2026";
     let realtimeAuthData = {};
 
     async function loadRealtimeApprovals() {
@@ -4293,7 +4293,7 @@
 
       try {
         await fetch(AUTH_API_ENDPOINT, {
-          method: 'PUT',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
         });
@@ -4320,7 +4320,7 @@
 
       try {
         await fetch(AUTH_API_ENDPOINT, {
-          method: 'PUT',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
         });
@@ -4365,7 +4365,7 @@
         } catch (e) {
           console.warn('Polling check error:', e);
         }
-      }, 2000);
+      }, 4000);
     }
 
     async function checkViewerApprovalManual() {
@@ -4430,7 +4430,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.11';
+    const CURRENT_APP_VERSION = '2026.11.21.12';
 
     function checkForUpdates() {
       // Listen for Service Worker update
