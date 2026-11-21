@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.30</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.31</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.30
+        선수 성장노트 v2026.11.21.31
       </div>
     </div>
   </div>
@@ -1035,6 +1035,11 @@
 
     function loadDataFromStorage() {
       try {
+        const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+        const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+        if (!authUser || authUser.role !== 'super_admin') {
+          return;
+        }
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (savedData) {
           const parsed = JSON.parse(savedData);
@@ -5038,7 +5043,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.30';
+    const CURRENT_APP_VERSION = '2026.11.21.31';
 
     function checkForUpdates() {
       // Listen for Service Worker update
@@ -5122,11 +5127,11 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       history.pushState({ page: 'main' }, '');
+      loadDataFromStorage();
       checkInitialAuthGate();
       applyAuthModeUI();
       checkForUpdates();
       loadRealtimeApprovals();
-      loadDataFromStorage();
       initPlayerSelectDropdown();
       renderEventTabs();
       renderCurrentView();

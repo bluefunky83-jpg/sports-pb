@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sports-pb-cache-v2026.11.21.30';
+const CACHE_NAME = 'sports-pb-cache-v2026.11.21.31';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
