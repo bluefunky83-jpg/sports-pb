@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.37</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.38</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.37
+        선수 성장노트 v2026.11.21.38
       </div>
     </div>
   </div>
@@ -1028,8 +1028,10 @@
           localStorage.setItem(PLAYERS_KEY, JSON.stringify(playersData));
         }
         localStorage.setItem(TEAMMATES_KEY, JSON.stringify(savedTeammates));
+        return true;
       } catch (e) {
         console.error('saveDataToStorage error:', e);
+        return false;
       }
     }
 
@@ -4271,6 +4273,7 @@
 
     function exportDataJson() {
       const exportPayload = {
+        appName: '선수 성장노트',
         appData: appData,
         playersData: playersData,
         savedTeammates: savedTeammates,
@@ -4282,32 +4285,146 @@
       const a = document.createElement('a');
       a.href = url;
       const today = new Date().toISOString().split('T')[0];
-      a.download = `운동성장노트_전체백업_${today}.json`;
+      a.download = `선수성장노트_전체백업_${today}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
 
+    function validateBackupJson(parsed) {
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return { ok: false, reason: 'JSON 최상위 구조가 올바른 객체가 아닙니다.' };
+      }
+      if (!parsed.appData || typeof parsed.appData !== 'object' || Array.isArray(parsed.appData)) {
+        return { ok: false, reason: '필수 항목(appData)이 없거나 형식이 올바르지 않습니다.' };
+      }
+      if (!Array.isArray(parsed.playersData)) {
+        return { ok: false, reason: '필수 항목(playersData)이 없거나 배열 형식이 아닙니다.' };
+      }
+      for (let i = 0; i < parsed.playersData.length; i++) {
+        const p = parsed.playersData[i];
+        if (!p || typeof p !== 'object' || !p.id || !p.name) {
+          return { ok: false, reason: `선수 정보(${i + 1}번째 항목)에 필수값(id, name)이 누락되었습니다.` };
+        }
+      }
+      for (const pid of Object.keys(parsed.appData)) {
+        const recs = parsed.appData[pid];
+        if (!Array.isArray(recs)) {
+          return { ok: false, reason: `선수 기록(${pid}) 형식이 배열이 아닙니다.` };
+        }
+        for (let j = 0; j < recs.length; j++) {
+          const r = recs[j];
+          if (!r || typeof r !== 'object' || (!r.event && !r.date)) {
+            return { ok: false, reason: `기록 데이터(${pid}의 ${j + 1}번째 항목)가 손상되었습니다.` };
+          }
+        }
+      }
+      if (parsed.savedTeammates !== undefined && !Array.isArray(parsed.savedTeammates)) {
+        return { ok: false, reason: '팀원 목록(savedTeammates) 형식이 올바르지 않습니다.' };
+      }
+      return { ok: true };
+    }
+
     function importDataJson(e) {
-      const file = e.target.files[0];
+      const inputEl = e.target;
+      const file = inputEl && inputEl.files ? inputEl.files[0] : null;
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (event) => {
+        const prevAppData = JSON.parse(JSON.stringify(appData || {}));
+        const prevPlayersData = JSON.parse(JSON.stringify(playersData || []));
+        const prevSavedTeammates = JSON.parse(JSON.stringify(savedTeammates || []));
+
         try {
           const parsed = JSON.parse(event.target.result);
-          if (parsed.appData) appData = parsed.appData;
-          if (parsed.playersData) playersData = parsed.playersData;
-          if (parsed.savedTeammates) savedTeammates = parsed.savedTeammates;
-          saveDataToStorage();
+          const check = validateBackupJson(parsed);
+          if (!check.ok) {
+            alert(`복원을 진행할 수 없습니다.\n사유: ${check.reason}\n\n기존 데이터는 안전하게 유지됩니다.`);
+            if (inputEl) inputEl.value = '';
+            return;
+          }
+
+          const playerCount = parsed.playersData.length;
+          const recordCount = Object.values(parsed.appData).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+          const dateLabel = parsed.exportedAt ? String(parsed.exportedAt).slice(0, 10) : '알 수 없음';
+          const okConfirm = confirm(
+            `백업 파일을 복원하시겠습니까?\n\n` +
+            `• 백업 날짜: ${dateLabel}\n` +
+            `• 선수 수: ${playerCount}명 / 기록 수: ${recordCount}건\n\n` +
+            `복원 직전 현재 데이터는 브라우저에 자동 임시 백업됩니다.`
+          );
+          if (!okConfirm) {
+            if (inputEl) inputEl.value = '';
+            return;
+          }
+
+          try {
+            const backupEntry = {
+              savedAt: new Date().toISOString(),
+              appData: prevAppData,
+              playersData: prevPlayersData,
+              savedTeammates: prevSavedTeammates
+            };
+            let historyList = [];
+            try {
+              const rawHist = localStorage.getItem('ATHLETE_APP_PRE_RESTORE_BACKUPS');
+              if (rawHist) {
+                const parsedHist = JSON.parse(rawHist);
+                if (Array.isArray(parsedHist)) historyList = parsedHist;
+              }
+            } catch (e) {}
+            historyList.unshift(backupEntry);
+            if (historyList.length > 3) historyList = historyList.slice(0, 3);
+            while (historyList.length > 0) {
+              try {
+                localStorage.setItem('ATHLETE_APP_PRE_RESTORE_BACKUPS', JSON.stringify(historyList));
+                break;
+              } catch (quotaErr) {
+                historyList.pop();
+              }
+            }
+            localStorage.setItem('ATHLETE_APP_PRE_RESTORE_BACKUP', JSON.stringify(backupEntry));
+          } catch (backupErr) {
+            console.warn('pre-restore auto backup failed:', backupErr);
+          }
+
+          appData = parsed.appData;
+          playersData = parsed.playersData;
+          if (parsed.savedTeammates !== undefined) savedTeammates = parsed.savedTeammates;
+          const savedOk = saveDataToStorage();
+          if (!savedOk) {
+            throw new Error('브라우저 저장소 용량이 초과되어 데이터를 저장할 수 없습니다.');
+          }
           initPlayerSelectDropdown();
           renderEventTabs();
           renderCurrentView();
           alert('데이터를 성공적으로 복원했습니다!');
           closeSettingsModal();
         } catch (err) {
-          alert('올바른 백업 JSON 파일이 아닙니다.');
+          appData = prevAppData;
+          playersData = prevPlayersData;
+          savedTeammates = prevSavedTeammates;
+          let rollbackSaved = saveDataToStorage();
+          if (!rollbackSaved) {
+            try {
+              localStorage.removeItem('ATHLETE_APP_PRE_RESTORE_BACKUP');
+              localStorage.removeItem('ATHLETE_APP_PRE_RESTORE_BACKUPS');
+            } catch (e) {}
+            rollbackSaved = saveDataToStorage();
+          }
+          if (rollbackSaved) {
+            alert('복원 중 오류가 발생하여 기존 데이터를 안전하게 복구·유지했습니다.\n(' + (err && err.message ? err.message : '올바른 백업 JSON 파일이 아닙니다.') + ')');
+          } else {
+            alert('복원 및 저장소 재저장 모두 실패했으나 현재 메모리상의 기존 데이터는 유지됩니다.\n즉시 [데이터 파일로 내보내기]로 JSON 백업을 저장해 주세요.');
+          }
+        } finally {
+          if (inputEl) inputEl.value = '';
         }
+      };
+      reader.onerror = () => {
+        alert('파일을 읽는 중 오류가 발생했습니다. 기존 데이터는 유지됩니다.');
+        if (inputEl) inputEl.value = '';
       };
       reader.readAsText(file);
     }
@@ -5201,7 +5318,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.37';
+    const CURRENT_APP_VERSION = '2026.11.21.38';
 
     function checkForUpdates() {
       // Listen for Service Worker update
