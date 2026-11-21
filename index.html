@@ -334,8 +334,9 @@
         
         <!-- Player & Event Display Badge -->
         <div class="flex items-center gap-2">
-          <span id="badge-modal-player" class="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30">김유신</span>
-          <span id="badge-modal-event" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-bold border border-slate-700">400m</span>
+          <span id="badge-modal-player" class="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30">선수</span>
+          <select id="form-record-event" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 font-bold border border-slate-700 focus:outline-none focus:border-blue-500 text-xs">
+          </select>
         </div>
 
         <!-- Date & Kind (공식 vs 전문실기) -->
@@ -976,8 +977,16 @@
     // 2. Storage Functions
     function saveDataToStorage() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-        localStorage.setItem(PLAYERS_KEY, JSON.stringify(playersData));
+        const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+        const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+        if (authUser && authUser.role === 'admin' && authUser.id) {
+          localStorage.setItem('CUSTOM_DATA_' + authUser.id, JSON.stringify(appData));
+          localStorage.setItem('CUSTOM_PLAYERS_' + authUser.id, JSON.stringify(playersData));
+          syncAdminToCloud(authUser);
+        } else {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+          localStorage.setItem(PLAYERS_KEY, JSON.stringify(playersData));
+        }
         localStorage.setItem(TEAMMATES_KEY, JSON.stringify(savedTeammates));
       } catch (e) {
         console.error('saveDataToStorage error:', e);
@@ -1145,6 +1154,12 @@
       const p = playersData.find(x => x.id === playerId);
       if (p && Array.isArray(p.events) && p.events.length > 0) {
         return p.events.map(ev => typeof ev === 'object' ? ev.name : ev);
+      }
+      if (p && p.sport === '육상') {
+        return ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'];
+      }
+      if (p && p.sport === '사이클') {
+        return ['1Lap', '500m독주', '1km추발', '2km단체추발'];
       }
       if (playerId === 'yusin') {
         return ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'];
@@ -1363,7 +1378,8 @@
       }
 
       if (!sectionsHtml) {
-        sectionsHtml = '<div class="py-12 text-center text-slate-500 text-xs">등록된 최고 기록이 없습니다.</div>';
+        container.innerHTML = '';
+        return;
       }
 
       container.innerHTML = `
@@ -1634,7 +1650,7 @@
       if (countElem) countElem.textContent = `${filtered.length}건`;
 
       if (filtered.length === 0) {
-        container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">일치하는 기록이 없습니다.</div>';
+        container.innerHTML = '';
         return;
       }
 
@@ -1881,7 +1897,14 @@
     function updateFormChips() {
       const p = playersData.find(x => x.id === currentPlayer);
       document.getElementById('badge-modal-player').textContent = p ? p.name : '선수';
-      document.getElementById('badge-modal-event').textContent = currentEvent;
+      const evSelect = document.getElementById('form-record-event');
+      if (evSelect) {
+        const evList = getPlayerEvents(currentPlayer);
+        evSelect.innerHTML = evList.map(ev => `<option value="${ev}">${ev}</option>`).join('');
+        if (currentEvent && currentEvent !== 'ALL_PB' && evList.includes(currentEvent)) {
+          evSelect.value = currentEvent;
+        }
+      }
     }
 
     function toggleLockMeet() {
@@ -1889,13 +1912,17 @@
       const icon = document.getElementById('lock-meet-icon');
       const text = document.getElementById('lock-meet-text');
       if (isMeetLocked) {
-        icon.textContent = '🔒';
-        text.textContent = '대회명 고정됨';
-        text.className = 'text-blue-400 font-bold';
+        if (icon) icon.textContent = '🔒';
+        if (text) {
+          text.textContent = '대회명 고정됨';
+          text.className = 'text-blue-400 font-bold';
+        }
       } else {
-        icon.textContent = '🔓';
-        text.textContent = '대회명 고정';
-        text.className = 'text-slate-400';
+        if (icon) icon.textContent = '🔓';
+        if (text) {
+          text.textContent = '대회명 고정';
+          text.className = 'text-slate-400';
+        }
       }
     }
 
@@ -2140,11 +2167,12 @@
         }
       });
 
+      const selectedModalEvent = document.getElementById('form-record-event')?.value;
       const newEntry = {
         id: editingRecordId || ('rec_' + Date.now()),
         date: dateVal,
         meet: meetVal,
-        event: currentEvent === 'ALL_PB' ? (getPlayerEvents(currentPlayer)[0] || '100m') : currentEvent,
+        event: selectedModalEvent || (currentEvent === 'ALL_PB' ? (getPlayerEvents(currentPlayer)[0] || '100m') : currentEvent),
         kind: selectedKind,
         round: selectedRound,
         seconds: totalSec,
@@ -3299,12 +3327,23 @@
         const data = json.data || {};
         if (!data._admins) data._admins = {};
         
+        const maskedPlayers = (playersData || []).map(p => {
+          const n = p.name || '';
+          const masked = n.length >= 2 ? (n[0] + '*' + (n.length > 2 ? n.slice(2) : '')) : n;
+          return {
+            name: masked,
+            sport: p.sport || '',
+            recordsCount: Array.isArray(appData[p.id]) ? appData[p.id].length : 0
+          };
+        });
+
         data._admins[user.id] = {
           id: user.id,
           name: user.name,
           email: user.email || '',
           role: 'admin',
-          playersCount: (playersData || []).length,
+          playersCount: maskedPlayers.length,
+          players: maskedPlayers,
           lastLogin: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
           date: new Date().toLocaleDateString('ko-KR')
         };
@@ -3368,10 +3407,19 @@
         console.warn('updateSuperAdminStats fetch warning:', e);
       }
 
-      const pCount = (playersData || []).length;
+      const externalAdmins = Object.values(realtimeAuthData._admins || {});
+      const extPlayersCount = externalAdmins.reduce((acc, a) => acc + (a.playersCount || 0), 0);
+      const extRecsCount = externalAdmins.reduce((acc, a) => {
+        if (Array.isArray(a.players)) {
+          return acc + a.players.reduce((s, p) => s + (p.recordsCount || 0), 0);
+        }
+        return acc;
+      }, 0);
+
+      const pCount = (playersData || []).length + extPlayersCount;
       let yusinRecs = Array.isArray(appData['yusin']) ? appData['yusin'].length : 72;
       let byeolhaRecs = Array.isArray(appData['byeolha']) ? appData['byeolha'].length : 12;
-      let totalRecs = yusinRecs + byeolhaRecs;
+      let totalRecs = yusinRecs + byeolhaRecs + extRecsCount;
 
       const dummyNames = ['외할머니', '코치님', '하람아빠'];
       const viewerKeys = Object.keys(realtimeAuthData).filter(k => !k.startsWith('_') && !dummyNames.includes(k));
@@ -3380,7 +3428,6 @@
         return v && v.status === 'approved' && v.allowed && v.allowed !== 'none';
       }).length;
 
-      const externalAdmins = Object.values(realtimeAuthData._admins || {});
       const totalAdminCount = 1 + externalAdmins.length;
 
       const elA = document.getElementById('sa-stat-admins');
@@ -4588,7 +4635,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.14';
+    const CURRENT_APP_VERSION = '2026.11.21.15';
 
     function checkForUpdates() {
       // Listen for Service Worker update
