@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.39</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.40</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.39
+        선수 성장노트 v2026.11.21.40
       </div>
     </div>
   </div>
@@ -2479,12 +2479,112 @@
       }
     }
 
+    function getEventTimeBounds(eventName) {
+      const ev = String(eventName || '').trim();
+      const shortEvents = ['100m', '200m', '300m', '1Lap', '500m독주', '4x100mR'];
+      const midEvents = ['400m', '4x400mR', '4x400mR(Mixed)', '1km추발', '2km단체추발'];
+      if (shortEvents.includes(ev)) return { min: 5, max: 600, label: `${ev} (5초 ~ 10분)` };
+      if (midEvents.includes(ev)) return { min: 20, max: 3600, label: `${ev} (20초 ~ 1시간)` };
+      return { min: 1, max: 86400, label: `${ev || '기타 종목'} (1초 ~ 24시간)` };
+    }
+
+    function validateRecordInput({ meetVal, eventName, hRaw, mRaw, sRaw, windRaw, windSign, rankRaw }) {
+      const cleanMeet = String(meetVal || '').trim();
+      if (!cleanMeet) {
+        return { ok: false, reason: '대회명을 입력해주세요.' };
+      }
+
+      const hStr = String(hRaw ?? '').trim();
+      const mStr = String(mRaw ?? '').trim();
+      const sStr = String(sRaw ?? '').trim();
+
+      if (hStr === '' && mStr === '' && sStr === '') {
+        return { ok: false, reason: '기록 시간을 입력해주세요.' };
+      }
+
+      const numPattern = /^-?\d+(\.\d+)?$/;
+      if ((hStr !== '' && !numPattern.test(hStr)) || (mStr !== '' && !numPattern.test(mStr)) || (sStr !== '' && !numPattern.test(sStr))) {
+        return { ok: false, reason: '기록 시간에는 숫자만 입력할 수 있습니다.' };
+      }
+
+      const hNum = hStr === '' ? 0 : Number(hStr);
+      const mNum = mStr === '' ? 0 : Number(mStr);
+      const sNum = sStr === '' ? 0 : Number(sStr);
+
+      if (!Number.isFinite(hNum) || !Number.isFinite(mNum) || !Number.isFinite(sNum) || hNum < 0 || mNum < 0 || sNum < 0) {
+        return { ok: false, reason: '기록 시간에는 음수를 입력할 수 없습니다.' };
+      }
+      if (hStr !== '' && !Number.isInteger(hNum)) {
+        return { ok: false, reason: '시간(시)은 정수만 입력할 수 있습니다.' };
+      }
+      if (mStr !== '' && !Number.isInteger(mNum)) {
+        return { ok: false, reason: '분은 정수만 입력할 수 있습니다.' };
+      }
+      if (mNum >= 60) {
+        return { ok: false, reason: '분은 0~59 사이의 값을 입력해주세요.' };
+      }
+      if (sNum >= 60) {
+        return { ok: false, reason: '초는 0 이상 60 미만의 값을 입력해주세요.' };
+      }
+      if (sStr.includes('.') && sStr.split('.')[1].length > 3) {
+        return { ok: false, reason: '초는 소수점 셋째 자리(0.001초)까지만 입력할 수 있습니다.' };
+      }
+
+      const totalSec = parseFloat((hNum * 3600 + mNum * 60 + sNum).toFixed(3));
+      if (totalSec === 0) {
+        return { ok: false, reason: '0초 기록은 저장할 수 없습니다. 경기 기록이 없다면 입력을 취소해 주세요.' };
+      }
+
+      const bounds = getEventTimeBounds(eventName);
+      if (totalSec < bounds.min || totalSec > bounds.max) {
+        return { ok: false, reason: `${bounds.label} 허용 범위를 벗어난 기록입니다. 입력값을 다시 확인해주세요.` };
+      }
+
+      let windVal = '';
+      const wStr = String(windRaw ?? '').trim();
+      if (wStr !== '') {
+        if (!numPattern.test(wStr)) {
+          return { ok: false, reason: '풍속에는 숫자만 입력할 수 있습니다.' };
+        }
+        const wNum = Number(wStr);
+        if (!Number.isFinite(wNum) || wNum < 0) {
+          return { ok: false, reason: '풍속 부호는 왼쪽 +/- 버튼으로 선택하고 숫자는 0 이상으로 입력해주세요.' };
+        }
+        const signedWind = (windSign === '-' ? -1 : 1) * wNum;
+        if (signedWind < -20.0 || signedWind > 20.0) {
+          return { ok: false, reason: '풍속은 -20.0 ~ +20.0 m/s 범위 내에서 입력해주세요.' };
+        }
+        windVal = (windSign === '-' ? '-' : '+') + wNum.toFixed(1);
+      }
+
+      const rkStr = String(rankRaw ?? '').trim();
+      if (rkStr !== '') {
+        const isPosInt = /^[1-9]\d{0,2}$/.test(rkStr);
+        const isStatus = /^(실격|기권|DNS|DNF)$/i.test(rkStr);
+        const isRoundRank = /^(예선|준결|준결승|결승)\s+[1-9]\d{0,2}$/.test(rkStr);
+        if (!isPosInt && !isStatus && !isRoundRank) {
+          return { ok: false, reason: '순위는 1 이상의 정수 또는 실격·기권·DNS·DNF만 입력할 수 있습니다.' };
+        }
+      }
+
+      return { ok: true, totalSec, windVal, rankVal: rkStr };
+    }
+
     function updateTimePreview() {
-      const h = parseFloat(document.getElementById('time-h').value || 0);
-      const m = parseFloat(document.getElementById('time-m').value || 0);
-      const s = parseFloat(document.getElementById('time-s').value || 0);
-      const total = h * 3600 + m * 60 + s;
-      document.getElementById('preview-formatted-time').textContent = `미리보기: ${formatTimeDisplay(total, currentEvent)}`;
+      const hStr = (document.getElementById('time-h').value || '').trim();
+      const mStr = (document.getElementById('time-m').value || '').trim();
+      const sStr = (document.getElementById('time-s').value || '').trim();
+      const h = parseFloat(hStr || 0);
+      const m = parseFloat(mStr || 0);
+      const s = parseFloat(sStr || 0);
+      const el = document.getElementById('preview-formatted-time');
+      if (!el) return;
+      if (isNaN(h) || isNaN(m) || isNaN(s) || h < 0 || m < 0 || s < 0 || m >= 60 || s >= 60 || (hStr !== '' && !Number.isInteger(h)) || (mStr !== '' && !Number.isInteger(m))) {
+        el.textContent = '⚠️ 올바른 시·분·초를 입력해 주세요';
+        return;
+      }
+      const total = parseFloat((h * 3600 + m * 60 + s).toFixed(3));
+      el.textContent = `미리보기: ${formatTimeDisplay(total, currentEvent)}`;
     }
 
     ['time-h', 'time-m', 'time-s'].forEach(id => {
@@ -2501,29 +2601,34 @@
     function saveRecord(keepOpen) {
       const dateVal = document.getElementById('input-date').value;
       const meetVal = document.getElementById('input-meet').value.trim();
-      const h = parseFloat(document.getElementById('time-h').value || 0);
-      const m = parseFloat(document.getElementById('time-m').value || 0);
-      const s = parseFloat(document.getElementById('time-s').value || 0);
-      const totalSec = parseFloat((h * 3600 + m * 60 + s).toFixed(3));
-      const rankVal = document.getElementById('input-rank').value.trim();
-      const rawWind = (document.getElementById('input-wind-val')?.value || '').trim();
-      let windVal = '';
-      if (rawWind) {
-        const cleanNum = parseFloat(rawWind);
-        if (!isNaN(cleanNum)) {
-          windVal = (currentWindSign === '-' ? '-' : '+') + cleanNum.toFixed(1);
-        }
-      }
+      const hRaw = document.getElementById('time-h').value;
+      const mRaw = document.getElementById('time-m').value;
+      const sRaw = document.getElementById('time-s').value;
+      const rankRaw = document.getElementById('input-rank').value;
+      const windRaw = document.getElementById('input-wind-val')?.value || '';
       const noteVal = document.getElementById('input-note').value.trim();
 
-      if (!meetVal) {
-        alert('대회명을 입력해주세요.');
+      const selectedModalEvent = document.getElementById('form-record-event')?.value;
+      const targetEvent = selectedModalEvent || (currentEvent === 'ALL_PB' ? (getPlayerEvents(currentPlayer)[0] || '100m') : currentEvent);
+
+      const check = validateRecordInput({
+        meetVal,
+        eventName: targetEvent,
+        hRaw,
+        mRaw,
+        sRaw,
+        windRaw,
+        windSign: currentWindSign,
+        rankRaw
+      });
+      if (!check.ok) {
+        alert(check.reason);
         return;
       }
-      if (totalSec <= 0) {
-        alert('기록 시간을 입력해주세요.');
-        return;
-      }
+
+      const totalSec = check.totalSec;
+      const windVal = check.windVal;
+      const rankVal = check.rankVal;
 
       const r1 = document.getElementById('relay-runner-1').value.trim();
       const r2 = document.getElementById('relay-runner-2').value.trim();
@@ -5713,7 +5818,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.39';
+    const CURRENT_APP_VERSION = '2026.11.21.40';
 
     function checkForUpdates() {
       // Listen for Service Worker update
