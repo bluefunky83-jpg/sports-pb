@@ -808,47 +808,18 @@
           </div>
         </div>
 
-        <!-- User Hierarchy Tree (관리자 > 뷰어1, 뷰어2...) -->
-        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+        <!-- User Hierarchy Tree (심플하고 정갈한 선수별 뷰어 카드 뷰) -->
+        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-200 flex items-center gap-1.5">
+            <span class="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
               <span>👥</span>
-              <span>사용자 권한 관리 트리</span>
+              <span>선수별 등록 뷰어 현황</span>
             </span>
             <span class="text-[10px] text-purple-400 font-semibold">최고관리자 관제</span>
           </div>
 
-          <div class="space-y-2 text-xs">
-            <!-- Super Admin Node -->
-            <div class="p-2.5 rounded-xl bg-purple-950/30 border border-purple-500/30 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-base">👑</span>
-                <div>
-                  <div class="font-bold text-purple-200">지혜 님 (최고관리자)</div>
-                  <div class="text-[10px] text-slate-400">bluefunky83@gmail.com · 전체 마스터 권한</div>
-                </div>
-              </div>
-              <span class="text-[10px] px-2 py-0.5 bg-purple-500/20 text-purple-300 font-bold rounded-full">MASTER</span>
-            </div>
-
-            <!-- Admin Node -->
-            <div class="pl-3 border-l-2 border-slate-800 space-y-2 ml-3">
-              <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <div class="font-semibold text-slate-200">🛡️ 선수 관리자: 지혜 님</div>
-                  <div class="text-[10px] text-slate-400">소속 선수: 김유신(육상), 김별하(사이클)</div>
-                </div>
-                <span class="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded">관리중</span>
-              </div>
-
-              <!-- Viewers Sub-tree -->
-              <div class="pl-3 border-l-2 border-slate-800 space-y-1.5 ml-2">
-                <div class="text-[10px] text-slate-400 font-bold pt-1">👀 하위 뷰어 목록 및 승인 관리</div>
-                <div id="sa-viewers-tree-container" class="space-y-1.5">
-                  <!-- Dynamically rendered viewers -->
-                </div>
-              </div>
-            </div>
+          <div id="sa-viewers-tree-container" class="space-y-2 text-xs">
+            <!-- Dynamically rendered clean cards -->
           </div>
         </div>
 
@@ -2989,6 +2960,19 @@
       alert('🔑 승인코드가 안전하게 저장되었습니다!');
     }
 
+    function toggleSaAccordion(id) {
+      const el = document.getElementById(id);
+      const icon = document.getElementById(id + '-icon');
+      if (!el) return;
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        if (icon) icon.classList.add('rotate-180');
+      } else {
+        el.classList.add('hidden');
+        if (icon) icon.classList.remove('rotate-180');
+      }
+    }
+
     function renderSuperAdminViewersTree() {
       const c = document.getElementById('sa-viewers-tree-container');
       if (!c) return;
@@ -2999,65 +2983,84 @@
       const pendingViewers = viewers.filter(v => !v.approved);
 
       c.innerHTML = `
-        <div class="space-y-3 font-mono text-[11px]">
-          <!-- Level 1: Super Admin -->
-          <div class="p-2.5 rounded-2xl bg-purple-950/40 border border-purple-500/30 space-y-2">
-            <div class="font-bold text-purple-200 flex items-center justify-between">
-              <span class="flex items-center gap-1.5"><span>👑</span><span>최고관리자: 지혜 님</span></span>
-              <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-normal">SUPER_ADMIN_JIHYE</span>
-            </div>
-            
-            <!-- Level 2: Admins -->
-            <div class="ml-2 pl-3 border-l-2 border-purple-500/30 space-y-2.5">
-              <div class="font-bold text-blue-200 flex items-center justify-between">
-                <span class="flex items-center gap-1.5"><span>🛡️</span><span>선수 관리자: 지혜 님</span></span>
-                <span class="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 font-normal">ADMIN_JIHYE</span>
+        <div class="space-y-2">
+          <!-- Hierarchy Path Breadcrumb -->
+          <div class="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
+            <span class="text-purple-300 font-bold">👑 지혜 님</span>
+            <span class="text-slate-600">›</span>
+            <span class="text-blue-300 font-semibold">🛡️ 선수 관리자</span>
+            <span class="text-slate-600">›</span>
+            <span class="text-slate-400">선수 2명 (터치 시 스르륵)</span>
+          </div>
+
+          <!-- Athlete 1: Yusin (Accordion) -->
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden transition shadow-sm">
+            <button type="button" onclick="toggleSaAccordion('sa-acc-yusin')" class="w-full p-3 flex items-center justify-between text-left hover:bg-slate-800/50 transition">
+              <div class="flex items-center gap-2">
+                <span class="text-base">🏃</span>
+                <div>
+                  <div class="font-bold text-slate-100 text-xs">김유신</div>
+                  <div class="text-[10px] text-slate-400">육상 · 2011.02.15</div>
+                </div>
               </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30">
+                  열람 ${yusinViewers.length}명
+                </span>
+                <svg id="sa-acc-yusin-icon" class="w-4 h-4 text-slate-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </button>
+            <div id="sa-acc-yusin" class="p-3 pt-0 border-t border-slate-800/60 text-[11px] space-y-1.5">
+              <div class="text-[10px] text-slate-500 font-medium pt-2">승인된 뷰어 목록:</div>
+              <div class="flex flex-wrap gap-1">
+                ${yusinViewers.map(v => `
+                  <span class="px-2 py-1 rounded-lg bg-slate-950 text-slate-200 border border-slate-700 text-[10px] flex items-center gap-1">
+                    <span>👁️</span><span>${v.name}</span>
+                  </span>
+                `).join('') || '<span class="text-slate-500 text-[10px]">등록된 뷰어가 없습니다.</span>'}
+              </div>
+            </div>
+          </div>
 
-              <!-- Level 3: Athletes -->
-              <div class="ml-2 pl-3 border-l-2 border-blue-500/30 space-y-3">
-                <!-- Athlete 1: Yusin -->
-                <div class="space-y-1">
-                  <div class="font-bold text-amber-200 flex items-center justify-between">
-                    <span class="flex items-center gap-1.5"><span>🏃</span><span>김유신 (2011.02.15)</span></span>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-normal">김유신_20110215</span>
-                  </div>
-                  <!-- Level 4: Viewers for Yusin -->
-                  <div class="ml-2 pl-3 border-l-2 border-amber-500/30 text-[10px] text-slate-300 space-y-1">
-                    <div class="text-slate-500">열람 뷰어 (${yusinViewers.length}명):</div>
-                    <div class="flex flex-wrap gap-1">
-                      ${yusinViewers.map(v => `<span class="px-2 py-0.5 rounded-lg bg-slate-800 text-slate-200 border border-slate-700">👁️ ${v.name}</span>`).join('') || '<span class="text-slate-500 text-[10px]">등록된 뷰어 없음</span>'}
-                    </div>
-                  </div>
+          <!-- Athlete 2: Byeolha (Accordion) -->
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden transition shadow-sm">
+            <button type="button" onclick="toggleSaAccordion('sa-acc-byeolha')" class="w-full p-3 flex items-center justify-between text-left hover:bg-slate-800/50 transition">
+              <div class="flex items-center gap-2">
+                <span class="text-base">🚴</span>
+                <div>
+                  <div class="font-bold text-slate-100 text-xs">김별하</div>
+                  <div class="text-[10px] text-slate-400">사이클 · 2013.05.20</div>
                 </div>
-
-                <!-- Athlete 2: Byeolha -->
-                <div class="space-y-1">
-                  <div class="font-bold text-pink-200 flex items-center justify-between">
-                    <span class="flex items-center gap-1.5"><span>🚴</span><span>김별하 (2013.05.20)</span></span>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-300 font-normal">김별하_20130520</span>
-                  </div>
-                  <!-- Level 4: Viewers for Byeolha -->
-                  <div class="ml-2 pl-3 border-l-2 border-pink-500/30 text-[10px] text-slate-300 space-y-1">
-                    <div class="text-slate-500">열람 뷰어 (${byeolhaViewers.length}명):</div>
-                    <div class="flex flex-wrap gap-1">
-                      ${byeolhaViewers.map(v => `<span class="px-2 py-0.5 rounded-lg bg-slate-800 text-slate-200 border border-slate-700">👁️ ${v.name}</span>`).join('') || '<span class="text-slate-500 text-[10px]">등록된 뷰어 없음</span>'}
-                    </div>
-                  </div>
-                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 font-bold border border-pink-500/30">
+                  열람 ${byeolhaViewers.length}명
+                </span>
+                <svg id="sa-acc-byeolha-icon" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+            </button>
+            <div id="sa-acc-byeolha" class="p-3 pt-0 border-t border-slate-800/60 text-[11px] space-y-1.5 hidden">
+              <div class="text-[10px] text-slate-500 font-medium pt-2">승인된 뷰어 목록:</div>
+              <div class="flex flex-wrap gap-1">
+                ${byeolhaViewers.map(v => `
+                  <span class="px-2 py-1 rounded-lg bg-slate-950 text-slate-200 border border-slate-700 text-[10px] flex items-center gap-1">
+                    <span>👁️</span><span>${v.name}</span>
+                  </span>
+                `).join('') || '<span class="text-slate-500 text-[10px]">등록된 뷰어가 없습니다.</span>'}
               </div>
             </div>
           </div>
 
           ${pendingViewers.length ? `
-            <div class="p-2.5 rounded-2xl bg-amber-950/30 border border-amber-500/30 space-y-1.5">
-              <div class="text-[11px] font-bold text-amber-300 flex items-center justify-between">
-                <span>⏳ 승인 대기 중인 뷰어 (${pendingViewers.length}명)</span>
-                <button type="button" onclick="openViewerApprovalModal()" class="text-[10px] text-blue-400 hover:underline">승인창 바로가기 →</button>
+            <!-- Pending Viewers Notice -->
+            <div class="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/30 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 text-amber-300 font-bold">
+                <span>⏳</span>
+                <span>승인 대기 중 뷰어 (${pendingViewers.length}명)</span>
               </div>
-              <div class="flex flex-wrap gap-1">
-                ${pendingViewers.map(v => `<span class="px-2 py-0.5 rounded-lg bg-slate-900 text-amber-300 border border-amber-500/30 text-[10px]">${v.name} (${v.targetPlayer === 'byeolha' ? '별하 신청' : '유신 신청'})</span>`).join('')}
-              </div>
+              <button type="button" onclick="closeSuperAdminModal(); openViewerApprovalModal();" class="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-[11px] hover:bg-amber-400 transition active:scale-95 shadow-sm">
+                승인하러 가기 →
+              </button>
             </div>
           ` : ''}
         </div>
