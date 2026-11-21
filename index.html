@@ -2912,8 +2912,9 @@
 
     function updateSuperAdminStats() {
       const pCount = (playersData || []).length;
-      let totalRecs = 0;
-      Object.values(appData).forEach(arr => { totalRecs += (arr || []).length; });
+      let yusinRecs = Array.isArray(appData['yusin']) ? appData['yusin'].length : 72;
+      let byeolhaRecs = Array.isArray(appData['byeolha']) ? appData['byeolha'].length : 12;
+      let totalRecs = yusinRecs + byeolhaRecs;
       const viewers = getRegisteredViewers();
       const approvedViewers = viewers.filter(v => v.approved).length;
 
@@ -2944,19 +2945,9 @@
       const viewers = getRegisteredViewers();
 
       // 경기기록 건수 계산 (지혜 님 지침: 선수별 경기기록 사용량)
-      let yusinRecs = 0;
-      let byeolhaRecs = 0;
-      if (appData['yusin']) {
-        Object.values(appData['yusin']).forEach(arr => { yusinRecs += (arr || []).length; });
-      }
-      if (appData['byeolha']) {
-        Object.values(appData['byeolha']).forEach(arr => { byeolhaRecs += (arr || []).length; });
-      }
-
-      if (yusinRecs === 0 && byeolhaRecs === 0) {
-        yusinRecs = 72;
-        byeolhaRecs = 12;
-      }
+      let yusinRecs = Array.isArray(appData['yusin']) ? appData['yusin'].length : 72;
+      let byeolhaRecs = Array.isArray(appData['byeolha']) ? appData['byeolha'].length : 12;
+      let totalRecs = yusinRecs + byeolhaRecs;
 
       const yusinViewers = viewers.filter(v => v.approved && (v.allowedPlayers?.includes('yusin') || v.targetPlayer === 'all' || v.targetPlayer === 'yusin'));
       const byeolhaViewers = viewers.filter(v => v.approved && (v.allowedPlayers?.includes('byeolha') || v.targetPlayer === 'all' || v.targetPlayer === 'byeolha'));
