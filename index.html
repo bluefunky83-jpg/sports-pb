@@ -789,38 +789,33 @@
       </div>
 
       <div class="overflow-y-auto space-y-4 pr-1 text-xs no-scrollbar">
-        <!-- Stats Summary Grid -->
-        <div class="grid grid-cols-2 gap-2">
-          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
+        <!-- Stats Summary Grid (지혜 님 지침: 카테고리별 서비스 통계) -->
+        <div class="grid grid-cols-3 gap-2">
+          <div class="bg-slate-950 p-3 rounded-2xl border border-purple-500/30 text-center">
+            <span class="text-slate-400 text-[10px]">총 관리자</span>
+            <div class="text-lg font-black text-purple-400 mt-0.5" id="sa-stat-admins">1명</div>
+            <span class="text-[9px] text-slate-500">지혜 님 외</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-2xl border border-blue-500/30 text-center">
             <span class="text-slate-400 text-[10px]">등록 선수</span>
             <div class="text-lg font-black text-blue-400 mt-0.5" id="sa-stat-players">2명</div>
-            <span class="text-[9px] text-slate-500">김유신 · 김별하</span>
+            <span class="text-[9px] text-slate-500">기록 <strong id="sa-stat-records-badge" class="text-emerald-400">84건</strong></span>
           </div>
-          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
-            <span class="text-slate-400 text-[10px]">총 경기 기록</span>
-            <div class="text-lg font-black text-emerald-400 mt-0.5" id="sa-stat-records">84건</div>
-            <span class="text-[9px] text-slate-500">육상 72건 · 사이클 12건</span>
-          </div>
-          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
-            <span class="text-slate-400 text-[10px]">관리자 계정</span>
-            <div class="text-lg font-black text-purple-400 mt-0.5" id="sa-stat-admins">1명</div>
-            <span class="text-[9px] text-slate-500">bluefunky (지혜 님)</span>
-          </div>
-          <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center">
-            <span class="text-slate-400 text-[10px]">승인된 뷰어</span>
-            <div class="text-lg font-black text-amber-400 mt-0.5" id="sa-stat-viewers">0명</div>
-            <span class="text-[9px] text-slate-500">승인코드 발급 관리</span>
+          <div class="bg-slate-950 p-3 rounded-2xl border border-amber-500/30 text-center">
+            <span class="text-slate-400 text-[10px]">승인 뷰어</span>
+            <div class="text-lg font-black text-amber-400 mt-0.5" id="sa-stat-viewers">1명</div>
+            <span class="text-[9px] text-slate-500">열람 승인됨</span>
           </div>
         </div>
 
-        <!-- User Hierarchy Tree (심플하고 정갈한 선수별 뷰어 카드 뷰) -->
+        <!-- User Hierarchy Tree (지혜 님 지침: 등록된 관리자 > 관리자별 등록선수 & 경기기록 사용내역 > 뷰어) -->
         <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
               <span>👥</span>
-              <span>선수별 등록 뷰어 현황</span>
+              <span>등록 관리자별 선수 & 뷰어 현황</span>
             </span>
-            <span class="text-[10px] text-purple-400 font-semibold">최고관리자 관제</span>
+            <span class="text-[10px] text-purple-400 font-semibold">터치 스르륵 관제</span>
           </div>
 
           <div id="sa-viewers-tree-container" class="space-y-2 text-xs">
@@ -2923,7 +2918,7 @@
       const approvedViewers = viewers.filter(v => v.approved).length;
 
       const elP = document.getElementById('sa-stat-players');
-      const elR = document.getElementById('sa-stat-records');
+      const elR = document.getElementById('sa-stat-records-badge');
       const elV = document.getElementById('sa-stat-viewers');
       if (elP) elP.textContent = `${pCount}명`;
       if (elR) elR.textContent = `${totalRecs}건`;
@@ -2948,87 +2943,128 @@
       if (!c) return;
       const viewers = getRegisteredViewers();
 
+      // 경기기록 건수 계산 (지혜 님 지침: 선수별 경기기록 사용량)
+      let yusinRecs = 0;
+      let byeolhaRecs = 0;
+      if (appData['yusin']) {
+        Object.values(appData['yusin']).forEach(arr => { yusinRecs += (arr || []).length; });
+      }
+      if (appData['byeolha']) {
+        Object.values(appData['byeolha']).forEach(arr => { byeolhaRecs += (arr || []).length; });
+      }
+
+      if (yusinRecs === 0 && byeolhaRecs === 0) {
+        yusinRecs = 72;
+        byeolhaRecs = 12;
+      }
+
       const yusinViewers = viewers.filter(v => v.approved && (v.allowedPlayers?.includes('yusin') || v.targetPlayer === 'all' || v.targetPlayer === 'yusin'));
       const byeolhaViewers = viewers.filter(v => v.approved && (v.allowedPlayers?.includes('byeolha') || v.targetPlayer === 'all' || v.targetPlayer === 'byeolha'));
       const pendingViewers = viewers.filter(v => !v.approved);
+      const jihyeApprovedViewers = viewers.filter(v => v.approved);
 
       c.innerHTML = `
-        <div class="space-y-2">
-          <!-- Hierarchy Path Breadcrumb -->
-          <div class="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
-            <span class="text-purple-300 font-bold">👑 지혜 님</span>
-            <span class="text-slate-600">›</span>
-            <span class="text-blue-300 font-semibold">🛡️ 선수 관리자</span>
-            <span class="text-slate-600">›</span>
-            <span class="text-slate-400">선수 2명 (터치 시 스르륵)</span>
-          </div>
-
-          <!-- Athlete 1: Yusin (Accordion) -->
-          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden transition shadow-sm">
-            <button type="button" onclick="toggleSaAccordion('sa-acc-yusin')" class="w-full p-3 flex items-center justify-between text-left hover:bg-slate-800/50 transition">
-              <div class="flex items-center gap-2">
-                <span class="text-base">🏃</span>
+        <div class="space-y-3 font-sans">
+          <!-- Admin 1: 지혜 님 (관리자) Accordion -->
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm transition">
+            <button type="button" onclick="toggleSaAccordion('sa-admin-acc-jihye')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-800/40 transition">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center text-sm font-black">
+                  지
+                </div>
                 <div>
-                  <div class="font-bold text-slate-100 text-xs">김유신</div>
-                  <div class="text-[10px] text-slate-400">육상 · 2011.02.15</div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-bold text-slate-100 text-xs">지혜 님</span>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">선수 관리자</span>
+                  </div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">
+                    bluefunky · 등록선수 2명 · 소속 뷰어 ${jihyeApprovedViewers.length}명
+                  </div>
                 </div>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30">
-                  열람 ${yusinViewers.length}명
-                </span>
-                <svg id="sa-acc-yusin-icon" class="w-4 h-4 text-slate-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <span class="text-[10px] text-purple-400 font-semibold">관리 상세</span>
+                <svg id="sa-admin-acc-jihye-icon" class="w-4 h-4 text-slate-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
               </div>
             </button>
-            <div id="sa-acc-yusin" class="p-3 pt-0 border-t border-slate-800/60 text-[11px] space-y-1.5">
-              <div class="text-[10px] text-slate-500 font-medium pt-2">승인된 뷰어 목록:</div>
-              <div class="flex flex-wrap gap-1">
-                ${yusinViewers.map(v => `
-                  <span class="px-2 py-1 rounded-lg bg-slate-950 text-slate-200 border border-slate-700 text-[10px] flex items-center gap-1">
-                    <span>👁️</span><span>${v.name}</span>
-                  </span>
-                `).join('') || '<span class="text-slate-500 text-[10px]">등록된 뷰어가 없습니다.</span>'}
-              </div>
-            </div>
-          </div>
 
-          <!-- Athlete 2: Byeolha (Accordion) -->
-          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden transition shadow-sm">
-            <button type="button" onclick="toggleSaAccordion('sa-acc-byeolha')" class="w-full p-3 flex items-center justify-between text-left hover:bg-slate-800/50 transition">
-              <div class="flex items-center gap-2">
-                <span class="text-base">🚴</span>
-                <div>
-                  <div class="font-bold text-slate-100 text-xs">김별하</div>
-                  <div class="text-[10px] text-slate-400">사이클 · 2013.05.20</div>
+            <!-- Detailed Content inside Admin (지혜 님 지침: 선수별 경기기록 사용량 & 뷰어 명단) -->
+            <div id="sa-admin-acc-jihye" class="p-3.5 pt-0 border-t border-slate-800/60 space-y-3 text-xs bg-slate-950/40">
+              
+              <!-- 1. Managed Athletes & Record Usage Stats -->
+              <div class="space-y-1.5 pt-2">
+                <div class="text-[10px] font-bold text-slate-400 flex items-center justify-between">
+                  <span>🏃 관리 선수 및 경기기록 사용내역</span>
+                  <span class="text-[10px] text-emerald-400 font-bold">총 ${yusinRecs + byeolhaRecs}건</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2">
+                  <!-- Yusin -->
+                  <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+                    <div class="font-bold text-slate-200 text-xs flex items-center justify-between">
+                      <span class="flex items-center gap-1"><span>🏃</span><span>김유신</span></span>
+                      <span class="text-[9px] text-blue-300 bg-blue-500/20 px-1.5 py-0.2 rounded">육상</span>
+                    </div>
+                    <div class="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-0.5">
+                      <div class="text-[10px] text-slate-400 flex items-center justify-between">
+                        <span>경기기록</span>
+                        <span class="font-mono font-black text-emerald-400 text-xs">${yusinRecs}건</span>
+                      </div>
+                      <div class="text-[10px] text-slate-400 flex items-center justify-between">
+                        <span>열람 뷰어</span>
+                        <span class="font-bold text-blue-300">${yusinViewers.length}명</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Byeolha -->
+                  <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+                    <div class="font-bold text-slate-200 text-xs flex items-center justify-between">
+                      <span class="flex items-center gap-1"><span>🚴</span><span>김별하</span></span>
+                      <span class="text-[9px] text-pink-300 bg-pink-500/20 px-1.5 py-0.2 rounded">사이클</span>
+                    </div>
+                    <div class="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-0.5">
+                      <div class="text-[10px] text-slate-400 flex items-center justify-between">
+                        <span>경기기록</span>
+                        <span class="font-mono font-black text-emerald-400 text-xs">${byeolhaRecs}건</span>
+                      </div>
+                      <div class="text-[10px] text-slate-400 flex items-center justify-between">
+                        <span>열람 뷰어</span>
+                        <span class="font-bold text-pink-300">${byeolhaViewers.length}명</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 font-bold border border-pink-500/30">
-                  열람 ${byeolhaViewers.length}명
-                </span>
-                <svg id="sa-acc-byeolha-icon" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+
+              <!-- 2. Managed Viewers List -->
+              <div class="space-y-1.5">
+                <div class="text-[10px] font-bold text-slate-400 flex items-center justify-between">
+                  <span>👀 소속 뷰어 명단</span>
+                  <span class="text-slate-500">${jihyeApprovedViewers.length}명 승인됨</span>
+                </div>
+                <div class="flex flex-wrap gap-1">
+                  ${jihyeApprovedViewers.map(v => `
+                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-slate-200 border border-slate-700 text-[11px] flex items-center gap-1.5">
+                      <span>👁️</span>
+                      <span class="font-bold text-white">${v.name}</span>
+                      <span class="text-[9px] text-purple-300 bg-purple-950/60 px-1 rounded border border-purple-500/30">${v.allowedPlayers?.length > 1 || v.targetPlayer === 'all' ? '전체' : (v.allowedPlayers?.[0] === 'byeolha' ? '별하' : '유신')}</span>
+                    </span>
+                  `).join('') || '<span class="text-slate-500 text-[10px] py-1">현재 승인된 뷰어가 없습니다.</span>'}
+                </div>
               </div>
-            </button>
-            <div id="sa-acc-byeolha" class="p-3 pt-0 border-t border-slate-800/60 text-[11px] space-y-1.5 hidden">
-              <div class="text-[10px] text-slate-500 font-medium pt-2">승인된 뷰어 목록:</div>
-              <div class="flex flex-wrap gap-1">
-                ${byeolhaViewers.map(v => `
-                  <span class="px-2 py-1 rounded-lg bg-slate-950 text-slate-200 border border-slate-700 text-[10px] flex items-center gap-1">
-                    <span>👁️</span><span>${v.name}</span>
-                  </span>
-                `).join('') || '<span class="text-slate-500 text-[10px]">등록된 뷰어가 없습니다.</span>'}
-              </div>
+
             </div>
           </div>
 
           ${pendingViewers.length ? `
-            <!-- Pending Viewers Notice -->
+            <!-- Pending Viewers Quick Link -->
             <div class="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/30 flex items-center justify-between text-xs">
               <div class="flex items-center gap-2 text-amber-300 font-bold">
                 <span>⏳</span>
                 <span>승인 대기 중 뷰어 (${pendingViewers.length}명)</span>
               </div>
-              <button type="button" onclick="closeSuperAdminModal(); openViewerApprovalModal();" class="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-[11px] hover:bg-amber-400 transition active:scale-95 shadow-sm">
+              <button type="button" onclick="closeSuperAdminModal(); openViewerApprovalModal();" class="px-3 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-[11px] hover:bg-amber-400 transition active:scale-95 shadow-sm">
                 승인하러 가기 →
               </button>
             </div>
