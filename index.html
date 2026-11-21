@@ -987,14 +987,20 @@
     let isTeammateEditMode = false;
     let selectedTeammatesToDelete = new Set();
 
+    function getStableAdminId(email, name) {
+      const base = (email && email.includes('@')) ? email.trim().toLowerCase() : (name || 'user').trim().toLowerCase();
+      return 'admin_' + base.replace(/[^a-z0-9가-힣._-]/g, '_');
+    }
+
     // 2. Storage Functions
     function saveDataToStorage() {
       try {
         const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
         const authUser = authUserStr ? JSON.parse(authUserStr) : null;
-        if (authUser && authUser.role === 'admin' && authUser.id) {
-          localStorage.setItem('CUSTOM_DATA_' + authUser.id, JSON.stringify(appData));
-          localStorage.setItem('CUSTOM_PLAYERS_' + authUser.id, JSON.stringify(playersData));
+        if (authUser && authUser.role === 'admin') {
+          const stableKey = getStableAdminId(authUser.email, authUser.name);
+          localStorage.setItem('CUSTOM_DATA_' + stableKey, JSON.stringify(appData));
+          localStorage.setItem('CUSTOM_PLAYERS_' + stableKey, JSON.stringify(playersData));
           syncAdminToCloud(authUser);
         } else {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
@@ -2801,9 +2807,10 @@
           currentPlayer = 'yusin';
         }
       } else if (user.role === 'admin') {
-        // Other Admin: Yusin & Byeolha are 100% hidden!
-        const savedCustomPlayers = localStorage.getItem('CUSTOM_PLAYERS_' + user.id);
-        const savedCustomData = localStorage.getItem('CUSTOM_DATA_' + user.id);
+        // Other Admin: Yusin & Byeolha are 100% hidden! Use stable key so relogin preserves data!
+        const stableKey = getStableAdminId(user.email, user.name);
+        const savedCustomPlayers = localStorage.getItem('CUSTOM_PLAYERS_' + stableKey) || localStorage.getItem('CUSTOM_PLAYERS_' + user.id);
+        const savedCustomData = localStorage.getItem('CUSTOM_DATA_' + stableKey) || localStorage.getItem('CUSTOM_DATA_' + user.id);
         if (savedCustomPlayers) {
           playersData = JSON.parse(savedCustomPlayers);
           appData = savedCustomData ? JSON.parse(savedCustomData) : {};
@@ -3022,7 +3029,7 @@
 
       // General Parent / Coach Admin
       const user = {
-        id: 'admin_' + Date.now(),
+        id: getStableAdminId(payload.email, name),
         name: `${name} (관리자)`,
         email: payload.email,
         sport: '육상',
@@ -3088,9 +3095,10 @@
       }
 
       // Other General Admin (학부모 / 지도자)
+      const admName = (inputId.includes('@') ? inputId.split('@')[0] : inputId) + ' 관리자';
       const user = {
-        id: 'admin_' + Date.now(),
-        name: (inputId.includes('@') ? inputId.split('@')[0] : inputId) + ' 관리자',
+        id: getStableAdminId(inputId, admName),
+        name: admName,
         email: inputId,
         role: 'admin',
         approved: true,
@@ -3162,7 +3170,7 @@
 
       if (currentSignupRole === 'admin') {
         const user = {
-          id: 'admin_' + Date.now(),
+          id: getStableAdminId(email, name),
           name: name,
           email: email,
           role: 'admin',
@@ -4799,7 +4807,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.18';
+    const CURRENT_APP_VERSION = '2026.11.21.19';
 
     function checkForUpdates() {
       // Listen for Service Worker update

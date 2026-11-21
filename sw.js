@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sports-pb-cache-v2026.11.21.18';
+const CACHE_NAME = 'sports-pb-cache-v2026.11.21.19';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -38,6 +38,7 @@ self.addEventListener('activate', (event) => {
 // Network First for HTML and dynamic scripts, Cache Fallback for offline PWA
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (event.request.url.includes('version.json')) return;
   const isHtml = event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html');
 
   if (isHtml) {
