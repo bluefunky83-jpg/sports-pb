@@ -3679,21 +3679,57 @@
 
 
     // --- ANDROID BACK BUTTON INTERCEPT (History API) ---
+    let openModalsStack = [];
+    let isBackHistoryArmored = false;
+
+    function armorBackHistoryOnInteraction() {
+      if (isBackHistoryArmored) return;
+      isBackHistoryArmored = true;
+      if (window.history && window.history.pushState) {
+        window.history.pushState({ page: 'main_armed' }, '');
+      }
+    }
+    window.addEventListener('pointerdown', armorBackHistoryOnInteraction, { once: true, passive: true });
+    window.addEventListener('keydown', armorBackHistoryOnInteraction, { once: true, passive: true });
+
     function pushModalHistory(modalId) {
+      if (modalId && !openModalsStack.includes(modalId)) {
+        openModalsStack.push(modalId);
+      }
       if (window.history && window.history.pushState) {
         window.history.pushState({ modalOpen: modalId }, '');
       }
     }
+
+    const BACK_CHECK_MODAL_IDS = [
+      'modal-record', 'modal-player-form', 'modal-players',
+      'modal-settings', 'modal-viewer-approvals', 'modal-super-admin-center',
+      'modal-admin-profile', 'modal-viewer-add-player', 'modal-viewer-waiting',
+      'modal-google-auth-popup'
+    ];
 
     window.addEventListener('popstate', (e) => {
       if (exitModalOpen) {
         cancelAppExit();
         return;
       }
-      if (openModalsStack.length > 0) {
-        const topModalId = openModalsStack.pop();
-        const m = document.getElementById(topModalId);
-        if (m) m.classList.add('hidden');
+
+      // Check currently visible modals first (DOM truth)
+      let closedAny = false;
+      for (const id of BACK_CHECK_MODAL_IDS) {
+        const m = document.getElementById(id);
+        if (m && !m.classList.contains('hidden')) {
+          m.classList.add('hidden');
+          openModalsStack = openModalsStack.filter(x => x !== id);
+          closedAny = true;
+          break;
+        }
+      }
+
+      if (closedAny) {
+        if (window.history && window.history.pushState) {
+          window.history.pushState({ page: 'main' }, '');
+        }
       } else {
         // No modals open: Show Exit Confirmation!
         openAppExitModal();
@@ -4261,7 +4297,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.06';
+    const CURRENT_APP_VERSION = '2026.11.21.07';
 
     function checkForUpdates() {
       // Listen for Service Worker update
