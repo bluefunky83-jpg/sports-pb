@@ -255,12 +255,16 @@
 
     <!-- Player Dropdown & Manage Button -->
     <div class="flex items-center gap-2 mb-4">
-      <div class="relative flex-1">
-        <select id="select-player" onchange="switchPlayer(this.value)" class="w-full bg-slate-900 border border-blue-500/50 rounded-2xl px-4 py-2.5 text-white font-bold text-sm appearance-none focus:outline-none focus:border-blue-400 cursor-pointer shadow-lg shadow-blue-500/10">
+      <div class="relative flex-1" id="custom-player-dropdown-wrap">
+        <select id="select-player" onchange="switchPlayer(this.value)" class="hidden">
           <!-- Dynamically populated -->
         </select>
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-blue-400">
-          <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+        <button type="button" id="custom-player-dropdown-btn" onclick="toggleCustomPlayerDropdown(event)" class="w-full bg-slate-900 border border-blue-500/50 rounded-2xl px-4 py-2.5 text-white font-bold text-sm flex items-center justify-between focus:outline-none focus:border-blue-400 cursor-pointer shadow-lg shadow-blue-500/10 text-left">
+          <span id="custom-player-dropdown-label" class="truncate">🏅 선수 선택</span>
+          <svg width="16" height="16" class="w-4 h-4 text-blue-400 shrink-0 ml-2 transition-transform" id="custom-player-dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div id="custom-player-dropdown-menu" class="hidden absolute left-0 right-0 mt-1.5 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-40 overflow-hidden divide-y divide-slate-800/80 max-h-60 overflow-y-auto">
+          <!-- Dynamically populated -->
         </div>
       </div>
 
@@ -1144,14 +1148,19 @@
     // 6. Navigation: Switch Player & Populate Dropdown
     function initPlayerSelectDropdown() {
       const select = document.getElementById('select-player');
+      const labelEl = document.getElementById('custom-player-dropdown-label');
+      const menuEl = document.getElementById('custom-player-dropdown-menu');
       if (!select) return;
       select.innerHTML = '';
+      if (menuEl) menuEl.innerHTML = '';
 
       if (!playersData || playersData.length === 0) {
         const opt = document.createElement('option');
         opt.value = '';
         opt.textContent = '🏅 등록된 선수 없음';
         select.appendChild(opt);
+        if (labelEl) labelEl.textContent = '🏅 등록된 선수 없음';
+        if (menuEl) menuEl.innerHTML = '<div class="px-4 py-3 text-xs text-slate-500 text-center">등록된 선수가 없습니다</div>';
         return;
       }
 
@@ -1162,13 +1171,57 @@
       playersData.forEach(p => {
         const sportText = p.sport || '';
         const icon = sportText.includes('육상') ? '🏃' : (sportText.includes('사이클') ? '🚴' : '🏅');
+        const fullText = `${icon} ${p.name || ''} (${sportText}) - ${p.mainEvent || ''}`;
         const opt = document.createElement('option');
         opt.value = p.id;
-        opt.textContent = `${icon} ${p.name || ''} (${sportText}) - ${p.mainEvent || ''}`;
-        if (p.id === currentPlayer) opt.selected = true;
+        opt.textContent = fullText;
+        if (p.id === currentPlayer) {
+          opt.selected = true;
+          if (labelEl) labelEl.textContent = fullText;
+        }
         select.appendChild(opt);
+
+        if (menuEl) {
+          const itemBtn = document.createElement('button');
+          itemBtn.type = 'button';
+          const isSelected = p.id === currentPlayer;
+          itemBtn.className = `w-full px-4 py-3 text-left text-sm font-bold flex items-center justify-between transition ${isSelected ? 'bg-blue-600/20 text-blue-300' : 'text-slate-200 hover:bg-slate-800'}`;
+          itemBtn.innerHTML = `<span class="truncate">${fullText}</span>${isSelected ? '<span class="text-blue-400 text-xs ml-2">✓</span>' : ''}`;
+          itemBtn.onclick = () => {
+            closeCustomPlayerDropdown();
+            if (p.id !== currentPlayer) switchPlayer(p.id);
+          };
+          menuEl.appendChild(itemBtn);
+        }
       });
     }
+
+    function toggleCustomPlayerDropdown(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('custom-player-dropdown-menu');
+      const arrow = document.getElementById('custom-player-dropdown-arrow');
+      if (!menu) return;
+      const isHidden = menu.classList.contains('hidden');
+      if (isHidden) {
+        menu.classList.remove('hidden');
+        if (arrow) arrow.classList.add('rotate-180');
+      } else {
+        menu.classList.add('hidden');
+        if (arrow) arrow.classList.remove('rotate-180');
+      }
+    }
+
+    function closeCustomPlayerDropdown() {
+      const menu = document.getElementById('custom-player-dropdown-menu');
+      const arrow = document.getElementById('custom-player-dropdown-arrow');
+      if (menu) menu.classList.add('hidden');
+      if (arrow) arrow.classList.remove('rotate-180');
+    }
+
+    document.addEventListener('click', (e) => {
+      const wrap = document.getElementById('custom-player-dropdown-wrap');
+      if (wrap && !wrap.contains(e.target)) closeCustomPlayerDropdown();
+    });
 
     function switchPlayer(playerId) {
       currentPlayer = playerId;
@@ -1180,6 +1233,7 @@
       searchMeet = '';
       const sel = document.getElementById('select-player');
       if (sel) sel.value = playerId;
+      initPlayerSelectDropdown();
       renderEventTabs();
       renderCurrentView();
     }
@@ -3031,28 +3085,28 @@
         return;
       }
 
-      // Existing Viewer
-      const viewers = getRegisteredViewers();
-      const matchedViewer = viewers.find(v => v.name === name || v.email === payload.email);
-      if (matchedViewer) {
-        const user = {
-          id: matchedViewer.id,
-          name: matchedViewer.name,
-          email: payload.email,
-          role: 'viewer',
-          approved: matchedViewer.approved,
-          targetPlayer: matchedViewer.targetPlayer || 'yusin',
-          allowedPlayers: matchedViewer.allowedPlayers || []
-        };
-        localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
-        checkInitialAuthGate();
-        alert(`👀 ${name} 뷰어님, Google 계정으로 로그인되었습니다.`);
-        return;
-      }
-
-      // If Viewer login tab is selected (or matchedViewer exists when viewer tab selected)
+      // Strictly separate Viewer Login vs Admin Login (동명이인/역할 혼선 원천 차단)
       if (currentLoginRole === 'viewer') {
-        // Check cloud for existing viewer record by email or name
+        // Match existing local viewer strictly by email (never by name!)
+        const viewers = getRegisteredViewers();
+        const matchedViewer = viewers.find(v => v.email && v.email.toLowerCase() === email);
+        if (matchedViewer) {
+          const user = {
+            id: matchedViewer.id,
+            name: matchedViewer.name,
+            email: payload.email,
+            role: 'viewer',
+            approved: matchedViewer.approved,
+            targetPlayer: matchedViewer.targetPlayer || '',
+            allowedPlayers: matchedViewer.allowedPlayers || []
+          };
+          localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+          checkInitialAuthGate();
+          alert(`👀 ${matchedViewer.name} 뷰어님, Google 계정으로 로그인되었습니다.`);
+          return;
+        }
+
+        // Check cloud for existing viewer record strictly by email
         let remoteMatch = null;
         try {
           const res = await fetch(AUTH_API_ENDPOINT);
@@ -3060,8 +3114,8 @@
           if (json && json.data) {
             realtimeAuthData = { ...json.data };
             for (const [k, v] of Object.entries(json.data)) {
-              if (!k.startsWith('_') && v && (v.email === payload.email || k === name)) {
-                remoteMatch = { nick: k, ...v };
+              if (!k.startsWith('_') && v && v.email && v.email.toLowerCase() === email) {
+                remoteMatch = { key: k, nick: v.name || k, ...v };
                 break;
               }
             }
@@ -3091,6 +3145,7 @@
           role: 'viewer',
           approved: false,
           targetPlayer: remoteMatch?.targetPlayer || '',
+          requestedPlayers: remoteMatch?.requestedPlayers || [],
           allowedPlayers: []
         };
         localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
@@ -3101,7 +3156,7 @@
         return;
       }
 
-      // General Parent / Coach Admin
+      // Admin Login Tab: strictly login as Admin (never fall into viewer!)
       const user = {
         id: getStableAdminId(payload.email, name),
         name: `${name} (관리자)`,
@@ -3368,6 +3423,31 @@
       alert(`📨 [${targetName}] 열람 신청이 담당 관리자에게 전송되었습니다!`);
     }
 
+    function getViewerCloudKey(email, nick) {
+      if (email && !email.endsWith('@viewer.local')) {
+        return 'v_' + email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      }
+      return nick;
+    }
+
+    function findViewerCloudEntry(data, authUser) {
+      if (!data || !authUser) return null;
+      const email = (authUser.email || '').toLowerCase();
+      if (email && !email.endsWith('@viewer.local')) {
+        const byKey = getViewerCloudKey(email, authUser.name);
+        if (data[byKey]) return { key: byKey, item: data[byKey] };
+        for (const [k, v] of Object.entries(data)) {
+          if (!k.startsWith('_') && v && v.email && v.email.toLowerCase() === email) {
+            return { key: k, item: v };
+          }
+        }
+      }
+      if (authUser.name && data[authUser.name]) {
+        return { key: authUser.name, item: data[authUser.name] };
+      }
+      return null;
+    }
+
     async function registerViewerRequestAsync(nick, targetPlayer, ownerAdminId, explicitEmail) {
       const nowStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
       const resolvedOwner = ownerAdminId || 'super_admin';
@@ -3396,7 +3476,20 @@
         const resGet = await fetch(AUTH_API_ENDPOINT);
         const jsonGet = await resGet.json();
         const latestData = (jsonGet && jsonGet.data) ? { ...jsonGet.data } : {};
-        const prev = latestData[nick] || {};
+        let currentEmail = '';
+        if (explicitEmail && !explicitEmail.endsWith('@viewer.local')) {
+          currentEmail = explicitEmail;
+        } else {
+          try {
+            const curUser = JSON.parse(localStorage.getItem('ATHLETE_APP_AUTH_USER') || '{}');
+            if (curUser && curUser.email && !curUser.email.endsWith('@viewer.local')) {
+              currentEmail = curUser.email;
+            }
+          } catch (e) {}
+        }
+
+        const cloudKey = getViewerCloudKey(currentEmail, nick);
+        const prev = latestData[cloudKey] || latestData[nick] || {};
 
         const reqSet = new Set();
         if (Array.isArray(prev.requestedPlayers)) {
@@ -3417,20 +3510,11 @@
         }
 
         const wasApproved = prev.status === 'approved' && prev.allowed && prev.allowed !== 'none';
-        let currentEmail = prev.email || '';
-        if (explicitEmail && !explicitEmail.endsWith('@viewer.local')) {
-          currentEmail = explicitEmail;
-        } else {
-          try {
-            const curUser = JSON.parse(localStorage.getItem('ATHLETE_APP_AUTH_USER') || '{}');
-            if (curUser && curUser.email && !curUser.email.endsWith('@viewer.local')) {
-              currentEmail = curUser.email;
-            }
-          } catch (e) {}
-        }
+        if (!currentEmail && prev.email) currentEmail = prev.email;
 
-        latestData[nick] = {
+        latestData[cloudKey] = {
           ...prev,
+          name: nick,
           email: currentEmail,
           ownerAdminId: ownerAdminId || prev.ownerAdminId || 'super_admin',
           status: wasApproved ? 'approved' : 'pending',
@@ -3720,12 +3804,13 @@
                 <div class="flex flex-wrap gap-1">
                   ${jihyeApprovedViewers.map(k => {
                     const v = realtimeAuthData[k] || {};
+                    const displayName = v.name || k;
                     const allowedLabel = (v.allowed === 'all' || v.allowedPlayers?.length > 1) ? '전체' : (v.allowed === 'byeolha' ? '별하' : '유신');
                     const emailHtml = v.email ? `<span class="text-[10px] text-slate-400 font-normal">(${v.email})</span>` : '';
                     return `
                       <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-slate-200 border border-slate-700 text-[11px] flex items-center gap-1.5 flex-wrap">
                         <span>👁️</span>
-                        <span class="font-bold text-white">${k}</span>
+                        <span class="font-bold text-white">${displayName}</span>
                         ${emailHtml}
                         <span class="text-[9px] text-purple-300 bg-purple-950/60 px-1 rounded border border-purple-500/30">${allowedLabel}</span>
                       </span>
@@ -3889,7 +3974,7 @@
         card.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-xs font-extrabold text-white">${nick}</span>
+              <span class="text-xs font-extrabold text-white">${item.name || nick}</span>
               ${item.email ? `<span class="text-[10px] text-slate-400">(${item.email})</span>` : ''}
               <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">✅ ${allowedLabel}</span>
             </div>
@@ -4341,6 +4426,14 @@
       }, 30000);
     }
 
+    let viewerApprovalNotifs = [];
+
+    function dismissViewerApprovalNotifs() {
+      viewerApprovalNotifs = [];
+      updatePendingBadge();
+      renderApprovalList();
+    }
+
     function updatePendingBadge() {
       const badge = document.getElementById('badge-pending-count');
       if (!badge) return;
@@ -4355,7 +4448,8 @@
         const v = realtimeAuthData[k];
         return v && isViewerOwnedByCurrentAdmin(v, scopeId) && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
       });
-      if (hasPending || hasNewVersionUpdate) badge.classList.remove('hidden');
+      const hasViewerNotif = !isAdmin && viewerApprovalNotifs.length > 0;
+      if (hasPending || hasNewVersionUpdate || hasViewerNotif) badge.classList.remove('hidden');
       else badge.classList.add('hidden');
     }
 
@@ -4555,7 +4649,21 @@
         if (titleEl) titleEl.textContent = '알림 센터';
         if (inviteBtn) inviteBtn.classList.add('hidden');
         if (subHeader) subHeader.classList.add('hidden');
-        if (!hasNewVersionUpdate) {
+        if (viewerApprovalNotifs.length > 0) {
+          container.innerHTML = viewerApprovalNotifs.map(n => `
+            <div class="p-3.5 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-emerald-300">🎉 열람 승인 완료</span>
+                <span class="text-[10px] text-slate-400">${n.time || ''}</span>
+              </div>
+              <p class="text-xs text-slate-200 leading-relaxed">관리자가 <strong class="text-white">[${n.names}]</strong> 열람을 승인했습니다! 상단 선수 선택 메뉴에서 바로 확인할 수 있습니다.</p>
+            </div>
+          `).join('') + `
+            <button type="button" onclick="dismissViewerApprovalNotifs()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition">
+              ✓ 확인 (알림 지우기)
+            </button>
+          `;
+        } else if (!hasNewVersionUpdate) {
           container.innerHTML = `<div class="py-10 text-center text-slate-500 text-xs">새로운 알림이 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">현재 최신 버전 (${CURRENT_APP_VERSION})</span></div>`;
         } else {
           container.innerHTML = '';
@@ -4639,7 +4747,7 @@
         card.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-sm font-extrabold text-white">${nick}</span>
+              <span class="text-sm font-extrabold text-white">${item.name || nick}</span>
               ${item.email ? `<span class="text-[10px] text-slate-400">(${item.email})</span>` : ''}
               ${statusBadge}
             </div>
@@ -4753,12 +4861,14 @@
         console.error('Update permission error:', err);
       }
 
+      const dispNick = (realtimeAuthData[nick] && realtimeAuthData[nick].name) ? realtimeAuthData[nick].name : nick;
       const targetText = isApproved ? (allowedStr === 'all' ? '전체 (2인)' : (allowedStr === 'byeolha' ? '김별하' : '김유신')) : '승인 대기';
-      alert(`✅ [${nick}] 님의 열람 권한이 [${targetText}]으로 저장되었습니다!\n상대방 폰에 실시간으로 즉시 적용됩니다.`);
+      alert(`✅ [${dispNick}] 님의 열람 권한이 [${targetText}]으로 저장되었습니다!\n상대방 폰에 실시간으로 즉시 적용됩니다.`);
     }
 
     async function deleteViewerFromApproval(nick) {
-      if (!confirm(`[${nick}] 뷰어를 열람 목록에서 삭제하시겠습니까?\n삭제 즉시 열람 권한이 차단됩니다.`)) return;
+      const dispNick = (realtimeAuthData[nick] && realtimeAuthData[nick].name) ? realtimeAuthData[nick].name : nick;
+      if (!confirm(`[${dispNick}] 뷰어를 열람 목록에서 삭제하시겠습니까?\n삭제 즉시 열람 권한이 차단됩니다.`)) return;
 
       delete realtimeAuthData[nick];
       delete pendingViewerSelections[nick];
@@ -4798,8 +4908,9 @@
         try {
           const res = await fetch(AUTH_API_ENDPOINT);
           const json = await res.json();
-          if (json && json.data && json.data[authUser.name]) {
-            const remoteItem = json.data[authUser.name];
+          const entry = findViewerCloudEntry(json?.data, authUser);
+          if (entry && entry.item) {
+            const remoteItem = entry.item;
             if (remoteItem.status === 'approved' && remoteItem.allowed && remoteItem.allowed !== 'none') {
               clearInterval(viewerPollingInterval);
               authUser.approved = true;
@@ -4831,8 +4942,9 @@
       try {
         const res = await fetch(AUTH_API_ENDPOINT);
         const json = await res.json();
-        if (json && json.data && json.data[authUser.name]) {
-          const remoteItem = json.data[authUser.name];
+        const entry = findViewerCloudEntry(json?.data, authUser);
+        if (entry && entry.item) {
+          const remoteItem = entry.item;
           if (remoteItem.status === 'approved' && remoteItem.allowed && remoteItem.allowed !== 'none') {
             if (viewerPollingInterval) clearInterval(viewerPollingInterval);
             authUser.approved = true;
@@ -4864,23 +4976,32 @@
 
         const res = await fetch(AUTH_API_ENDPOINT);
         const json = await res.json();
-        if (!json || !json.data) return;
-        const remoteItem = json.data[authUser.name];
+        const entry = findViewerCloudEntry(json?.data, authUser);
+        if (!entry || !entry.item) return;
+        const remoteItem = entry.item;
         if (!remoteItem || remoteItem.status !== 'approved' || !remoteItem.allowed || remoteItem.allowed === 'none') return;
 
         const nextAllowed = Array.isArray(remoteItem.allowedPlayers) && remoteItem.allowedPlayers.length > 0
           ? [...remoteItem.allowedPlayers]
           : (remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed]);
 
-        const prevStr = JSON.stringify([...(authUser.allowedPlayers || [])].sort());
+        const prevAllowed = authUser.allowedPlayers || [];
+        const prevStr = JSON.stringify([...prevAllowed].sort());
         const nextStr = JSON.stringify([...nextAllowed].sort());
         if (prevStr !== nextStr) {
+          const newlyAdded = nextAllowed.filter(p => !prevAllowed.includes(p));
+          if (newlyAdded.length > 0) {
+            const names = newlyAdded.map(id => id === 'byeolha' ? '김별하' : (id === 'yusin' ? '김유신' : id)).join(', ');
+            const nowStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+            viewerApprovalNotifs.push({ id: Date.now(), names, time: nowStr });
+          }
           authUser.allowedPlayers = nextAllowed;
           localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
           syncDataForUserRole(authUser);
           initPlayerSelectDropdown();
           renderEventTabs();
           renderCurrentView();
+          updatePendingBadge();
         }
       } catch (e) {}
     }
@@ -4902,8 +5023,9 @@
       if (authUserStr) {
         try {
           const authUser = JSON.parse(authUserStr);
-          if (authUser && authUser.name && realtimeAuthData[authUser.name]) {
-            delete realtimeAuthData[authUser.name];
+          const entry = findViewerCloudEntry(realtimeAuthData, authUser);
+          if (entry && entry.key) {
+            delete realtimeAuthData[entry.key];
             await syncRealtimeAuthToRemote();
           }
         } catch (e) {}
@@ -4927,7 +5049,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.25';
+    const CURRENT_APP_VERSION = '2026.11.21.26';
 
     function checkForUpdates() {
       // Listen for Service Worker update
