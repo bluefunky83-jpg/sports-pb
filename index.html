@@ -823,26 +823,6 @@
           </div>
         </div>
 
-        <!-- Master Passcode Manager -->
-        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-200 flex items-center gap-1.5">
-              <span>🔑</span>
-              <span>뷰어 열람 승인코드 관리</span>
-            </span>
-            <button type="button" onclick="saveMasterCodes()" class="text-[10px] px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition active:scale-95">코드 저장</button>
-          </div>
-          <div class="grid grid-cols-2 gap-2 text-[11px]">
-            <div class="bg-slate-900 p-2 rounded-xl border border-slate-800">
-              <span class="text-slate-400">유신 전용 코드</span>
-              <input type="text" id="sa-code-yusin" maxlength="4" value="1215" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-center font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-400">
-            </div>
-            <div class="bg-slate-900 p-2 rounded-xl border border-slate-800">
-              <span class="text-slate-400">별하 전용 코드</span>
-              <input type="text" id="sa-code-byeolha" maxlength="4" value="0520" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-center font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-400">
-            </div>
-          </div>
-        </div>
 
         <!-- System Reset / Logout -->
         <div class="pt-2 flex gap-2">
@@ -2943,21 +2923,6 @@
       if (elP) elP.textContent = `${pCount}명`;
       if (elR) elR.textContent = `${totalRecs}건`;
       if (elV) elV.textContent = `${approvedViewers}명`;
-
-      const codeY = localStorage.getItem('ATHLETE_APP_CODE_YUSIN') || '1215';
-      const codeB = localStorage.getItem('ATHLETE_APP_CODE_BYEOLHA') || '0520';
-      const inpY = document.getElementById('sa-code-yusin');
-      const inpB = document.getElementById('sa-code-byeolha');
-      if (inpY) inpY.value = codeY;
-      if (inpB) inpB.value = codeB;
-    }
-
-    function saveMasterCodes() {
-      const inpY = document.getElementById('sa-code-yusin');
-      const inpB = document.getElementById('sa-code-byeolha');
-      if (inpY) localStorage.setItem('ATHLETE_APP_CODE_YUSIN', inpY.value.trim());
-      if (inpB) localStorage.setItem('ATHLETE_APP_CODE_BYEOLHA', inpB.value.trim());
-      alert('🔑 승인코드가 안전하게 저장되었습니다!');
     }
 
     function toggleSaAccordion(id) {
