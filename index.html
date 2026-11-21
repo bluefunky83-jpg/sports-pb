@@ -217,10 +217,10 @@
           <span>🛡️ 관리자</span>
         </button>
 
-        <!-- Viewer Approval Button (관리자/최고관리자만 노출: 세로 32px 칼각) -->
-        <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="h-8 px-2.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-95 hidden" title="뷰어 승인">
+        <!-- Viewer Approval Button (관리자/최고관리자만 노출: 세로 32px 칼각 + 빨간색 알림 배지) -->
+        <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="relative h-8 px-2.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-95 hidden" title="뷰어 승인">
           <span>🔔 뷰어 승인</span>
-          <span id="badge-pending-count" class="w-2 h-2 rounded-full bg-amber-400 hidden"></span>
+          <span id="badge-pending-count" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-slate-900 shadow-sm hidden"></span>
         </button>
 
         <!-- Super Admin Icon Button (지혜 님 전용 - 왕관 아이콘: 세로 32px 칼각) -->
@@ -2771,7 +2771,18 @@
           cancel_on_tap_outside: true
         });
 
-        // 지혜 님 지침: 들어가자마자 제멋대로 불쑥 뜨지 않고, 오직 버튼을 눌렀을 때만 뜨게 자동 prompt 제거!
+        // 공식 구글 로그인 버튼 마운트 (쿨다운 씹힘 방지!)
+        const btnContainer = document.getElementById('google-signin-btn-container');
+        if (btnContainer) {
+          google.accounts.id.renderButton(btnContainer, {
+            theme: 'outline',
+            size: 'large',
+            width: 320,
+            text: 'signin_with',
+            shape: 'pill',
+            locale: 'ko'
+          });
+        }
       } catch (err) {
         console.warn('Google One Tap init error:', err);
       }
@@ -3826,7 +3837,12 @@
     function updatePendingBadge() {
       const badge = document.getElementById('badge-pending-count');
       if (!badge) return;
-      const hasPending = Object.values(realtimeAuthData).some(v => v && v.status === 'pending');
+      const dummyNames = ['외할머니', '코치님', '하람아빠'];
+      const hasPending = Object.keys(realtimeAuthData).some(k => {
+        if (k.startsWith('_') || dummyNames.includes(k)) return false;
+        const v = realtimeAuthData[k];
+        return v && (v.status === 'pending' || !v.approved || !v.allowed || v.allowed === 'none');
+      });
       if (hasPending) badge.classList.remove('hidden');
       else badge.classList.add('hidden');
     }
@@ -4245,7 +4261,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.05';
+    const CURRENT_APP_VERSION = '2026.11.21.06';
 
     function checkForUpdates() {
       // Listen for Service Worker update
