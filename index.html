@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.36</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.37</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.36
+        선수 성장노트 v2026.11.21.37
       </div>
     </div>
   </div>
@@ -1355,6 +1355,26 @@
       if (!container) return;
 
       if (!playersData || playersData.length === 0) {
+        const curUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+        const curUser = curUserStr ? JSON.parse(curUserStr) : null;
+        if (curUser && curUser.role === 'viewer') {
+          container.innerHTML = `
+            <div class="py-16 text-center space-y-4 my-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+              <div class="w-14 h-14 rounded-2xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-3xl mx-auto shadow-lg">👀</div>
+              <div class="space-y-1">
+                <h3 class="text-base font-bold text-white">열람 가능한 선수를 불러오는 중입니다</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  승인된 선수가 없다면 설정(⚙️)에서<br>
+                  [열람할 선수 추가 신청]을 진행해 주세요.
+                </p>
+              </div>
+              <button type="button" onclick="openViewerAddPlayerModal()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 transition active:scale-95 inline-flex items-center gap-1.5">
+                <span>🔍 열람할 선수 조회 및 신청</span>
+              </button>
+            </div>
+          `;
+          return;
+        }
         container.innerHTML = `
           <div class="py-16 text-center space-y-4 my-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
             <div class="w-14 h-14 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center text-3xl mx-auto shadow-lg">🏃</div>
@@ -4471,6 +4491,19 @@
 
       renderApprovalList();
       updatePendingBadge();
+
+      try {
+        const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+        if (authUserStr) {
+          const authUser = JSON.parse(authUserStr);
+          if (authUser && authUser.role === 'viewer' && authUser.approved) {
+            syncDataForUserRole(authUser);
+            initPlayerSelectDropdown();
+            renderEventTabs();
+            renderCurrentView();
+          }
+        }
+      } catch (e) {}
     }
 
     let hasNewVersionUpdate = false;
@@ -5168,7 +5201,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.36';
+    const CURRENT_APP_VERSION = '2026.11.21.37';
 
     function checkForUpdates() {
       // Listen for Service Worker update
