@@ -3621,6 +3621,7 @@
         if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
         if (btnAddRecord) btnAddRecord.classList.remove('hidden');
         if (btnManagePlayers) btnManagePlayers.classList.remove('hidden');
+        if (typeof startAdminPendingPoller === 'function') startAdminPendingPoller();
       } else if (currentRole === 'admin') {
         if (btnSuperAdmin) btnSuperAdmin.classList.add('hidden'); // 왕관 완전 숨김!
         if (btnAdminProfile) btnAdminProfile.classList.remove('hidden'); // 🛡️ 관리자 노출!
@@ -3628,6 +3629,7 @@
         if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
         if (btnAddRecord) btnAddRecord.classList.remove('hidden');
         if (btnManagePlayers) btnManagePlayers.classList.remove('hidden');
+        if (typeof startAdminPendingPoller === 'function') startAdminPendingPoller();
       } else {
         // Viewer: 지혜 님 지침 완벽 반영 (오직 톱니바퀴만 노출!)
         if (btnSuperAdmin) btnSuperAdmin.classList.add('hidden');
@@ -3636,6 +3638,7 @@
         if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
         if (btnAddRecord) btnAddRecord.classList.add('hidden');
         if (btnManagePlayers) btnManagePlayers.classList.add('hidden');
+        if (typeof stopAdminPendingPoller === 'function') stopAdminPendingPoller();
       }
     }
 
@@ -3977,6 +3980,36 @@
       });
       if (hasPending) badge.classList.remove('hidden');
       else badge.classList.add('hidden');
+    }
+
+    let adminPendingPollTimer = null;
+
+    async function pollPendingApprovalsSilent() {
+      try {
+        const authUser = JSON.parse(localStorage.getItem('ATHLETE_APP_AUTH_USER') || '{}');
+        if (authUser.role !== 'super_admin' && authUser.role !== 'admin') return;
+        const res = await fetch(AUTH_API_ENDPOINT);
+        const json = await res.json();
+        if (json && json.data) {
+          realtimeAuthData = { ...json.data };
+          updatePendingBadge();
+        }
+      } catch (err) {
+        // 백그라운드 폴링 실패 시 조용히 패스
+      }
+    }
+
+    function startAdminPendingPoller() {
+      if (adminPendingPollTimer) clearInterval(adminPendingPollTimer);
+      pollPendingApprovalsSilent();
+      adminPendingPollTimer = setInterval(pollPendingApprovalsSilent, 5000);
+    }
+
+    function stopAdminPendingPoller() {
+      if (adminPendingPollTimer) {
+        clearInterval(adminPendingPollTimer);
+        adminPendingPollTimer = null;
+      }
     }
 
     function shareKakaoInviteLink() {
@@ -4393,7 +4426,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.09';
+    const CURRENT_APP_VERSION = '2026.11.21.10';
 
     function checkForUpdates() {
       // Listen for Service Worker update
