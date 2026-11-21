@@ -1,7 +1,7 @@
 {
-  "name": "전남체육 운동 성장노트",
-  "short_name": "성장노트",
-  "description": "전남체육중고 학생선수(육상·사이클) 공식 경기 기록 및 성장 차트 관리 웹앱",
+  "name": "선수 성장노트",
+  "short_name": "선수 성장노트",
+  "description": "학생선수 공식 경기 기록 및 성장 차트 관리 웹앱",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#090d16",
