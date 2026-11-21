@@ -594,7 +594,11 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block font-semibold text-slate-400 mb-1">운동 대분류 *</label>
-            <input type="text" id="form-player-sport" required placeholder="종목 입력" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <input type="hidden" id="form-player-sport" value="육상">
+            <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+              <button type="button" id="btn-sport-track" onclick="setFormPlayerSport('육상', true)" class="py-2 rounded-lg font-bold text-center bg-blue-600 text-white transition active:scale-95 shadow-sm">🏃 육상</button>
+              <button type="button" id="btn-sport-cycle" onclick="setFormPlayerSport('사이클', true)" class="py-2 rounded-lg font-medium text-center text-slate-400 hover:text-white transition active:scale-95">🚴 사이클</button>
+            </div>
           </div>
           <div>
             <label class="block font-semibold text-slate-400 mb-1">주종목 *</label>
@@ -2217,6 +2221,41 @@
       input.focus();
     }
 
+    function setFormPlayerSport(sport, autoFillEvents = false) {
+      const sportInput = document.getElementById('form-player-sport');
+      if (sportInput) sportInput.value = sport;
+      const btnTrack = document.getElementById('btn-sport-track');
+      const btnCycle = document.getElementById('btn-sport-cycle');
+      const eventInput = document.getElementById('form-player-event');
+
+      if (sport === '육상') {
+        if (btnTrack) btnTrack.className = 'py-2 rounded-lg font-bold text-center bg-blue-600 text-white transition active:scale-95 shadow-sm';
+        if (btnCycle) btnCycle.className = 'py-2 rounded-lg font-medium text-center text-slate-400 hover:text-white transition active:scale-95';
+        if (autoFillEvents) {
+          if (eventInput && (!eventInput.value || eventInput.value === '트랙 독주')) eventInput.value = '단거리 400m';
+          formCurrentEvents = [
+            '100m', '200m', '400m', 
+            { name: '4x100mR', isTeam: true }, 
+            { name: '4x400mR', isTeam: true }, 
+            { name: '4x400mR(Mixed)', isTeam: true }
+          ];
+          renderFormEventsChips();
+        }
+      } else {
+        if (btnTrack) btnTrack.className = 'py-2 rounded-lg font-medium text-center text-slate-400 hover:text-white transition active:scale-95';
+        if (btnCycle) btnCycle.className = 'py-2 rounded-lg font-bold text-center bg-blue-600 text-white transition active:scale-95 shadow-sm';
+        if (autoFillEvents) {
+          if (eventInput && (!eventInput.value || eventInput.value === '단거리 400m')) eventInput.value = '트랙 독주';
+          formCurrentEvents = [
+            '1Lap', '500m독주', '1km추발', 
+            { name: '2km단체추발', isTeam: true },
+            '도로독주', '개인도로'
+          ];
+          renderFormEventsChips();
+        }
+      }
+    }
+
     function removeEventFromCurrentFormPlayer(idx) {
       formCurrentEvents.splice(idx, 1);
       renderFormEventsChips();
@@ -2240,20 +2279,18 @@
         nameInput.value = p.name || '';
         setFormPlayerGender(p.gender || '남');
         birthInput.value = p.birth || '2011-02-15';
-        sportInput.value = p.sport || '';
+        setFormPlayerSport(p.sport || '육상', false);
         eventInput.value = p.mainEvent || '';
         setPlayerPhotoPreview(p.photo || '');
-        formCurrentEvents = Array.isArray(p.events) ? [...p.events] : (playerId === 'yusin' ? ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'] : ['1Lap', '500m독주', '1km추발', '2km단체추발']);
+        formCurrentEvents = Array.isArray(p.events) ? [...p.events] : (playerId === 'yusin' ? ['100m', '200m', '400m', { name: '4x100mR', isTeam: true }, { name: '4x400mR', isTeam: true }, { name: '4x400mR(Mixed)', isTeam: true }] : ['1Lap', '500m독주', '1km추발', { name: '2km단체추발', isTeam: true }]);
       } else {
         title.textContent = '새 선수 등록';
         idInput.value = '';
         nameInput.value = '';
         setFormPlayerGender('남');
         birthInput.value = '2011-02-15';
-        sportInput.value = '육상';
-        eventInput.value = '단거리 400m';
+        setFormPlayerSport('육상', true);
         setPlayerPhotoPreview('');
-        formCurrentEvents = ['100m', '200m', '400m', { name: '4x100mR', isTeam: true }];
       }
 
       renderFormEventsChips();
