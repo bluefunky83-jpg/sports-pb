@@ -224,17 +224,15 @@
         </button>
 
         <!-- Super Admin Icon Button (지혜 님 전용 - 왕관 아이콘만!) -->
-        <button type="button" id="btn-super-admin-top" onclick="openSuperAdminModal()" class="p-2 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 font-bold text-xs flex items-center justify-center transition active:scale-95 hidden" title="최고관리자 관제실">
-          <span class="text-sm">👑</span>
+        <button type="button" id="btn-super-admin-top" onclick="openSuperAdminModal()" class="w-8 h-8 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 flex items-center justify-center transition active:scale-95 hidden" title="최고관리자 관제실">
+          <span class="text-xs leading-none">👑</span>
         </button>
 
         <!-- Settings Button -->
-        <button type="button" onclick="openSettingsModal()" class="p-2 text-slate-400 hover:text-white rounded-xl bg-slate-900 border border-slate-800 transition active:scale-95" title="설정 및 계정">
+        <button type="button" onclick="openSettingsModal()" class="w-8 h-8 text-slate-400 hover:text-white rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center transition active:scale-95" title="설정 및 계정">
           <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         </button>
       </div>
-    </header>
-      </button>
     </header>
 
     <!-- Player Dropdown & Manage Button -->
@@ -575,25 +573,23 @@
           </div>
           <div>
             <label class="block font-semibold text-slate-400 mb-1">생년월일 *</label>
-            <input type="date" id="form-player-birth" required value="2011-02-15" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <input type="text" id="form-player-birth" required placeholder="0000-00-00" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" inputmode="numeric" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block font-semibold text-slate-400 mb-1">종목 대분류 *</label>
-            <input type="hidden" id="form-player-sport" value="육상">
-            <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-              <button type="button" id="btn-sport-track" onclick="setFormPlayerSport('육상', true)" class="py-2 rounded-lg font-bold text-center bg-blue-600 text-white transition active:scale-95 shadow-sm">🏃 육상</button>
-              <button type="button" id="btn-sport-cycle" onclick="setFormPlayerSport('사이클', true)" class="py-2 rounded-lg font-medium text-center text-slate-400 hover:text-white transition active:scale-95">🚴 사이클</button>
-            </div>
+            <select id="form-player-sport" onchange="onSportSelectChange(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              <option value="육상">🏃 육상</option>
+              <option value="사이클">🚴 사이클</option>
+            </select>
           </div>
           <div>
             <label class="block font-semibold text-slate-400 mb-1">주종목 *</label>
-            <input type="hidden" id="form-player-event" value="단거리">
-            <div id="form-player-main-event-container" class="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-              <!-- Dynamically populated buttons according to sport -->
-            </div>
+            <select id="form-player-event" onchange="onMainEventSelectChange(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              <!-- Dynamically populated options -->
+            </select>
           </div>
         </div>
 
@@ -2193,30 +2189,45 @@
       ]
     };
 
-    function renderMainEventOptions(sport, selectedEvent = null) {
-      const container = document.getElementById('form-player-main-event-container');
-      const hiddenInput = document.getElementById('form-player-event');
-      if (!container) return;
+    function onSportSelectChange(sport) {
+      setFormPlayerSport(sport, true);
+    }
+
+    function onMainEventSelectChange(mainEvent) {
+      renderFormEventsChips();
+    }
+
+    function renderMainEventSelectOptions(sport, selectedEvent = null) {
+      const select = document.getElementById('form-player-event');
+      if (!select) return;
 
       const options = SPORT_MAIN_EVENTS[sport] || ['단거리'];
       const current = (selectedEvent && options.includes(selectedEvent)) ? selectedEvent : options[0];
-      if (hiddenInput) hiddenInput.value = current;
-
-      container.innerHTML = options.map(opt => {
-        const isSel = (opt === current);
-        return `
-          <button type="button" onclick="setFormPlayerMainEvent('${opt}')" class="flex-1 py-2 rounded-lg font-bold text-center text-xs transition active:scale-95 ${isSel ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white bg-slate-900'}">
-            ${opt}
-          </button>
-        `;
-      }).join('');
+      select.innerHTML = options.map(opt => `<option value="${opt}" ${opt === current ? 'selected' : ''}>${opt}</option>`).join('');
     }
 
-    function setFormPlayerMainEvent(eventVal) {
-      const hiddenInput = document.getElementById('form-player-event');
-      if (hiddenInput) hiddenInput.value = eventVal;
-      const sport = document.getElementById('form-player-sport').value || '육상';
-      renderMainEventOptions(sport, eventVal);
+    function setFormPlayerSport(sport, autoFillEvents = false) {
+      const sportSelect = document.getElementById('form-player-sport');
+      if (sportSelect) sportSelect.value = sport;
+
+      renderMainEventSelectOptions(sport);
+
+      if (autoFillEvents) {
+        if (sport === '육상') {
+          formCurrentEvents = [
+            '100m', '200m', '400m', 
+            { name: '4x100mR', isTeam: true }, 
+            { name: '4x400mR', isTeam: true }, 
+            { name: '4x400mR(Mixed)', isTeam: true }
+          ];
+        } else {
+          formCurrentEvents = [
+            '1Lap', '500m독주', '1km추발', 
+            { name: '2km단체추발', isTeam: true },
+            '도로독주', '개인도로'
+          ];
+        }
+      }
       renderFormEventsChips();
     }
 
@@ -2377,9 +2388,9 @@
         idInput.value = p.id;
         nameInput.value = p.name || '';
         setFormPlayerGender(p.gender || '남');
-        birthInput.value = p.birth || '2011-02-15';
+        birthInput.value = p.birth || '';
         setFormPlayerSport(p.sport || '육상', false);
-        renderMainEventOptions(p.sport || '육상', p.mainEvent || (p.sport === '육상' ? '단거리' : '트랙'));
+        renderMainEventSelectOptions(p.sport || '육상', p.mainEvent);
         setPlayerPhotoPreview(p.photo || '');
         formCurrentEvents = Array.isArray(p.events) ? [...p.events] : (playerId === 'yusin' ? ['100m', '200m', '400m', { name: '4x100mR', isTeam: true }, { name: '4x400mR', isTeam: true }, { name: '4x400mR(Mixed)', isTeam: true }] : ['1Lap', '500m독주', '1km추발', { name: '2km단체추발', isTeam: true }]);
       } else {
@@ -2387,9 +2398,9 @@
         idInput.value = '';
         nameInput.value = '';
         setFormPlayerGender('남');
-        birthInput.value = '2011-02-15';
+        birthInput.value = '';
         setFormPlayerSport('육상', true);
-        renderMainEventOptions('육상', '단거리');
+        renderMainEventSelectOptions('육상', '단거리');
         setPlayerPhotoPreview('');
       }
 
@@ -2749,7 +2760,29 @@
 
     function triggerGooglePromptManual() {
       if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-        google.accounts.id.prompt();
+        let isDisplayed = false;
+        try {
+          google.accounts.id.prompt((notification) => {
+            if (notification.isDisplayed && notification.isDisplayed()) {
+              isDisplayed = true;
+            } else if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              console.log('Google One Tap suppressed or dismissed:', notification.getNotDisplayedReason());
+              openGoogleAuthModal();
+            }
+          });
+          // Fallback: If prompt didn't show up within 500ms, open auth modal popup
+          setTimeout(() => {
+            if (!isDisplayed) {
+              const popup = document.getElementById('modal-google-auth-popup');
+              if (popup && popup.classList.contains('hidden')) {
+                openGoogleAuthModal();
+              }
+            }
+          }, 600);
+        } catch (err) {
+          console.warn('Google prompt error:', err);
+          openGoogleAuthModal();
+        }
       } else {
         openGoogleAuthModal();
       }
@@ -2824,6 +2857,7 @@
         allowedPlayers: []
       };
       localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+      syncAdminToCloud(user);
       checkInitialAuthGate();
       alert(`🎉 ${name} 관리자님, Google 계정으로 로그인되었습니다!\n상단 [선수관리]에서 첫 자녀 선수를 등록해 보세요.`);
     }
@@ -2889,6 +2923,7 @@
         allowedPlayers: []
       };
       localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+      syncAdminToCloud(user);
       checkInitialAuthGate();
       alert('🛡️ 관리자로 로그인되었습니다!\n상단 [선수관리]에서 자녀 선수를 등록해 보세요.');
     }
@@ -2961,6 +2996,7 @@
           allowedPlayers: []
         };
         localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+        syncAdminToCloud(user);
         checkInitialAuthGate();
         alert(`🎉 ${name} 관리자님, 회원가입이 완료되었습니다!\n상단 [선수관리]에서 첫 자녀 선수를 등록해 보세요.`);
       } else {
@@ -3084,10 +3120,46 @@
     function handleLogout() {
       localStorage.removeItem('ATHLETE_APP_AUTH_USER');
       localStorage.removeItem('ATHLETE_APP_IS_ADMIN');
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        try {
+          google.accounts.id.disableAutoSelect();
+        } catch (e) {
+          console.warn('google logout reset warning:', e);
+        }
+      }
       closeSuperAdminModal();
       closeAdminProfileModal();
       closeSettingsModal();
       checkInitialAuthGate();
+    }
+
+    async function syncAdminToCloud(user) {
+      if (!user || user.role === 'super_admin') return;
+      try {
+        const res = await fetch(AUTH_API_ENDPOINT);
+        const json = await res.json();
+        const data = json.data || {};
+        if (!data._admins) data._admins = {};
+        
+        data._admins[user.id] = {
+          id: user.id,
+          name: user.name,
+          email: user.email || '',
+          role: 'admin',
+          playersCount: (playersData || []).length,
+          lastLogin: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+          date: new Date().toLocaleDateString('ko-KR')
+        };
+
+        await fetch(AUTH_API_ENDPOINT, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'sports_pb_auth', data: data })
+        });
+        realtimeAuthData = data;
+      } catch (err) {
+        console.warn('syncAdminToCloud error:', err);
+      }
     }
 
     // Viewers Registry for Super Admin & Admins (완전 백지 클린 초기화!)
@@ -3120,26 +3192,44 @@
     }
 
     // Super Admin Modal Logic
-    function openSuperAdminModal() {
-      updateSuperAdminStats();
-      renderSuperAdminViewersTree();
+    async function openSuperAdminModal() {
       document.getElementById('modal-super-admin-center').classList.remove('hidden');
+      await updateSuperAdminStats();
+      renderSuperAdminViewersTree();
     }
     function closeSuperAdminModal() {
       document.getElementById('modal-super-admin-center').classList.add('hidden');
     }
 
-    function updateSuperAdminStats() {
+    async function updateSuperAdminStats() {
+      try {
+        const res = await fetch(AUTH_API_ENDPOINT);
+        const json = await res.json();
+        if (json && json.data) realtimeAuthData = json.data;
+      } catch (e) {
+        console.warn('updateSuperAdminStats fetch warning:', e);
+      }
+
       const pCount = (playersData || []).length;
       let yusinRecs = Array.isArray(appData['yusin']) ? appData['yusin'].length : 72;
       let byeolhaRecs = Array.isArray(appData['byeolha']) ? appData['byeolha'].length : 12;
       let totalRecs = yusinRecs + byeolhaRecs;
-      const viewers = getRegisteredViewers();
-      const approvedViewers = viewers.filter(v => v.approved).length;
 
+      const dummyNames = ['외할머니', '코치님', '하람아빠'];
+      const viewerKeys = Object.keys(realtimeAuthData).filter(k => !k.startsWith('_') && !dummyNames.includes(k));
+      const approvedViewers = viewerKeys.filter(k => {
+        const v = realtimeAuthData[k];
+        return v && v.status === 'approved' && v.allowed && v.allowed !== 'none';
+      }).length;
+
+      const externalAdmins = Object.values(realtimeAuthData._admins || {});
+      const totalAdminCount = 1 + externalAdmins.length;
+
+      const elA = document.getElementById('sa-stat-admins');
       const elP = document.getElementById('sa-stat-players');
       const elR = document.getElementById('sa-stat-records-badge');
       const elV = document.getElementById('sa-stat-viewers');
+      if (elA) elA.textContent = `${totalAdminCount}명`;
       if (elP) elP.textContent = `${pCount}명`;
       if (elR) elR.textContent = `${totalRecs}건`;
       if (elV) elV.textContent = `${approvedViewers}명`;
@@ -3161,21 +3251,37 @@
     function renderSuperAdminViewersTree() {
       const c = document.getElementById('sa-viewers-tree-container');
       if (!c) return;
-      const viewers = getRegisteredViewers();
+
+      const dummyNames = ['외할머니', '코치님', '하람아빠'];
+      const viewerKeys = Object.keys(realtimeAuthData).filter(k => !k.startsWith('_') && !dummyNames.includes(k));
 
       // 경기기록 건수 계산 (지혜 님 지침: 선수별 경기기록 사용량)
       let yusinRecs = Array.isArray(appData['yusin']) ? appData['yusin'].length : 72;
       let byeolhaRecs = Array.isArray(appData['byeolha']) ? appData['byeolha'].length : 12;
       let totalRecs = yusinRecs + byeolhaRecs;
 
-      const yusinViewers = viewers.filter(v => v.approved && (v.allowedPlayers?.includes('yusin') || v.targetPlayer === 'all' || v.targetPlayer === 'yusin'));
-      const byeolhaViewers = viewers.filter(v => v.approved && (v.allowedPlayers?.includes('byeolha') || v.targetPlayer === 'all' || v.targetPlayer === 'byeolha'));
-      const pendingViewers = viewers.filter(v => !v.approved);
-      const jihyeApprovedViewers = viewers.filter(v => v.approved);
+      const yusinViewers = viewerKeys.filter(k => {
+        const v = realtimeAuthData[k];
+        return v && v.status === 'approved' && (v.allowed === 'all' || v.allowed === 'yusin' || v.allowedPlayers?.includes('yusin'));
+      });
+      const byeolhaViewers = viewerKeys.filter(k => {
+        const v = realtimeAuthData[k];
+        return v && v.status === 'approved' && (v.allowed === 'all' || v.allowed === 'byeolha' || v.allowedPlayers?.includes('byeolha'));
+      });
+      const pendingViewers = viewerKeys.filter(k => {
+        const v = realtimeAuthData[k];
+        return !v || v.status !== 'approved' || !v.allowed || v.allowed === 'none';
+      });
+      const jihyeApprovedViewers = viewerKeys.filter(k => {
+        const v = realtimeAuthData[k];
+        return v && v.status === 'approved' && v.allowed && v.allowed !== 'none';
+      });
+
+      const externalAdmins = Object.values(realtimeAuthData._admins || {});
 
       c.innerHTML = `
         <div class="space-y-3 font-sans">
-          <!-- Admin 1: 지혜 님 (관리자) Accordion -->
+          <!-- Admin 1: 지혜 님 (최고관리자) Accordion -->
           <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm transition">
             <button type="button" onclick="toggleSaAccordion('sa-admin-acc-jihye')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-800/40 transition">
               <div class="flex items-center gap-2.5">
@@ -3185,7 +3291,7 @@
                 <div>
                   <div class="flex items-center gap-1.5">
                     <span class="font-bold text-slate-100 text-xs">지혜 님</span>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">선수 관리자</span>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">최고관리자</span>
                   </div>
                   <div class="text-[10px] text-slate-400 mt-0.5">
                     bluefunky · 등록선수 2명 · 소속 뷰어 ${jihyeApprovedViewers.length}명
@@ -3205,7 +3311,7 @@
               <div class="space-y-1.5 pt-2">
                 <div class="text-[10px] font-bold text-slate-400 flex items-center justify-between">
                   <span>🏃 관리 선수 및 경기기록 사용내역</span>
-                  <span class="text-[10px] text-emerald-400 font-bold">총 ${yusinRecs + byeolhaRecs}건</span>
+                  <span class="text-[10px] text-emerald-400 font-bold">총 ${totalRecs}건</span>
                 </div>
                 
                 <div class="grid grid-cols-2 gap-2">
@@ -3254,17 +3360,21 @@
                   <span class="text-slate-500">${jihyeApprovedViewers.length}명 승인됨</span>
                 </div>
                 <div class="flex flex-wrap gap-1">
-                  ${jihyeApprovedViewers.map(v => `
-                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-slate-200 border border-slate-700 text-[11px] flex items-center gap-1.5">
-                      <span>👁️</span>
-                      <span class="font-bold text-white">${v.name}</span>
-                      <span class="text-[9px] text-purple-300 bg-purple-950/60 px-1 rounded border border-purple-500/30">${v.allowedPlayers?.length > 1 || v.targetPlayer === 'all' ? '전체' : (v.allowedPlayers?.[0] === 'byeolha' ? '별하' : '유신')}</span>
-                    </span>
-                  `).join('') || '<span class="text-slate-500 text-[10px] py-1">현재 승인된 뷰어가 없습니다.</span>'}
+                  ${jihyeApprovedViewers.map(k => {
+                    const v = realtimeAuthData[k] || {};
+                    const allowedLabel = (v.allowed === 'all' || v.allowedPlayers?.length > 1) ? '전체' : (v.allowed === 'byeolha' ? '별하' : '유신');
+                    return `
+                      <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-slate-200 border border-slate-700 text-[11px] flex items-center gap-1.5">
+                        <span>👁️</span>
+                        <span class="font-bold text-white">${k}</span>
+                        <span class="text-[9px] text-purple-300 bg-purple-950/60 px-1 rounded border border-purple-500/30">${allowedLabel}</span>
+                      </span>
+                    `;
+                  }).join('') || '<span class="text-slate-500 text-[10px] py-1">현재 승인된 뷰어가 없습니다.</span>'}
                 </div>
               </div>
 
-              <!-- 3. Pending Viewers for THIS admin (지혜 님 지침: 각 관리자 탭 아래에 승인대기자 귀속) -->
+              <!-- 3. Pending Viewers for THIS admin -->
               ${pendingViewers.length ? `
                 <div class="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-between text-xs mt-2">
                   <div class="flex items-center gap-1.5 text-amber-300 font-bold">
@@ -3279,6 +3389,47 @@
 
             </div>
           </div>
+
+          <!-- Dynamic Other External Admins Accordions -->
+          ${externalAdmins.map((adm, aIdx) => `
+            <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm transition">
+              <button type="button" onclick="toggleSaAccordion('sa-admin-acc-ext-${aIdx}')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-800/40 transition">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center text-sm font-black">
+                    ${adm.name ? adm.name.charAt(0) : '관'}
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-bold text-slate-100 text-xs">${adm.name}</span>
+                      <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">선수 관리자</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">
+                      ${adm.email || '이메일 없음'} · 가입/최근: ${adm.lastLogin || adm.date || '오늘'}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-indigo-400 font-semibold">관리 상세</span>
+                  <svg id="sa-admin-acc-ext-${aIdx}-icon" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+              </button>
+
+              <div id="sa-admin-acc-ext-${aIdx}" class="p-3.5 pt-0 border-t border-slate-800/60 space-y-2 text-xs bg-slate-950/40 hidden">
+                <div class="pt-2 text-[11px] text-slate-300">
+                  <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                    <div class="flex items-center justify-between text-slate-400">
+                      <span>가입 일시</span>
+                      <span class="text-white font-mono">${adm.date || '최근'}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-slate-400">
+                      <span>등록 관리 선수</span>
+                      <span class="text-indigo-300 font-bold">${adm.playersCount || 0}명</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
         </div>
       `;
     }
