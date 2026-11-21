@@ -6876,10 +6876,14 @@
       const targetStableKey = getStableAdminId(stagingTransferSelectedTarget.email, stagingTransferSelectedTarget.name);
       const targetId = stagingTransferSelectedTarget.id;
 
-      const extractAllowedPlayersList = (v) => {
+      const extractAllowedPlayersList = (v, ownerPlayerIds = []) => {
         if (!v || typeof v !== 'object') return [];
         if (Array.isArray(v.allowedPlayers)) return v.allowedPlayers.filter(Boolean);
-        if (v.allowed && v.allowed !== 'none' && v.allowed !== 'all') return [v.allowed];
+        if (v.allowed === 'all') {
+          if (Array.isArray(ownerPlayerIds) && ownerPlayerIds.length > 0) return Array.from(new Set(ownerPlayerIds.filter(Boolean)));
+          return v.targetPlayer ? [v.targetPlayer] : [];
+        }
+        if (v.allowed && v.allowed !== 'none') return [v.allowed];
         if (v.targetPlayer) return [v.targetPlayer];
         return [];
       };
@@ -6935,6 +6939,7 @@
         if (!targetAdm) throw new Error('이전받을 대상 관리자 클라우드 정보를 찾을 수 없습니다.');
 
         targetAdm.players = Array.isArray(targetAdm.players) ? targetAdm.players : [];
+        const preTargetOwnedPlayerIds = targetAdm.players.map(p => p.id);
         targetAdm.records = (targetAdm.records && typeof targetAdm.records === 'object') ? targetAdm.records : {};
         const preTargetRecordCanonByPid = {};
         targetAdm.players.forEach(p => {
@@ -6976,7 +6981,7 @@
           if (!k.startsWith('_') && v && v.ownerAdminId === targetId && v.email) {
             preTargetViewerEntries[v.email.toLowerCase()] = {
               key: k,
-              allowed: extractAllowedPlayersList(v)
+              allowed: extractAllowedPlayersList(v, preTargetOwnedPlayerIds)
             };
           }
         });
@@ -6984,7 +6989,7 @@
         const expectedViewerScopes = [];
         Object.entries(cloud).forEach(([k, v]) => {
           if (k.startsWith('_') || !v || v.ownerAdminId !== authUser.id) return;
-          const allowedList = extractAllowedPlayersList(v);
+          const allowedList = extractAllowedPlayersList(v, allOwnedPids);
           const matchingPids = allowedList.filter(pid => transferredSet.has(pid));
           const remainingPids = allowedList.filter(pid => !transferredSet.has(pid));
           if (matchingPids.length === 0) return;
@@ -6997,7 +7002,7 @@
 
           if (existingTargetEntry) {
             const [tKey, tVal] = existingTargetEntry;
-            const tAllowed = extractAllowedPlayersList(tVal);
+            const tAllowed = extractAllowedPlayersList(tVal, preTargetOwnedPlayerIds);
             const mergedAllowed = Array.from(new Set([...tAllowed, ...matchingPids]));
             const tReq = Array.isArray(tVal.requestedPlayers) ? tVal.requestedPlayers.filter(Boolean) : tAllowed;
             tVal.allowedPlayers = mergedAllowed;
@@ -7051,7 +7056,7 @@
         const verifyTombR = Object.keys(owned.deletedRecords).every(k => Boolean(targetAdm.deletedRecords[k]));
         const verifyNoLeftoverViewer = Object.values(cloud).every(v => {
           if (!v || typeof v !== 'object' || v.ownerAdminId !== authUser.id) return true;
-          const aList = extractAllowedPlayersList(v);
+          const aList = extractAllowedPlayersList(v, allOwnedPids);
           return !aList.some(pid => transferredSet.has(pid));
         });
         const targetEmailCounts = {};
@@ -7065,7 +7070,7 @@
           if (targetEmailCounts[email] !== 1) return false;
           const entry = Object.values(cloud).find(v => v && v.ownerAdminId === targetId && (v.email || '').toLowerCase() === email);
           if (!entry) return false;
-          const entryAllowed = extractAllowedPlayersList(entry);
+          const entryAllowed = extractAllowedPlayersList(entry, preTargetOwnedPlayerIds);
           const preAllowed = (preTargetViewerEntries[email] && preTargetViewerEntries[email].allowed) || [];
           return preAllowed.every(pid => entryAllowed.includes(pid)) &&
                  matchingPids.every(pid => entryAllowed.includes(pid));
