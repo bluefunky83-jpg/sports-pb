@@ -70,11 +70,11 @@
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            <span>Google 계정으로 빠른 로그인</span>
+            <span>Google 로그인 (Supabase 연동 예정 · 검수용 비활성)</span>
           </button>
           <div class="text-center">
             <button type="button" onclick="toggleGoogleOfficialFallback()" class="text-[11px] text-slate-400 hover:text-blue-400 underline underline-offset-2 transition">
-              바텀시트가 안 뜨나요? Google 계정 창으로 열기
+              Google 수동 이메일 우회 차단됨 (검수용)
             </button>
             <div id="google-official-btn-wrapper" class="mt-2.5 flex justify-center hidden"></div>
           </div>
@@ -3580,7 +3580,7 @@
       if (currentLoginRole === 'viewer') {
         let remoteMatches = [];
         try {
-          const res = await fetch(AUTH_API_ENDPOINT);
+          const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
           const json = await res.json();
           if (json && json.data) {
             realtimeAuthData = { ...json.data };
@@ -4001,7 +4001,7 @@
       saveRegisteredViewers(list);
 
       try {
-        const resGet = await fetch(AUTH_API_ENDPOINT);
+        const resGet = await stagingCloudFetch(AUTH_API_ENDPOINT);
         const jsonGet = await resGet.json();
         const latestData = (jsonGet && jsonGet.data) ? { ...jsonGet.data } : {};
         let currentEmail = '';
@@ -4055,7 +4055,7 @@
         };
         realtimeAuthData = latestData;
 
-        await fetch(AUTH_API_ENDPOINT, {
+        await stagingCloudFetch(AUTH_API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'sports_pb_auth', data: latestData })
@@ -4091,7 +4091,7 @@
       }
       __syncAdminInFlight = true;
       try {
-        const res = await fetch(AUTH_API_ENDPOINT);
+        const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
         if (!res.ok) throw new Error('클라우드 조회 실패 (' + res.status + ')');
         const json = await res.json();
         const data = json.data || {};
@@ -4170,7 +4170,7 @@
           date: new Date().toLocaleDateString('ko-KR')
         };
 
-        const postRes = await fetch(AUTH_API_ENDPOINT, {
+        const postRes = await stagingCloudFetch(AUTH_API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'sports_pb_auth', data: data })
@@ -4249,7 +4249,7 @@
 
     async function updateSuperAdminStats() {
       try {
-        const res = await fetch(AUTH_API_ENDPOINT);
+        const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
         const json = await res.json();
         if (json && json.data) realtimeAuthData = json.data;
       } catch (e) {
@@ -4541,7 +4541,7 @@
       document.getElementById('modal-admin-profile').classList.remove('hidden');
 
       try {
-        const res = await fetch(AUTH_API_ENDPOINT);
+        const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
         const json = await res.json();
         if (json && json.data) {
           realtimeAuthData = { ...json.data };
@@ -5093,7 +5093,7 @@
 
     // 13. Application Initialization
     
-    const AUTH_API_ENDPOINT = "https://textdb.dev/api/data/sports_pb_auth_bluefunky83_2026";
+    const AUTH_API_ENDPOINT = "STAGING_ISOLATED_LOCAL_STORE";
     let realtimeAuthData = {};
 
     async function loadRealtimeApprovals() {
@@ -5101,7 +5101,7 @@
       if (container) container.innerHTML = '<div class="py-6 text-center text-slate-500 text-xs">신청 명단 확인 중...</div>';
 
       try {
-        const res = await fetch(AUTH_API_ENDPOINT);
+        const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
         const json = await res.json();
         if (json && json.data) {
           realtimeAuthData = { ...realtimeAuthData, ...json.data };
@@ -5237,7 +5237,7 @@
       try {
         const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
         if (authUser.role !== 'super_admin' && authUser.role !== 'admin') return;
-        const res = await fetch(AUTH_API_ENDPOINT);
+        const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
         const json = await res.json();
         if (json && json.data) {
           realtimeAuthData = { ...json.data };
@@ -5361,7 +5361,7 @@
       }
 
       try {
-        const res = await fetch(AUTH_API_ENDPOINT);
+        const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
         const json = await res.json();
         if (json && json.data) realtimeAuthData = { ...realtimeAuthData, ...json.data };
       } catch (e) {}
@@ -5621,7 +5621,7 @@
       updateSuperAdminStats();
 
       try {
-        await fetch(AUTH_API_ENDPOINT, {
+        await stagingCloudFetch(AUTH_API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
@@ -5653,7 +5653,7 @@
       updateSuperAdminStats();
 
       try {
-        await fetch(AUTH_API_ENDPOINT, {
+        await stagingCloudFetch(AUTH_API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
@@ -5677,7 +5677,7 @@
         }
 
         try {
-          const res = await fetch(AUTH_API_ENDPOINT);
+          const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
           const json = await res.json();
           if (json && json.data) realtimeAuthData = { ...json.data };
           const entries = findAllViewerCloudEntries(json?.data, authUser);
@@ -5719,7 +5719,7 @@
       const authUser = JSON.parse(authUserStr);
 
       try {
-        const res = await fetch(AUTH_API_ENDPOINT);
+        const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
         const json = await res.json();
         if (json && json.data) realtimeAuthData = { ...json.data };
         const entries = findAllViewerCloudEntries(json?.data, authUser);
@@ -5761,7 +5761,7 @@
         const authUser = JSON.parse(authUserStr);
         if (authUser.role !== 'viewer' || !authUser.approved) return;
 
-        const res = await fetch(AUTH_API_ENDPOINT);
+        const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
         const json = await res.json();
         if (json && json.data) realtimeAuthData = { ...json.data };
         const entries = findAllViewerCloudEntries(json?.data, authUser);
@@ -6398,6 +6398,58 @@
       updateBackupStatusUI();
     };
 
+  
+    // =========================================================================
+    // COMPLETE STAGING ISOLATION GUARD (ZERO PRODUCTION TEXTDB ACCESS)
+    // =========================================================================
+    (function installStagingFetchGuard() {
+      const origFetch = window.fetch ? window.fetch.bind(window) : null;
+      if (origFetch) {
+        window.fetch = function(input, init) {
+          const url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+          if (url.includes('textdb.dev')) {
+            return Promise.reject(new Error('BLOCKED: Production textdb.dev access is forbidden in staging.'));
+          }
+          return origFetch(input, init);
+        };
+      }
+    })();
+
+    async function stagingCloudFetch(endpoint, options) {
+      const method = (options && options.method ? options.method : 'GET').toUpperCase();
+      if (method === 'POST' && options && options.body) {
+        try {
+          const parsed = JSON.parse(options.body);
+          const nextData = parsed && parsed.data ? parsed.data : parsed;
+          localStorage.setItem('STAGING_CLOUD_AUTH_DB_v1', JSON.stringify(nextData || {}));
+          realtimeAuthData = nextData || {};
+        } catch (e) {}
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: realtimeAuthData })
+        };
+      }
+      let cur = {};
+      try { cur = JSON.parse(localStorage.getItem('STAGING_CLOUD_AUTH_DB_v1') || '{}'); } catch (e) { cur = {}; }
+      realtimeAuthData = cur;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ data: cur })
+      };
+    }
+
+    // Disable Google One Tap & manual Google email bypass until Supabase OAuth is connected
+    initGoogleOneTap = function() {};
+    triggerGooglePromptManual = function() {
+      alert('🧪 [검수용 안내]\n실제 Google OAuth 서버 인증은 Supabase 연동 단계에서 활성화됩니다.\n검수용 테스트 계정(비밀번호: test1234!)을 이용해 주세요.');
+    };
+    handleGoogleOneClickLogin = triggerGooglePromptManual;
+    openGoogleAuthModal = triggerGooglePromptManual;
+    submitGoogleAuthModal = function(e) { if (e) e.preventDefault(); triggerGooglePromptManual(); };
+    handleGoogleCredentialResponse = async function() { triggerGooglePromptManual(); };
+
   </script>
 
   <!-- Update Notification Toast -->
@@ -6455,7 +6507,7 @@
   <div id="modal-admin-withdraw" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl text-xs">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="text-base font-bold text-white">⚠️ 관리자 회원 탈퇴</h3>
+        <h3 class="text-base font-bold text-white">⚠️ 관리자 회원 탈퇴 <span class="text-[10px] text-amber-300 font-normal">(로컬 시뮬레이션)</span></h3>
         <button type="button" onclick="document.getElementById('modal-admin-withdraw').classList.add('hidden')" class="text-slate-400 hover:text-white">✕</button>
       </div>
       <div id="withdraw-summary-box" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-slate-300 space-y-1"></div>
@@ -6476,7 +6528,7 @@
         <div id="withdraw-transfer-players" class="space-y-1 max-h-28 overflow-y-auto"></div>
         <label class="flex items-center gap-2 pt-1 text-[11px] text-emerald-300">
           <input type="checkbox" id="withdraw-transfer-accept-sim" checked>
-          <span>이전받는 관리자 명시적 수락 확인 (검수용)</span>
+          <span>이전받는 관리자 명시적 수락 확인 (로컬 시뮬레이션 · 서버 트랜잭션은 Supabase 연동 시 적용)</span>
         </label>
         <button type="button" onclick="executeAdminTransferAndWithdraw()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold">선수·기록·학부모 권한 이전 후 탈퇴</button>
       </div>
