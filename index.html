@@ -3314,8 +3314,17 @@
         }
 
         const wasApproved = prev.status === 'approved' && prev.allowed && prev.allowed !== 'none';
+        let currentEmail = prev.email || '';
+        try {
+          const curUser = JSON.parse(localStorage.getItem('ATHLETE_APP_AUTH_USER') || '{}');
+          if (curUser && curUser.email && !curUser.email.endsWith('@viewer.local')) {
+            currentEmail = curUser.email;
+          }
+        } catch (e) {}
+
         latestData[nick] = {
           ...prev,
+          email: currentEmail,
           ownerAdminId: ownerAdminId || prev.ownerAdminId || 'super_admin',
           status: wasApproved ? 'approved' : 'pending',
           pendingAdditional: wasApproved ? true : false,
@@ -3605,10 +3614,12 @@
                   ${jihyeApprovedViewers.map(k => {
                     const v = realtimeAuthData[k] || {};
                     const allowedLabel = (v.allowed === 'all' || v.allowedPlayers?.length > 1) ? '전체' : (v.allowed === 'byeolha' ? '별하' : '유신');
+                    const emailHtml = v.email ? `<span class="text-[10px] text-slate-400 font-normal">(${v.email})</span>` : '';
                     return `
-                      <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-slate-200 border border-slate-700 text-[11px] flex items-center gap-1.5">
+                      <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-slate-200 border border-slate-700 text-[11px] flex items-center gap-1.5 flex-wrap">
                         <span>👁️</span>
                         <span class="font-bold text-white">${k}</span>
+                        ${emailHtml}
                         <span class="text-[9px] text-purple-300 bg-purple-950/60 px-1 rounded border border-purple-500/30">${allowedLabel}</span>
                       </span>
                     `;
@@ -3770,8 +3781,9 @@
         card.className = 'p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2';
         card.innerHTML = `
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 flex-wrap">
               <span class="text-xs font-extrabold text-white">${nick}</span>
+              ${item.email ? `<span class="text-[10px] text-slate-400">(${item.email})</span>` : ''}
               <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">✅ ${allowedLabel}</span>
             </div>
             <span class="text-[10px] text-slate-500 font-mono">${item.time || ''}</span>
@@ -4519,8 +4531,9 @@
 
         card.innerHTML = `
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 flex-wrap">
               <span class="text-sm font-extrabold text-white">${nick}</span>
+              ${item.email ? `<span class="text-[10px] text-slate-400">(${item.email})</span>` : ''}
               ${statusBadge}
             </div>
             <span class="text-[10px] text-slate-400 font-mono">${item.time || ''}</span>
@@ -4807,7 +4820,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.19';
+    const CURRENT_APP_VERSION = '2026.11.21.20';
 
     function checkForUpdates() {
       // Listen for Service Worker update
