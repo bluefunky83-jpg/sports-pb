@@ -223,9 +223,9 @@
           <span>🛡️ 관리자</span>
         </button>
 
-        <!-- Viewer Approval Button (관리자/최고관리자만 노출: 세로 32px 칼각 + 빨간색 알림 배지) -->
-        <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="relative h-8 px-2.5 rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-95 hidden" title="뷰어 승인">
-          <span>🔔 뷰어 승인</span>
+        <!-- Notification Bell Button (모든 사용자 노출: 세로 32px 정사각형 + 빨간색 알림 배지) -->
+        <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="relative h-8 w-8 rounded-xl bg-slate-900 text-slate-300 border border-slate-800 hover:text-white hover:border-slate-700 flex items-center justify-center transition active:scale-95" title="알림">
+          <span class="text-sm leading-none">🔔</span>
           <span id="badge-pending-count" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-slate-900 shadow-sm hidden"></span>
         </button>
 
@@ -287,8 +287,8 @@
       <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span>🔔</span>
-          <h3 class="text-base font-bold text-white">뷰어 열람 승인 관리</h3>
-          <button type="button" onclick="shareKakaoInviteLink()" class="ml-1 text-[11px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 px-2 py-0.5 rounded-lg transition active:scale-95 shadow flex items-center gap-1">
+          <h3 id="modal-notif-title" class="text-base font-bold text-white">알림 센터</h3>
+          <button type="button" id="btn-notif-app-invite" onclick="shareKakaoInviteLink()" class="ml-1 text-[11px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 px-2 py-0.5 rounded-lg transition active:scale-95 shadow flex items-center gap-1">
             <span>💬</span><span>앱초대</span>
           </button>
         </div>
@@ -297,9 +297,22 @@
         </button>
       </div>
 
-      <div class="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
-        <span class="text-slate-400">신청 닉네임별 열람 권한 지정</span>
-        <button type="button" onclick="loadRealtimeApprovals()" class="text-blue-400 font-bold hover:underline flex items-center gap-1">
+      <!-- New Version Update Banner (shown when new version available) -->
+      <div id="app-update-banner" class="p-3.5 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border-b border-blue-500/30 hidden">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs">
+            <div class="font-bold text-blue-300">🆕 새 버전 업데이트</div>
+            <div class="text-[11px] text-slate-300" id="app-update-version-text">최신 버전이 준비되었습니다.</div>
+          </div>
+          <button type="button" onclick="applyAppUpdateNow()" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition whitespace-nowrap">
+            🔄 지금 업데이트
+          </button>
+        </div>
+      </div>
+
+      <div id="notif-admin-subheader" class="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
+        <span class="text-slate-400">뷰어 열람 승인 대기 목록</span>
+        <button type="button" onclick="loadRealtimeApprovals(); checkAppVersionUpdate();" class="text-blue-400 font-bold hover:underline flex items-center gap-1">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           새로고침
         </button>
@@ -3788,15 +3801,16 @@
         if (btnManagePlayers) btnManagePlayers.classList.remove('hidden');
         if (typeof startAdminPendingPoller === 'function') startAdminPendingPoller();
       } else {
-        // Viewer: 지혜 님 지침 완벽 반영 (오직 톱니바퀴만 노출!)
+        // Viewer: 종(알림) + 톱니바퀴만 노출!
         if (btnSuperAdmin) btnSuperAdmin.classList.add('hidden');
         if (btnAdminProfile) btnAdminProfile.classList.add('hidden');
-        if (btnViewerApprove) btnViewerApprove.classList.add('hidden');
+        if (btnViewerApprove) btnViewerApprove.classList.remove('hidden');
         if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
         if (btnAddRecord) btnAddRecord.classList.add('hidden');
         if (btnManagePlayers) btnManagePlayers.classList.add('hidden');
         if (typeof stopAdminPendingPoller === 'function') stopAdminPendingPoller();
       }
+      if (typeof startVersionCheckPoller === 'function') startVersionCheckPoller();
     }
 
     function submitViewerAuthCode() {
@@ -4114,16 +4128,76 @@
       updatePendingBadge();
     }
 
+    let hasNewVersionUpdate = false;
+    let latestRemoteVersion = '';
+    let versionCheckTimer = null;
+
+    async function checkAppVersionUpdate() {
+      try {
+        const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json && json.version && json.version !== CURRENT_APP_VERSION) {
+          hasNewVersionUpdate = true;
+          latestRemoteVersion = json.version;
+        } else {
+          hasNewVersionUpdate = false;
+        }
+        renderUpdateBannerUI();
+        updatePendingBadge();
+      } catch (e) {}
+    }
+
+    function renderUpdateBannerUI() {
+      const banner = document.getElementById('app-update-banner');
+      const vText = document.getElementById('app-update-version-text');
+      if (!banner) return;
+      if (hasNewVersionUpdate) {
+        banner.classList.remove('hidden');
+        if (vText) vText.textContent = `새 버전(${latestRemoteVersion})으로 지금 업데이트할 수 있습니다.`;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    async function applyAppUpdateNow() {
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.update()));
+        }
+      } catch (e) {}
+      window.location.reload(true);
+    }
+
+    function startVersionCheckPoller() {
+      checkAppVersionUpdate();
+      if (versionCheckTimer) clearInterval(versionCheckTimer);
+      versionCheckTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          checkAppVersionUpdate();
+        }
+      }, 30000);
+    }
+
     function updatePendingBadge() {
       const badge = document.getElementById('badge-pending-count');
       if (!badge) return;
+      const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+      const authUser = authUserStr ? JSON.parse(authUserStr) : {};
+      const isAdmin = authUser.role === 'super_admin' || authUser.role === 'admin';
+
       const dummyNames = ['외할머니', '코치님', '하람아빠'];
-      const hasPending = Object.keys(realtimeAuthData).some(k => {
+      const hasPending = isAdmin && Object.keys(realtimeAuthData).some(k => {
         if (k.startsWith('_') || dummyNames.includes(k)) return false;
         const v = realtimeAuthData[k];
         return v && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
       });
-      if (hasPending) badge.classList.remove('hidden');
+      if (hasPending || hasNewVersionUpdate) badge.classList.remove('hidden');
       else badge.classList.add('hidden');
     }
 
@@ -4276,6 +4350,31 @@
     function renderApprovalList() {
       const container = document.getElementById('approval-list-container');
       if (!container) return;
+
+      const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+      const authUser = authUserStr ? JSON.parse(authUserStr) : {};
+      const isAdmin = authUser.role === 'super_admin' || authUser.role === 'admin';
+
+      const titleEl = document.getElementById('modal-notif-title');
+      const inviteBtn = document.getElementById('btn-notif-app-invite');
+      const subHeader = document.getElementById('notif-admin-subheader');
+      renderUpdateBannerUI();
+
+      if (!isAdmin) {
+        if (titleEl) titleEl.textContent = '알림 센터';
+        if (inviteBtn) inviteBtn.classList.add('hidden');
+        if (subHeader) subHeader.classList.add('hidden');
+        if (!hasNewVersionUpdate) {
+          container.innerHTML = `<div class="py-10 text-center text-slate-500 text-xs">새로운 알림이 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">현재 최신 버전 (${CURRENT_APP_VERSION})</span></div>`;
+        } else {
+          container.innerHTML = '';
+        }
+        return;
+      }
+
+      if (titleEl) titleEl.textContent = '알림 · 뷰어 승인';
+      if (inviteBtn) inviteBtn.classList.remove('hidden');
+      if (subHeader) subHeader.classList.remove('hidden');
 
       // Filter out dummy names: 외할머니, 코치님, 하람아빠
       const dummyNames = ['외할머니', '코치님', '하람아빠'];
@@ -4635,7 +4734,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.15';
+    const CURRENT_APP_VERSION = '2026.11.21.16';
 
     function checkForUpdates() {
       // Listen for Service Worker update
