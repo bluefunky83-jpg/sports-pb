@@ -1137,6 +1137,10 @@
         return;
       }
 
+      if (!currentPlayer || !playersData.some(p => p.id === currentPlayer)) {
+        currentPlayer = playersData[0].id;
+      }
+
       playersData.forEach(p => {
         const sportText = p.sport || '';
         const icon = sportText.includes('육상') ? '🏃' : (sportText.includes('사이클') ? '🚴' : '🏅');
@@ -4734,7 +4738,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.16';
+    const CURRENT_APP_VERSION = '2026.11.21.17';
 
     function checkForUpdates() {
       // Listen for Service Worker update
