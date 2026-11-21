@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.38</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.39</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.38
+        선수 성장노트 v2026.11.21.39
       </div>
     </div>
   </div>
@@ -1011,6 +1011,248 @@
     function getStableAdminId(email, name) {
       const base = (email && email.includes('@')) ? email.trim().toLowerCase() : (name || 'user').trim().toLowerCase();
       return 'admin_' + base.replace(/[^a-z0-9가-힣._-]/g, '_');
+    }
+
+    function parseValidTimestamp(ts) {
+      if (typeof ts === 'number' && Number.isFinite(ts) && ts > 0) return ts;
+      if (typeof ts === 'string' && ts.trim()) {
+        const parsed = Date.parse(ts);
+        if (Number.isFinite(parsed) && parsed > 0) return parsed;
+      }
+      return null;
+    }
+
+    function getAdminTombstones(stableKey) {
+      try {
+        const raw = localStorage.getItem('ATHLETE_APP_TOMBSTONES_' + stableKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return {
+            deletedPlayers: (parsed && parsed.deletedPlayers && typeof parsed.deletedPlayers === 'object') ? parsed.deletedPlayers : {},
+            deletedRecords: (parsed && parsed.deletedRecords && typeof parsed.deletedRecords === 'object') ? parsed.deletedRecords : {}
+          };
+        }
+      } catch (e) {}
+      return { deletedPlayers: {}, deletedRecords: {} };
+    }
+
+    function saveAdminTombstones(stableKey, tomb) {
+      try {
+        localStorage.setItem('ATHLETE_APP_TOMBSTONES_' + stableKey, JSON.stringify({
+          deletedPlayers: tomb.deletedPlayers || {},
+          deletedRecords: tomb.deletedRecords || {}
+        }));
+      } catch (e) {}
+    }
+
+    function stripMetaForCompare(obj) {
+      if (!obj || typeof obj !== 'object') return obj;
+      const copy = {};
+      Object.keys(obj).sort().forEach(k => {
+        if (k === 'updatedAt' || k === 'recordsCount' || k === 'maskedName') return;
+        copy[k] = obj[k];
+      });
+      return copy;
+    }
+
+    function areEntitiesEqual(a, b) {
+      return JSON.stringify(stripMetaForCompare(a)) === JSON.stringify(stripMetaForCompare(b));
+    }
+
+    function archiveSyncConflict(entry) {
+      try {
+        let list = [];
+        const raw = localStorage.getItem('ATHLETE_APP_CONFLICT_ARCHIVE');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) list = parsed;
+        }
+        list.unshift({
+          id: 'conf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          detectedAt: new Date().toISOString(),
+          ...entry
+        });
+        if (list.length > 30) list = list.slice(0, 30);
+        localStorage.setItem('ATHLETE_APP_CONFLICT_ARCHIVE', JSON.stringify(list));
+      } catch (e) {
+        console.warn('archiveSyncConflict failed:', e);
+      }
+    }
+
+    function mergeAdminDatasets(adminKey, localSet, cloudSet) {
+      const localPlayers = Array.isArray(localSet.players) ? localSet.players : [];
+      const cloudPlayers = Array.isArray(cloudSet.players) ? cloudSet.players : [];
+      const localRecords = (localSet.records && typeof localSet.records === 'object') ? localSet.records : {};
+      const cloudRecords = (cloudSet.records && typeof cloudSet.records === 'object') ? cloudSet.records : {};
+
+      const deletedPlayers = {};
+      const allDelPKeys = new Set([
+        ...Object.keys(localSet.deletedPlayers || {}),
+        ...Object.keys(cloudSet.deletedPlayers || {})
+      ]);
+      allDelPKeys.forEach(pid => {
+        const t1 = parseValidTimestamp((localSet.deletedPlayers || {})[pid]) || 0;
+        const t2 = parseValidTimestamp((cloudSet.deletedPlayers || {})[pid]) || 0;
+        const maxT = Math.max(t1, t2);
+        if (maxT > 0) deletedPlayers[pid] = maxT;
+      });
+
+      const deletedRecords = {};
+      const allDelRKeys = new Set([
+        ...Object.keys(localSet.deletedRecords || {}),
+        ...Object.keys(cloudSet.deletedRecords || {})
+      ]);
+      allDelRKeys.forEach(rid => {
+        const t1 = parseValidTimestamp((localSet.deletedRecords || {})[rid]) || 0;
+        const t2 = parseValidTimestamp((cloudSet.deletedRecords || {})[rid]) || 0;
+        const maxT = Math.max(t1, t2);
+        if (maxT > 0) deletedRecords[rid] = maxT;
+      });
+
+      let conflictCount = 0;
+
+      // 1. Merge players by unique id
+      const localPMap = new Map();
+      localPlayers.forEach(p => { if (p && p.id) localPMap.set(p.id, p); });
+      const cloudPMap = new Map();
+      cloudPlayers.forEach(p => { if (p && p.id) cloudPMap.set(p.id, p); });
+      const allPIds = new Set([...localPMap.keys(), ...cloudPMap.keys()]);
+      const mergedPlayers = [];
+
+      allPIds.forEach(pid => {
+        const delAt = deletedPlayers[pid] || 0;
+        const lp = localPMap.get(pid);
+        const cp = cloudPMap.get(pid);
+
+        const lTs = lp ? parseValidTimestamp(lp.updatedAt) : null;
+        const cTs = cp ? parseValidTimestamp(cp.updatedAt) : null;
+
+        // Tombstone check: if deleted and no newer modification after deletion, keep deleted
+        const lAlive = lp && (!delAt || (lTs !== null && lTs > delAt));
+        const cAlive = cp && (!delAt || (cTs !== null && cTs > delAt));
+        if (!lAlive && !cAlive) return;
+
+        if (lAlive && !cAlive) {
+          mergedPlayers.push(lp);
+        } else if (!lAlive && cAlive) {
+          mergedPlayers.push(cp);
+        } else {
+          // Both exist: fill missing optional profile fields safely first
+          if (areEntitiesEqual(lp, cp)) {
+            const winner = (cTs !== null && (lTs === null || cTs > lTs)) ? cp : lp;
+            mergedPlayers.push(winner);
+          } else {
+            let winner = lp;
+            let reason = 'untrusted_or_equal_timestamp_kept_local';
+            if (lTs !== null && cTs !== null && lTs !== cTs) {
+              winner = (cTs > lTs) ? cp : lp;
+              reason = (cTs > lTs) ? 'cloud_newer' : 'local_newer';
+            }
+            // Preserve non-empty local photo/gender if cloud omitted it
+            if (winner === cp && !cp.photo && lp.photo) winner = { ...cp, photo: lp.photo };
+            if (winner === cp && !cp.gender && lp.gender) winner = { ...winner, gender: lp.gender };
+            archiveSyncConflict({
+              adminKey,
+              entityType: 'player',
+              entityId: pid,
+              localCopy: JSON.parse(JSON.stringify(lp)),
+              cloudCopy: JSON.parse(JSON.stringify(cp)),
+              resolvedWinner: (winner === lp) ? 'local' : 'cloud',
+              reason
+            });
+            conflictCount++;
+            mergedPlayers.push(winner);
+          }
+        }
+      });
+
+      // 2. Merge records per alive player by unique record id
+      const mergedRecords = {};
+      mergedPlayers.forEach(p => {
+        const pid = p.id;
+        const lArr = Array.isArray(localRecords[pid]) ? localRecords[pid] : [];
+        const cArr = Array.isArray(cloudRecords[pid]) ? cloudRecords[pid] : [];
+        const lMap = new Map();
+        lArr.forEach(r => { if (r && r.id) lMap.set(r.id, r); });
+        const cMap = new Map();
+        cArr.forEach(r => { if (r && r.id) cMap.set(r.id, r); });
+
+        const allRIds = new Set([...lMap.keys(), ...cMap.keys()]);
+        const mergedList = [];
+        allRIds.forEach(rid => {
+          const delAt = deletedRecords[rid] || 0;
+          const lr = lMap.get(rid);
+          const cr = cMap.get(rid);
+          const lTs = lr ? parseValidTimestamp(lr.updatedAt) : null;
+          const cTs = cr ? parseValidTimestamp(cr.updatedAt) : null;
+
+          const lAlive = lr && (!delAt || (lTs !== null && lTs > delAt));
+          const cAlive = cr && (!delAt || (cTs !== null && cTs > delAt));
+          if (!lAlive && !cAlive) return;
+
+          if (lAlive && !cAlive) {
+            mergedList.push(lr);
+          } else if (!lAlive && cAlive) {
+            mergedList.push(cr);
+          } else if (areEntitiesEqual(lr, cr)) {
+            const winner = (cTs !== null && (lTs === null || cTs > lTs)) ? cr : lr;
+            mergedList.push(winner);
+          } else {
+            let winner = lr;
+            let reason = 'untrusted_or_equal_timestamp_kept_local';
+            if (lTs !== null && cTs !== null && lTs !== cTs) {
+              winner = (cTs > lTs) ? cr : lr;
+              reason = (cTs > lTs) ? 'cloud_newer' : 'local_newer';
+            }
+            archiveSyncConflict({
+              adminKey,
+              entityType: 'record',
+              entityId: rid,
+              playerId: pid,
+              localCopy: JSON.parse(JSON.stringify(lr)),
+              cloudCopy: JSON.parse(JSON.stringify(cr)),
+              resolvedWinner: (winner === lr) ? 'local' : 'cloud',
+              reason
+            });
+            conflictCount++;
+            mergedList.push(winner);
+          }
+        });
+        mergedRecords[pid] = mergedList;
+      });
+
+      return {
+        players: mergedPlayers,
+        records: mergedRecords,
+        deletedPlayers,
+        deletedRecords,
+        conflictCount
+      };
+    }
+
+    function showSyncNotice(message, type = 'info') {
+      try {
+        let el = document.getElementById('sync-status-toast');
+        if (!el) {
+          el = document.createElement('div');
+          el.id = 'sync-status-toast';
+          el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[120] max-w-[90vw] px-3.5 py-2 rounded-xl text-[11px] font-semibold shadow-xl border transition-opacity duration-300 pointer-events-none text-center';
+          document.body.appendChild(el);
+        }
+        el.textContent = message;
+        if (type === 'error') {
+          el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[120] max-w-[90vw] px-3.5 py-2 rounded-xl text-[11px] font-semibold shadow-xl border transition-opacity duration-300 pointer-events-none text-center bg-rose-950/95 text-rose-200 border-rose-500/50';
+        } else if (type === 'warn') {
+          el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[120] max-w-[90vw] px-3.5 py-2 rounded-xl text-[11px] font-semibold shadow-xl border transition-opacity duration-300 pointer-events-none text-center bg-amber-950/95 text-amber-200 border-amber-500/50';
+        } else {
+          el.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[120] max-w-[90vw] px-3.5 py-2 rounded-xl text-[11px] font-semibold shadow-xl border transition-opacity duration-300 pointer-events-none text-center bg-slate-900/95 text-emerald-300 border-emerald-500/40';
+        }
+        el.style.opacity = '1';
+        clearTimeout(window.__syncToastTimer);
+        window.__syncToastTimer = setTimeout(() => {
+          if (el) el.style.opacity = '0';
+        }, 4200);
+      } catch (e) {}
     }
 
     // 2. Storage Functions
@@ -2222,6 +2464,16 @@
       const idx = (appData[currentPlayer] || []).findIndex(r => r.id === recordId);
       if (idx !== -1) {
         appData[currentPlayer].splice(idx, 1);
+        try {
+          const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+          const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+          if (authUser && authUser.role === 'admin') {
+            const stableKey = getStableAdminId(authUser.email, authUser.name);
+            const tomb = getAdminTombstones(stableKey);
+            tomb.deletedRecords[recordId] = Date.now();
+            saveAdminTombstones(stableKey, tomb);
+          }
+        } catch (e) {}
         saveDataToStorage();
         renderCurrentView();
       }
@@ -2301,7 +2553,8 @@
         wind: windVal,
         runners: runnersList,
         relay: relayStr,
-        note: noteVal
+        note: noteVal,
+        updatedAt: Date.now()
       };
 
       if (!appData[currentPlayer]) appData[currentPlayer] = [];
@@ -2708,6 +2961,7 @@
           p.mainEvent = mainEvent;
           p.photo = photoBase64;
           p.events = [...formCurrentEvents];
+          p.updatedAt = Date.now();
         }
       } else {
         const newId = 'p_' + Date.now();
@@ -2719,7 +2973,8 @@
           sport: sport,
           mainEvent: mainEvent,
           events: [...formCurrentEvents],
-          photo: photoBase64
+          photo: photoBase64,
+          updatedAt: Date.now()
         });
         if (!appData[newId]) appData[newId] = [];
         currentPlayer = newId;
@@ -2740,6 +2995,20 @@
       }
       const p = playersData.find(x => x.id === id);
       if (!confirm(`${p.name} 선수의 모든 기록과 프로필을 삭제하시겠습니까?`)) return;
+
+      try {
+        const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+        const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+        if (authUser && authUser.role === 'admin') {
+          const stableKey = getStableAdminId(authUser.email, authUser.name);
+          const tomb = getAdminTombstones(stableKey);
+          tomb.deletedPlayers[id] = Date.now();
+          (appData[id] || []).forEach(r => {
+            if (r && r.id) tomb.deletedRecords[r.id] = Date.now();
+          });
+          saveAdminTombstones(stableKey, tomb);
+        }
+      } catch (e) {}
 
       playersData = playersData.filter(x => x.id !== id);
       delete appData[id];
@@ -2902,18 +3171,59 @@
           currentPlayer = 'yusin';
         }
       } else if (user.role === 'admin') {
-        // Other Admin: Yusin & Byeolha are 100% hidden! Use stable key so relogin preserves data!
+        // Other Admin: Yusin & Byeolha are 100% hidden! Use stable key & conflict-safe merge!
         const stableKey = getStableAdminId(user.email, user.name);
         const savedCustomPlayers = localStorage.getItem('CUSTOM_PLAYERS_' + stableKey) || localStorage.getItem('CUSTOM_PLAYERS_' + user.id);
         const savedCustomData = localStorage.getItem('CUSTOM_DATA_' + stableKey) || localStorage.getItem('CUSTOM_DATA_' + user.id);
-        if (savedCustomPlayers) {
-          playersData = JSON.parse(savedCustomPlayers);
-          appData = savedCustomData ? JSON.parse(savedCustomData) : {};
-          currentPlayer = playersData[0]?.id || null;
+        let localPlayers = [];
+        let localRecords = {};
+        try { if (savedCustomPlayers) localPlayers = JSON.parse(savedCustomPlayers); } catch (e) {}
+        try { if (savedCustomData) localRecords = JSON.parse(savedCustomData); } catch (e) {}
+
+        const localTomb = getAdminTombstones(stableKey);
+        const cloudAdmin = (realtimeAuthData && realtimeAuthData._admins)
+          ? (realtimeAuthData._admins[stableKey] || realtimeAuthData._admins[user.id] || null)
+          : null;
+
+        if (cloudAdmin && (Array.isArray(cloudAdmin.players) || (cloudAdmin.records && typeof cloudAdmin.records === 'object'))) {
+          const merged = mergeAdminDatasets(
+            stableKey,
+            {
+              players: localPlayers,
+              records: localRecords,
+              deletedPlayers: localTomb.deletedPlayers,
+              deletedRecords: localTomb.deletedRecords
+            },
+            {
+              players: Array.isArray(cloudAdmin.players) ? cloudAdmin.players : [],
+              records: (cloudAdmin.records && typeof cloudAdmin.records === 'object') ? cloudAdmin.records : {},
+              deletedPlayers: cloudAdmin.deletedPlayers || {},
+              deletedRecords: cloudAdmin.deletedRecords || {}
+            }
+          );
+          playersData = merged.players;
+          appData = merged.records;
+          saveAdminTombstones(stableKey, {
+            deletedPlayers: merged.deletedPlayers,
+            deletedRecords: merged.deletedRecords
+          });
+          try {
+            localStorage.setItem('CUSTOM_PLAYERS_' + stableKey, JSON.stringify(playersData));
+            localStorage.setItem('CUSTOM_DATA_' + stableKey, JSON.stringify(appData));
+          } catch (e) {}
+          if (merged.conflictCount > 0) {
+            showSyncNotice(`⚠️ 동시 수정 충돌 ${merged.conflictCount}건 감지 · 양쪽 사본을 안전 보관했습니다.`, 'warn');
+          }
+        } else if (savedCustomPlayers) {
+          playersData = localPlayers;
+          appData = localRecords;
         } else {
           playersData = [];
           appData = {};
-          currentPlayer = null;
+        }
+
+        if (!currentPlayer || !playersData.some(p => p.id === currentPlayer)) {
+          currentPlayer = playersData[0]?.id || null;
         }
       } else if (user.role === 'viewer') {
         // Viewer: only sees approved players (both MASTER + external admin players!)
@@ -3641,56 +3951,132 @@
       checkInitialAuthGate();
     }
 
+    let __syncAdminInFlight = false;
     async function syncAdminToCloud(user) {
-      if (!user || user.role === 'super_admin') return;
+      if (!user || user.role === 'super_admin') return { ok: true, skipped: true };
+      const stableKey = getStableAdminId(user.email, user.name);
+      if (__syncAdminInFlight) {
+        localStorage.setItem('ATHLETE_APP_PENDING_SYNC_' + stableKey, '1');
+        return { ok: false, queued: true };
+      }
+      __syncAdminInFlight = true;
       try {
         const res = await fetch(AUTH_API_ENDPOINT);
+        if (!res.ok) throw new Error('클라우드 조회 실패 (' + res.status + ')');
         const json = await res.json();
         const data = json.data || {};
         if (!data._admins) data._admins = {};
-        
-        const maskedPlayers = (playersData || []).map(p => {
+
+        const localTomb = getAdminTombstones(stableKey);
+        const cloudAdmin = data._admins[stableKey] || data._admins[user.id] || null;
+        let finalPlayers = JSON.parse(JSON.stringify(playersData || []));
+        let finalRecords = JSON.parse(JSON.stringify(appData || {}));
+        let finalTomb = localTomb;
+        let conflictCount = 0;
+
+        if (cloudAdmin) {
+          const merged = mergeAdminDatasets(
+            stableKey,
+            {
+              players: finalPlayers,
+              records: finalRecords,
+              deletedPlayers: localTomb.deletedPlayers,
+              deletedRecords: localTomb.deletedRecords
+            },
+            {
+              players: Array.isArray(cloudAdmin.players) ? cloudAdmin.players : [],
+              records: (cloudAdmin.records && typeof cloudAdmin.records === 'object') ? cloudAdmin.records : {},
+              deletedPlayers: cloudAdmin.deletedPlayers || {},
+              deletedRecords: cloudAdmin.deletedRecords || {}
+            }
+          );
+          finalPlayers = merged.players;
+          finalRecords = merged.records;
+          finalTomb = { deletedPlayers: merged.deletedPlayers, deletedRecords: merged.deletedRecords };
+          conflictCount = merged.conflictCount;
+
+          playersData = finalPlayers;
+          appData = finalRecords;
+          saveAdminTombstones(stableKey, finalTomb);
+          try {
+            localStorage.setItem('CUSTOM_PLAYERS_' + stableKey, JSON.stringify(playersData));
+            localStorage.setItem('CUSTOM_DATA_' + stableKey, JSON.stringify(appData));
+          } catch (e) {}
+        }
+
+        const maskedPlayers = (finalPlayers || []).map(p => {
           const n = p.name || '';
           const masked = n.length >= 2 ? (n[0] + '*' + (n.length > 2 ? n.slice(2) : '')) : n;
           return {
             id: p.id,
             name: p.name || '',
             maskedName: masked,
+            gender: p.gender || '',
             sport: p.sport || '',
             mainEvent: p.mainEvent || '',
             birth: p.birth || '',
             events: Array.isArray(p.events) ? p.events : [],
-            recordsCount: Array.isArray(appData[p.id]) ? appData[p.id].length : 0
+            updatedAt: p.updatedAt || null,
+            recordsCount: Array.isArray(finalRecords[p.id]) ? finalRecords[p.id].length : 0
           };
         });
 
         const adminRecords = {};
-        (playersData || []).forEach(p => {
-          if (Array.isArray(appData[p.id])) adminRecords[p.id] = appData[p.id];
+        (finalPlayers || []).forEach(p => {
+          if (Array.isArray(finalRecords[p.id])) adminRecords[p.id] = finalRecords[p.id];
         });
 
-        data._admins[user.id] = {
-          id: user.id,
+        data._admins[stableKey] = {
+          id: stableKey,
           name: user.name,
           email: user.email || '',
           role: 'admin',
           playersCount: maskedPlayers.length,
           players: maskedPlayers,
           records: adminRecords,
+          deletedPlayers: finalTomb.deletedPlayers || {},
+          deletedRecords: finalTomb.deletedRecords || {},
           lastLogin: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
           date: new Date().toLocaleDateString('ko-KR')
         };
 
-        await fetch(AUTH_API_ENDPOINT, {
+        const postRes = await fetch(AUTH_API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: 'sports_pb_auth', data: data })
         });
+        if (!postRes.ok) throw new Error('클라우드 저장 실패 (' + postRes.status + ')');
+
         realtimeAuthData = data;
+        localStorage.removeItem('ATHLETE_APP_PENDING_SYNC_' + stableKey);
+        if (conflictCount > 0) {
+          showSyncNotice(`⚠️ 동시 수정 충돌 ${conflictCount}건 감지 · 양쪽 사본 보존 후 동기화 완료`, 'warn');
+        } else {
+          showSyncNotice('☁️ 클라우드 동기화 완료', 'info');
+        }
+        return { ok: true, conflictCount };
       } catch (err) {
         console.warn('syncAdminToCloud error:', err);
+        try { localStorage.setItem('ATHLETE_APP_PENDING_SYNC_' + stableKey, '1'); } catch (e) {}
+        showSyncNotice('⚠️ 동기화 실패: 이 기기에 안전 저장되었으며 연결 시 자동 재시도합니다.', 'error');
+        return { ok: false, error: err && err.message ? err.message : 'network error' };
+      } finally {
+        __syncAdminInFlight = false;
       }
     }
+
+    window.addEventListener('online', () => {
+      try {
+        const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+        const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+        if (authUser && authUser.role === 'admin') {
+          const stableKey = getStableAdminId(authUser.email, authUser.name);
+          if (localStorage.getItem('ATHLETE_APP_PENDING_SYNC_' + stableKey) === '1') {
+            syncAdminToCloud(authUser);
+          }
+        }
+      } catch (e) {}
+    });
 
     // Viewers Registry for Super Admin & Admins (완전 백지 클린 초기화!)
     const VIEWERS_REG_KEY = 'ATHLETE_GROWTH_VIEWERS_CLEAN_V2';
@@ -4618,6 +5004,15 @@
             initPlayerSelectDropdown();
             renderEventTabs();
             renderCurrentView();
+          } else if (authUser && authUser.role === 'admin') {
+            syncDataForUserRole(authUser);
+            initPlayerSelectDropdown();
+            renderEventTabs();
+            renderCurrentView();
+            const stableKey = getStableAdminId(authUser.email, authUser.name);
+            if (localStorage.getItem('ATHLETE_APP_PENDING_SYNC_' + stableKey) === '1') {
+              syncAdminToCloud(authUser);
+            }
           }
         }
       } catch (e) {}
@@ -5318,7 +5713,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.38';
+    const CURRENT_APP_VERSION = '2026.11.21.39';
 
     function checkForUpdates() {
       // Listen for Service Worker update
