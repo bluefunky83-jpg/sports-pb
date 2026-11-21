@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.31</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.32</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.31
+        선수 성장노트 v2026.11.21.32
       </div>
     </div>
   </div>
@@ -2894,12 +2894,31 @@
           currentPlayer = null;
         }
       } else if (user.role === 'viewer') {
-        // Viewer: only sees approved players (never expose MASTER_DATA before approval!)
+        // Viewer: only sees approved players (both MASTER + external admin players!)
         const allowed = user.allowedPlayers || [];
         if (user.approved && allowed.length > 0) {
-          playersData = MASTER_PLAYERS_DATA.filter(p => allowed.includes(p.id));
-          appData = MASTER_APP_DATA;
-          currentPlayer = playersData[0]?.id || 'yusin';
+          const poolPlayers = [...MASTER_PLAYERS_DATA];
+          const poolAppData = { ...MASTER_APP_DATA };
+          try {
+            const admins = Object.values(realtimeAuthData?._admins || {});
+            admins.forEach(adm => {
+              if (Array.isArray(adm.players)) {
+                adm.players.forEach(ap => {
+                  if (!poolPlayers.some(x => x.id === ap.id)) {
+                    poolPlayers.push(ap);
+                  }
+                });
+              }
+              if (adm.records && typeof adm.records === 'object') {
+                Object.entries(adm.records).forEach(([pid, recs]) => {
+                  if (!poolAppData[pid]) poolAppData[pid] = recs;
+                });
+              }
+            });
+          } catch (e) {}
+          playersData = poolPlayers.filter(p => allowed.includes(p.id));
+          appData = poolAppData;
+          currentPlayer = playersData[0]?.id || '';
         } else {
           playersData = [];
           appData = {};
@@ -2943,9 +2962,12 @@
             if (pendingScreen) {
               pendingScreen.classList.remove('hidden');
               const nickDisp = document.getElementById('text-viewer-nickname-display');
-              const targetName = authUser.targetPlayer === 'byeolha' ? '김별하 (사이클)' : (authUser.targetPlayer === 'all' ? '전체 (유신/별하)' : '김유신 (육상)');
+              const targetIds = (Array.isArray(authUser.requestedPlayers) && authUser.requestedPlayers.length > 0)
+                ? authUser.requestedPlayers
+                : (authUser.targetPlayer === 'all' ? ['yusin', 'byeolha'] : (authUser.targetPlayer ? [authUser.targetPlayer] : []));
+              const targetName = targetIds.length > 0 ? targetIds.map(pid => getPlayerDisplayLabel(pid)).join(' · ') : '선수';
               if (nickDisp) {
-                nickDisp.innerHTML = `<span class="text-amber-300 font-bold font-mono">[${authUser.name}]</span> 님이 신청하신 <span class="text-blue-300 font-bold">[${targetName}]</span> 열람을 대기하고 있습니다.<br>선수 관리자(지혜 님)의 승인을 기다리는 중입니다.`;
+                nickDisp.innerHTML = `<span class="text-amber-300 font-bold font-mono">[${authUser.name}]</span> 님이 신청하신 <span class="text-blue-300 font-bold">[${targetName}]</span> 열람을 대기하고 있습니다.<br>선수 관리자의 승인을 기다리는 중입니다.`;
               }
               startViewerApprovalPolling();
             }
@@ -3092,10 +3114,9 @@
         return;
       }
 
-      // Strictly separate Viewer Login vs Admin Login (동명이인/역할 혼선 원천 차단)
+      // Strictly separate Viewer Login vs Admin Login (동명이인/역할 혼선 원천 차단 + 멀티 관리자 통합!)
       if (currentLoginRole === 'viewer') {
-        // Check cloud strictly by email (ignore stale localStorage cache!)
-        let remoteMatch = null;
+        let remoteMatches = [];
         try {
           const res = await fetch(AUTH_API_ENDPOINT);
           const json = await res.json();
@@ -3103,48 +3124,65 @@
             realtimeAuthData = { ...json.data };
             for (const [k, v] of Object.entries(json.data)) {
               if (!k.startsWith('_') && v && v.email && v.email.toLowerCase() === email) {
-                remoteMatch = { key: k, nick: v.name || k, ...v };
-                break;
+                remoteMatches.push({ key: k, nick: v.name || k, ...v });
               }
             }
           }
         } catch (e) {}
 
-        // Clean up any stale local viewer cache for this email if server has no record
-        if (!remoteMatch) {
+        if (remoteMatches.length === 0) {
           const staleLocal = getRegisteredViewers().filter(v => !(v.email && v.email.toLowerCase() === email));
           saveRegisteredViewers(staleLocal);
         }
 
-        if (remoteMatch && remoteMatch.status === 'approved') {
+        const approvedSet = new Set();
+        const requestedSet = new Set();
+        let displayNick = name;
+        remoteMatches.forEach(rm => {
+          if (rm.nick && !rm.nick.startsWith('v_')) displayNick = rm.nick;
+          if (rm.status === 'approved' && rm.allowed && rm.allowed !== 'none') {
+            const arr = Array.isArray(rm.allowedPlayers) && rm.allowedPlayers.length > 0
+              ? rm.allowedPlayers
+              : (rm.allowed === 'all' ? ['yusin', 'byeolha'] : [rm.allowed]);
+            arr.forEach(p => approvedSet.add(p));
+          }
+          if (Array.isArray(rm.requestedPlayers)) {
+            rm.requestedPlayers.forEach(p => requestedSet.add(p));
+          } else if (rm.targetPlayer) {
+            if (rm.targetPlayer === 'all') { requestedSet.add('yusin'); requestedSet.add('byeolha'); }
+            else requestedSet.add(rm.targetPlayer);
+          }
+        });
+
+        if (approvedSet.size > 0) {
           const user = {
-            id: 'viewer_' + getStableAdminId(payload.email, remoteMatch.nick),
-            name: remoteMatch.nick,
+            id: 'viewer_' + getStableAdminId(payload.email, displayNick),
+            name: displayNick,
             email: payload.email,
             role: 'viewer',
             approved: true,
-            ownerAdminId: remoteMatch.ownerAdminId || 'super_admin',
-            allowedPlayers: Array.isArray(remoteMatch.allowedPlayers) ? remoteMatch.allowedPlayers : (remoteMatch.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteMatch.allowed])
+            allowedPlayers: Array.from(approvedSet)
           };
           localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
           checkInitialAuthGate();
-          alert(`👀 ${remoteMatch.nick} 뷰어님, 로그인되었습니다.`);
+          alert(`👀 ${displayNick} 뷰어님, 로그인되었습니다.`);
           return;
         }
 
+        const reqArr = Array.from(requestedSet);
         const user = {
-          id: 'viewer_' + getStableAdminId(payload.email, name),
-          name: remoteMatch ? remoteMatch.nick : name,
+          id: 'viewer_' + getStableAdminId(payload.email, displayNick),
+          name: displayNick,
           email: payload.email,
           role: 'viewer',
           approved: false,
-          targetPlayer: remoteMatch?.targetPlayer || '',
-          requestedPlayers: remoteMatch?.requestedPlayers || [],
+          targetPlayer: reqArr[0] || '',
+          requestedPlayers: reqArr,
           allowedPlayers: []
         };
         localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
         checkInitialAuthGate();
-        if (!remoteMatch) {
+        if (remoteMatches.length === 0) {
           openViewerAddPlayerModal(true);
         }
         return;
@@ -3417,29 +3455,63 @@
       alert(`📨 [${targetName}] 열람 신청이 담당 관리자에게 전송되었습니다!`);
     }
 
-    function getViewerCloudKey(email, nick) {
+    function getViewerCloudKey(email, nick, ownerAdminId) {
+      const ownerPart = (ownerAdminId || 'super_admin').replace(/[^a-zA-Z0-9_-]/g, '_');
       if (email && !email.endsWith('@viewer.local')) {
-        return 'v_' + email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        return 'v_' + email.toLowerCase().replace(/[^a-z0-9]/g, '_') + '__' + ownerPart;
       }
-      return nick;
+      return nick + '__' + ownerPart;
+    }
+
+    function findAllViewerCloudEntries(data, authUser) {
+      if (!data || !authUser) return [];
+      const email = (authUser.email || '').toLowerCase();
+      const results = [];
+      for (const [k, v] of Object.entries(data)) {
+        if (k.startsWith('_') || !v) continue;
+        if (email && !email.endsWith('@viewer.local')) {
+          if (v.email && v.email.toLowerCase() === email) {
+            results.push({ key: k, item: v });
+          }
+        } else if (authUser.name && (v.name === authUser.name || k === authUser.name || k.startsWith(authUser.name + '__'))) {
+          results.push({ key: k, item: v });
+        }
+      }
+      return results;
     }
 
     function findViewerCloudEntry(data, authUser) {
-      if (!data || !authUser) return null;
-      const email = (authUser.email || '').toLowerCase();
-      if (email && !email.endsWith('@viewer.local')) {
-        const byKey = getViewerCloudKey(email, authUser.name);
-        if (data[byKey]) return { key: byKey, item: data[byKey] };
-        for (const [k, v] of Object.entries(data)) {
-          if (!k.startsWith('_') && v && v.email && v.email.toLowerCase() === email) {
-            return { key: k, item: v };
+      const all = findAllViewerCloudEntries(data, authUser);
+      return all.length > 0 ? all[0] : null;
+    }
+
+    function getPlayerDisplayLabel(pid) {
+      if (!pid) return '';
+      if (pid === 'yusin') return '김유신 (육상)';
+      if (pid === 'byeolha') return '김별하 (사이클)';
+      const fromMaster = MASTER_PLAYERS_DATA.find(p => p.id === pid);
+      if (fromMaster) return `${fromMaster.name} (${fromMaster.sport || ''})`;
+      const fromLocal = (playersData || []).find(p => p.id === pid);
+      if (fromLocal) return `${fromLocal.name} (${fromLocal.sport || ''})`;
+      try {
+        const admins = Object.values(realtimeAuthData?._admins || {});
+        for (const adm of admins) {
+          if (Array.isArray(adm.players)) {
+            const fp = adm.players.find(p => p.id === pid);
+            if (fp) return `${fp.name || fp.maskedName} (${fp.sport || ''})`;
           }
         }
+      } catch (e) {}
+      return pid;
+    }
+
+    function getCurrentAdminPlayersList() {
+      const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+      const authUser = authUserStr ? JSON.parse(authUserStr) : {};
+      if (authUser.role === 'super_admin') {
+        return MASTER_PLAYERS_DATA;
       }
-      if (authUser.name && data[authUser.name]) {
-        return { key: authUser.name, item: data[authUser.name] };
-      }
-      return null;
+      return (playersData || []);
     }
 
     async function registerViewerRequestAsync(nick, targetPlayer, ownerAdminId, explicitEmail) {
@@ -3482,8 +3554,9 @@
           } catch (e) {}
         }
 
-        const cloudKey = getViewerCloudKey(currentEmail, nick);
-        const prev = latestData[cloudKey] || latestData[nick] || {};
+        const resolvedOwnerId = ownerAdminId || 'super_admin';
+        const cloudKey = getViewerCloudKey(currentEmail, nick, resolvedOwnerId);
+        const prev = latestData[cloudKey] || {};
 
         const reqSet = new Set();
         if (Array.isArray(prev.requestedPlayers)) {
@@ -3564,8 +3637,14 @@
             sport: p.sport || '',
             mainEvent: p.mainEvent || '',
             birth: p.birth || '',
+            events: Array.isArray(p.events) ? p.events : [],
             recordsCount: Array.isArray(appData[p.id]) ? appData[p.id].length : 0
           };
+        });
+
+        const adminRecords = {};
+        (playersData || []).forEach(p => {
+          if (Array.isArray(appData[p.id])) adminRecords[p.id] = appData[p.id];
         });
 
         data._admins[user.id] = {
@@ -3575,6 +3654,7 @@
           role: 'admin',
           playersCount: maskedPlayers.length,
           players: maskedPlayers,
+          records: adminRecords,
           lastLogin: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
           date: new Date().toLocaleDateString('ko-KR')
         };
@@ -3947,21 +4027,33 @@
         return;
       }
       c.innerHTML = '';
+      const myPlayers = getCurrentAdminPlayersList();
+      const myPlayerIds = myPlayers.map(p => p.id);
+
       approvedKeys.forEach(nick => {
         const item = realtimeAuthData[nick] || {};
         if (!pendingViewerSelections[nick]) {
           let initial = [];
           if (Array.isArray(item.allowedPlayers)) initial = [...item.allowedPlayers];
-          else if (item.allowed === 'all') initial = ['yusin', 'byeolha'];
-          else if (item.allowed === 'yusin') initial = ['yusin'];
-          else if (item.allowed === 'byeolha') initial = ['byeolha'];
+          else if (item.allowed === 'all') initial = [...myPlayerIds];
+          else if (item.allowed && item.allowed !== 'none') initial = [item.allowed];
           pendingViewerSelections[nick] = initial;
         }
         const selectedArr = pendingViewerSelections[nick] || [];
-        const isYusin = selectedArr.includes('yusin');
-        const isByeolha = selectedArr.includes('byeolha');
-        const isAll = isYusin && isByeolha;
-        const allowedLabel = isAll ? '전체 (2인)' : (isByeolha ? '김별하' : (isYusin ? '김유신' : '미선택'));
+        const isAll = myPlayerIds.length > 0 && myPlayerIds.every(pid => selectedArr.includes(pid));
+        const allowedNames = selectedArr.map(pid => {
+          const fp = myPlayers.find(p => p.id === pid);
+          return fp ? fp.name : getPlayerDisplayLabel(pid).split(' (')[0];
+        });
+        const allowedLabel = isAll && myPlayerIds.length > 1 ? `전체 (${myPlayerIds.length}인)` : (allowedNames.length > 0 ? allowedNames.join(', ') : '미선택');
+
+        const toggleBtnsHtml = (myPlayers.length > 1 ? `
+          <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'all'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${isAll ? 'bg-indigo-600 text-white font-bold border-indigo-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">전체</button>
+        ` : '') + myPlayers.map(p => {
+          const active = selectedArr.includes(p.id);
+          return `<button type="button" onclick="toggleViewerPlayerPending('${nick}', '${p.id}'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${active ? 'bg-blue-600 text-white font-bold border-blue-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">${p.name}</button>`;
+        }).join('');
+        const gridCols = myPlayers.length > 1 ? Math.min(myPlayers.length + 1, 4) : 1;
 
         const card = document.createElement('div');
         card.className = 'p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2';
@@ -3974,10 +4066,8 @@
             </div>
             <span class="text-[10px] text-slate-500 font-mono">${item.time || ''}</span>
           </div>
-          <div class="grid grid-cols-3 gap-1 text-[11px]">
-            <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'all'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${isAll ? 'bg-indigo-600 text-white font-bold border-indigo-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">전체</button>
-            <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'yusin'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${isYusin ? 'bg-blue-600 text-white font-bold border-blue-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">김유신</button>
-            <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'byeolha'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${isByeolha ? 'bg-pink-600 text-white font-bold border-pink-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">김별하</button>
+          <div class="grid grid-cols-${gridCols} gap-1 text-[11px]">
+            ${toggleBtnsHtml}
           </div>
           <div class="flex gap-1.5">
             <button type="button" onclick="saveViewerPermission('${nick}')" class="flex-1 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px]">💾 저장</button>
@@ -4684,6 +4774,9 @@
         return;
       }
 
+      const myPlayers = getCurrentAdminPlayersList();
+      const myPlayerIds = myPlayers.map(p => p.id);
+
       container.innerHTML = '';
       keys.forEach(nick => {
         const item = realtimeAuthData[nick] || {};
@@ -4694,21 +4787,16 @@
           if (Array.isArray(item.allowedPlayers) && item.allowedPlayers.length > 0) {
             initial = [...item.allowedPlayers];
           } else if (item.allowed === 'all') {
-            initial = ['yusin', 'byeolha'];
-          } else if (item.allowed === 'yusin') {
-            initial = ['yusin'];
-          } else if (item.allowed === 'byeolha') {
-            initial = ['byeolha'];
+            initial = [...myPlayerIds];
+          } else if (item.allowed && item.allowed !== 'none') {
+            initial = [item.allowed];
           }
           if (Array.isArray(item.requestedPlayers)) {
             item.requestedPlayers.forEach(p => { if (!initial.includes(p)) initial.push(p); });
-          } else if (item.targetPlayer === 'byeolha' && !initial.includes('byeolha')) {
-            initial.push('byeolha');
-          } else if (item.targetPlayer === 'yusin' && !initial.includes('yusin')) {
-            initial.push('yusin');
           } else if (item.targetPlayer === 'all') {
-            if (!initial.includes('yusin')) initial.push('yusin');
-            if (!initial.includes('byeolha')) initial.push('byeolha');
+            myPlayerIds.forEach(p => { if (!initial.includes(p)) initial.push(p); });
+          } else if (item.targetPlayer && !initial.includes(item.targetPlayer)) {
+            initial.push(item.targetPlayer);
           }
           pendingViewerSelections[nick] = initial;
         }
@@ -4721,11 +4809,9 @@
 
         const reqArr = Array.isArray(item.requestedPlayers) && item.requestedPlayers.length > 0
           ? item.requestedPlayers
-          : (item.targetPlayer === 'all' ? ['yusin', 'byeolha'] : [item.targetPlayer || item.allowed || 'yusin']);
-        const reqLabels = [];
-        if (reqArr.includes('yusin')) reqLabels.push('김유신 (육상)');
-        if (reqArr.includes('byeolha')) reqLabels.push('김별하 (사이클)');
-        const reqPlayer = reqLabels.length > 0 ? reqLabels.join(' · ') : '김유신 (육상)';
+          : (item.targetPlayer === 'all' ? myPlayerIds : [item.targetPlayer || item.allowed || myPlayerIds[0] || '']);
+        const reqLabels = reqArr.filter(Boolean).map(pid => getPlayerDisplayLabel(pid));
+        const reqPlayer = reqLabels.length > 0 ? reqLabels.join(' · ') : '선수';
 
         let statusBadge = '';
         if (item.pendingAdditional && isCurrentlyApproved) {
@@ -4734,9 +4820,16 @@
           statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">⏳ 승인 대기중</span>';
         }
 
-        const isYusin = selectedArr.includes('yusin');
-        const isByeolha = selectedArr.includes('byeolha');
-        const isAll = isYusin && isByeolha;
+        const isAll = myPlayerIds.length > 0 && myPlayerIds.every(pid => selectedArr.includes(pid));
+        const toggleBtnsHtml = (myPlayers.length > 1 ? `
+          <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'all')" class="py-2 rounded-xl border ${isAll ? 'bg-indigo-600 text-white font-black border-indigo-400 shadow-md ring-2 ring-indigo-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-indigo-500'} active:scale-95 transition">
+            전체
+          </button>
+        ` : '') + myPlayers.map(p => {
+          const active = selectedArr.includes(p.id);
+          return `<button type="button" onclick="toggleViewerPlayerPending('${nick}', '${p.id}')" class="py-2 rounded-xl border ${active ? 'bg-blue-600 text-white font-black border-blue-400 shadow-md ring-2 ring-blue-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-blue-500'} active:scale-95 transition">${p.name}</button>`;
+        }).join('');
+        const gridCols = myPlayers.length > 1 ? Math.min(myPlayers.length + 1, 4) : 1;
 
         card.innerHTML = `
           <div class="flex items-center justify-between">
@@ -4758,16 +4851,8 @@
 
           <!-- Multi-select toggle buttons (선택 후 저장 방식) -->
           <div class="space-y-2 pt-1">
-            <div class="grid grid-cols-3 gap-1.5 text-xs">
-              <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'all')" class="py-2 rounded-xl border ${isAll ? 'bg-indigo-600 text-white font-black border-indigo-400 shadow-md ring-2 ring-indigo-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-indigo-500'} active:scale-95 transition">
-                전체
-              </button>
-              <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'yusin')" class="py-2 rounded-xl border ${isYusin ? 'bg-blue-600 text-white font-black border-blue-400 shadow-md ring-2 ring-blue-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-blue-500'} active:scale-95 transition">
-                김유신
-              </button>
-              <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'byeolha')" class="py-2 rounded-xl border ${isByeolha ? 'bg-pink-600 text-white font-black border-pink-400 shadow-md ring-2 ring-pink-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-pink-500'} active:scale-95 transition">
-                김별하
-              </button>
+            <div class="grid grid-cols-${gridCols} gap-1.5 text-xs">
+              ${toggleBtnsHtml}
             </div>
 
             <!-- Action buttons: [💾 선택 저장] & [삭제] -->
@@ -4788,24 +4873,16 @@
     function toggleViewerPlayerPending(nick, target) {
       if (!pendingViewerSelections[nick]) pendingViewerSelections[nick] = [];
       let arr = pendingViewerSelections[nick];
+      const myPlayerIds = getCurrentAdminPlayersList().map(p => p.id);
 
       if (target === 'all') {
-        if (arr.includes('yusin') && arr.includes('byeolha')) {
-          pendingViewerSelections[nick] = [];
+        const allSelected = myPlayerIds.length > 0 && myPlayerIds.every(pid => arr.includes(pid));
+        pendingViewerSelections[nick] = allSelected ? [] : [...myPlayerIds];
+      } else {
+        if (arr.includes(target)) {
+          pendingViewerSelections[nick] = arr.filter(x => x !== target);
         } else {
-          pendingViewerSelections[nick] = ['yusin', 'byeolha'];
-        }
-      } else if (target === 'yusin') {
-        if (arr.includes('yusin')) {
-          pendingViewerSelections[nick] = arr.filter(x => x !== 'yusin');
-        } else {
-          pendingViewerSelections[nick] = [...arr, 'yusin'];
-        }
-      } else if (target === 'byeolha') {
-        if (arr.includes('byeolha')) {
-          pendingViewerSelections[nick] = arr.filter(x => x !== 'byeolha');
-        } else {
-          pendingViewerSelections[nick] = [...arr, 'byeolha'];
+          pendingViewerSelections[nick] = [...arr, target];
         }
       }
 
@@ -4815,11 +4892,13 @@
     async function saveViewerPermission(nick) {
       const selectedArr = pendingViewerSelections[nick] || [];
       const isApproved = selectedArr.length > 0;
+      const myPlayerIds = getCurrentAdminPlayersList().map(p => p.id);
 
       let allowedStr = 'none';
-      if (selectedArr.includes('yusin') && selectedArr.includes('byeolha')) allowedStr = 'all';
-      else if (selectedArr.includes('yusin')) allowedStr = 'yusin';
-      else if (selectedArr.includes('byeolha')) allowedStr = 'byeolha';
+      if (isApproved) {
+        const allSelected = myPlayerIds.length > 1 && myPlayerIds.every(pid => selectedArr.includes(pid));
+        allowedStr = allSelected ? 'all' : selectedArr[0];
+      }
 
       realtimeAuthData[nick] = {
         ...(realtimeAuthData[nick] || {}),
@@ -4856,7 +4935,9 @@
       }
 
       const dispNick = (realtimeAuthData[nick] && realtimeAuthData[nick].name) ? realtimeAuthData[nick].name : nick;
-      const targetText = isApproved ? (allowedStr === 'all' ? '전체 (2인)' : (allowedStr === 'byeolha' ? '김별하' : '김유신')) : '승인 대기';
+      const targetText = isApproved
+        ? selectedArr.map(pid => getPlayerDisplayLabel(pid).split(' (')[0]).join(', ')
+        : '승인 대기';
       alert(`✅ [${dispNick}] 님의 열람 권한이 [${targetText}]으로 저장되었습니다!\n상대방 폰에 실시간으로 즉시 적용됩니다.`);
     }
 
@@ -4902,25 +4983,33 @@
         try {
           const res = await fetch(AUTH_API_ENDPOINT);
           const json = await res.json();
-          const entry = findViewerCloudEntry(json?.data, authUser);
-          if (entry && entry.item) {
-            const remoteItem = entry.item;
-            if (remoteItem.status === 'approved' && remoteItem.allowed && remoteItem.allowed !== 'none') {
-              clearInterval(viewerPollingInterval);
-              authUser.approved = true;
-              authUser.allowedPlayers = remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed];
-              localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
-              syncDataForUserRole(authUser);
-
-              // Auto unlock pending screen!
-              const pendingScreen = document.getElementById('screen-pending-approval');
-              if (pendingScreen) pendingScreen.classList.add('hidden');
-              initPlayerSelectDropdown();
-              renderEventTabs();
-              renderCurrentView();
-              startViewerApprovedSyncPoller();
-              alert(`🎉 축하합니다! 선수 관리자(지혜 님)의 열람 승인이 완료되었습니다!\n[${remoteItem.allowed === 'all' ? '전체' : (remoteItem.allowed === 'byeolha' ? '김별하' : '김유신')}] 기록을 열람합니다.`);
+          if (json && json.data) realtimeAuthData = { ...json.data };
+          const entries = findAllViewerCloudEntries(json?.data, authUser);
+          const approvedIds = new Set();
+          entries.forEach(({ item: remoteItem }) => {
+            if (remoteItem && remoteItem.status === 'approved' && remoteItem.allowed && remoteItem.allowed !== 'none') {
+              const arr = Array.isArray(remoteItem.allowedPlayers) && remoteItem.allowedPlayers.length > 0
+                ? remoteItem.allowedPlayers
+                : (remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed]);
+              arr.forEach(p => approvedIds.add(p));
             }
+          });
+          if (approvedIds.size > 0) {
+            clearInterval(viewerPollingInterval);
+            authUser.approved = true;
+            authUser.allowedPlayers = Array.from(approvedIds);
+            localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
+            syncDataForUserRole(authUser);
+
+            // Auto unlock pending screen!
+            const pendingScreen = document.getElementById('screen-pending-approval');
+            if (pendingScreen) pendingScreen.classList.add('hidden');
+            initPlayerSelectDropdown();
+            renderEventTabs();
+            renderCurrentView();
+            startViewerApprovedSyncPoller();
+            const namesText = authUser.allowedPlayers.map(pid => getPlayerDisplayLabel(pid).split(' (')[0]).join(', ');
+            alert(`🎉 축하합니다! 선수 관리자의 열람 승인이 완료되었습니다!\n[${namesText}] 기록을 열람합니다.`);
           }
         } catch (e) {
           console.warn('Polling check error:', e);
@@ -4936,25 +5025,33 @@
       try {
         const res = await fetch(AUTH_API_ENDPOINT);
         const json = await res.json();
-        const entry = findViewerCloudEntry(json?.data, authUser);
-        if (entry && entry.item) {
-          const remoteItem = entry.item;
-          if (remoteItem.status === 'approved' && remoteItem.allowed && remoteItem.allowed !== 'none') {
-            if (viewerPollingInterval) clearInterval(viewerPollingInterval);
-            authUser.approved = true;
-            authUser.allowedPlayers = remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed];
-            localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
-            syncDataForUserRole(authUser);
-
-            const pendingScreen = document.getElementById('screen-pending-approval');
-            if (pendingScreen) pendingScreen.classList.add('hidden');
-            initPlayerSelectDropdown();
-            renderEventTabs();
-            renderCurrentView();
-            startViewerApprovedSyncPoller();
-            alert(`🎉 축하합니다! 선수 관리자(지혜 님)의 열람 승인이 확인되었습니다!\n[${remoteItem.allowed === 'all' ? '전체' : (remoteItem.allowed === 'byeolha' ? '김별하' : '김유신')}] 기록을 열람합니다.`);
-            return;
+        if (json && json.data) realtimeAuthData = { ...json.data };
+        const entries = findAllViewerCloudEntries(json?.data, authUser);
+        const approvedIds = new Set();
+        entries.forEach(({ item: remoteItem }) => {
+          if (remoteItem && remoteItem.status === 'approved' && remoteItem.allowed && remoteItem.allowed !== 'none') {
+            const arr = Array.isArray(remoteItem.allowedPlayers) && remoteItem.allowedPlayers.length > 0
+              ? remoteItem.allowedPlayers
+              : (remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed]);
+            arr.forEach(p => approvedIds.add(p));
           }
+        });
+        if (approvedIds.size > 0) {
+          if (viewerPollingInterval) clearInterval(viewerPollingInterval);
+          authUser.approved = true;
+          authUser.allowedPlayers = Array.from(approvedIds);
+          localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
+          syncDataForUserRole(authUser);
+
+          const pendingScreen = document.getElementById('screen-pending-approval');
+          if (pendingScreen) pendingScreen.classList.add('hidden');
+          initPlayerSelectDropdown();
+          renderEventTabs();
+          renderCurrentView();
+          startViewerApprovedSyncPoller();
+          const namesText = authUser.allowedPlayers.map(pid => getPlayerDisplayLabel(pid).split(' (')[0]).join(', ');
+          alert(`🎉 축하합니다! 선수 관리자의 열람 승인이 확인되었습니다!\n[${namesText}] 기록을 열람합니다.`);
+          return;
         }
       } catch (e) {}
       alert('아직 관리자의 승인을 기다리고 있습니다.\n관리자가 승인하면 자동으로 화면이 열립니다.');
@@ -4970,22 +5067,29 @@
 
         const res = await fetch(AUTH_API_ENDPOINT);
         const json = await res.json();
-        const entry = findViewerCloudEntry(json?.data, authUser);
-        if (!entry || !entry.item) return;
-        const remoteItem = entry.item;
-        if (!remoteItem || remoteItem.status !== 'approved' || !remoteItem.allowed || remoteItem.allowed === 'none') return;
+        if (json && json.data) realtimeAuthData = { ...json.data };
+        const entries = findAllViewerCloudEntries(json?.data, authUser);
+        if (entries.length === 0) return;
 
-        const nextAllowed = Array.isArray(remoteItem.allowedPlayers) && remoteItem.allowedPlayers.length > 0
-          ? [...remoteItem.allowedPlayers]
-          : (remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed]);
+        const nextAllowedSet = new Set();
+        entries.forEach(({ item: remoteItem }) => {
+          if (remoteItem && remoteItem.status === 'approved' && remoteItem.allowed && remoteItem.allowed !== 'none') {
+            const arr = Array.isArray(remoteItem.allowedPlayers) && remoteItem.allowedPlayers.length > 0
+              ? remoteItem.allowedPlayers
+              : (remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed]);
+            arr.forEach(p => nextAllowedSet.add(p));
+          }
+        });
+        if (nextAllowedSet.size === 0) return;
 
+        const nextAllowed = Array.from(nextAllowedSet);
         const prevAllowed = authUser.allowedPlayers || [];
         const prevStr = JSON.stringify([...prevAllowed].sort());
         const nextStr = JSON.stringify([...nextAllowed].sort());
         if (prevStr !== nextStr) {
           const newlyAdded = nextAllowed.filter(p => !prevAllowed.includes(p));
           if (newlyAdded.length > 0) {
-            const names = newlyAdded.map(id => id === 'byeolha' ? '김별하' : (id === 'yusin' ? '김유신' : id)).join(', ');
+            const names = newlyAdded.map(id => getPlayerDisplayLabel(id).split(' (')[0]).join(', ');
             const nowStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
             viewerApprovalNotifs.push({ id: Date.now(), names, time: nowStr });
           }
@@ -5017,9 +5121,9 @@
       if (authUserStr) {
         try {
           const authUser = JSON.parse(authUserStr);
-          const entry = findViewerCloudEntry(realtimeAuthData, authUser);
-          if (entry && entry.key) {
-            delete realtimeAuthData[entry.key];
+          const entries = findAllViewerCloudEntries(realtimeAuthData, authUser);
+          if (entries.length > 0) {
+            entries.forEach(({ key }) => delete realtimeAuthData[key]);
             await syncRealtimeAuthToRemote();
           }
         } catch (e) {}
@@ -5043,7 +5147,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.31';
+    const CURRENT_APP_VERSION = '2026.11.21.32';
 
     function checkForUpdates() {
       // Listen for Service Worker update
