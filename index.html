@@ -3220,7 +3220,9 @@
 
     async function submitViewerAddPlayer() {
       const selected = selectedViewerSearchPlayer || 'yusin';
-      const targetAthlete = MASTER_PLAYERS_DATA.find(p => p.id === selected);
+      const ownerAdminId = selectedViewerSearchOwnerAdminId || 'super_admin';
+      const allSearchable = getAllSearchableAthletes();
+      const targetAthlete = allSearchable.find(p => p.id === selected) || MASTER_PLAYERS_DATA.find(p => p.id === selected);
       const targetName = targetAthlete ? `${targetAthlete.name} (${targetAthlete.sport})` : '김유신';
 
       let authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
@@ -3238,27 +3240,31 @@
           role: 'viewer',
           approved: false,
           targetPlayer: selected,
+          ownerAdminId: ownerAdminId,
           allowedPlayers: []
         };
       } else {
         authUser.targetPlayer = selected;
+        authUser.ownerAdminId = ownerAdminId;
       }
 
-      await registerViewerRequestAsync(viewerNick, selected);
+      await registerViewerRequestAsync(viewerNick, selected, ownerAdminId);
 
       localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
       closeViewerAddPlayerModal();
       closeSettingsModal();
       checkInitialAuthGate();
-      alert(`📨 [${targetName}] 열람 신청이 관리자(지혜 님)에게 전송되었습니다!`);
+      alert(`📨 [${targetName}] 열람 신청이 담당 관리자에게 전송되었습니다!`);
     }
 
-    async function registerViewerRequestAsync(nick, targetPlayer) {
+    async function registerViewerRequestAsync(nick, targetPlayer, ownerAdminId) {
       const nowStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      const resolvedOwner = ownerAdminId || 'super_admin';
       const list = getRegisteredViewers();
       const existing = list.find(v => v.name === nick);
       if (existing) {
         existing.targetPlayer = targetPlayer;
+        existing.ownerAdminId = resolvedOwner;
         existing.approved = false;
         existing.time = nowStr;
       } else {
@@ -3266,6 +3272,7 @@
           id: 'v_' + Date.now(),
           name: nick,
           targetPlayer: targetPlayer,
+          ownerAdminId: resolvedOwner,
           approved: false,
           allowedPlayers: [],
           date: new Date().toISOString().split('T')[0],
@@ -3301,6 +3308,7 @@
         const wasApproved = prev.status === 'approved' && prev.allowed && prev.allowed !== 'none';
         latestData[nick] = {
           ...prev,
+          ownerAdminId: ownerAdminId || prev.ownerAdminId || 'super_admin',
           status: wasApproved ? 'approved' : 'pending',
           pendingAdditional: wasApproved ? true : false,
           allowed: wasApproved ? prev.allowed : targetPlayer,
@@ -3348,8 +3356,12 @@
           const n = p.name || '';
           const masked = n.length >= 2 ? (n[0] + '*' + (n.length > 2 ? n.slice(2) : '')) : n;
           return {
-            name: masked,
+            id: p.id,
+            name: p.name || '',
+            maskedName: masked,
             sport: p.sport || '',
+            mainEvent: p.mainEvent || '',
+            birth: p.birth || '',
             recordsCount: Array.isArray(appData[p.id]) ? appData[p.id].length : 0
           };
         });
@@ -3702,14 +3714,28 @@
     function closeAdminProfileModal() {
       document.getElementById('modal-admin-profile').classList.add('hidden');
     }
+    function getCurrentAdminScopeId() {
+      const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+      const authUser = authUserStr ? JSON.parse(authUserStr) : {};
+      if (authUser.role === 'super_admin') return 'super_admin';
+      return authUser.id || 'admin_unknown';
+    }
+
+    function isViewerOwnedByCurrentAdmin(item, scopeId) {
+      if (!item) return false;
+      const owner = item.ownerAdminId || 'super_admin';
+      return owner === (scopeId || getCurrentAdminScopeId());
+    }
+
     function renderAdminApprovedViewers() {
       const c = document.getElementById('admin-approved-viewers-list');
       if (!c) return;
+      const scopeId = getCurrentAdminScopeId();
       const dummyNames = ['외할머니', '코치님', '하람아빠'];
       const approvedKeys = Object.keys(realtimeAuthData).filter(k => {
         if (k.startsWith('_') || dummyNames.includes(k)) return false;
         const v = realtimeAuthData[k];
-        return v && v.status === 'approved' && v.allowed && v.allowed !== 'none';
+        return v && isViewerOwnedByCurrentAdmin(v, scopeId) && v.status === 'approved' && v.allowed && v.allowed !== 'none';
       });
       if (approvedKeys.length === 0) {
         c.innerHTML = '<div class="py-4 text-center text-slate-500 text-[11px]">승인된 뷰어가 없습니다.</div>';
@@ -4195,11 +4221,12 @@
       const authUser = authUserStr ? JSON.parse(authUserStr) : {};
       const isAdmin = authUser.role === 'super_admin' || authUser.role === 'admin';
 
+      const scopeId = getCurrentAdminScopeId();
       const dummyNames = ['외할머니', '코치님', '하람아빠'];
       const hasPending = isAdmin && Object.keys(realtimeAuthData).some(k => {
         if (k.startsWith('_') || dummyNames.includes(k)) return false;
         const v = realtimeAuthData[k];
-        return v && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
+        return v && isViewerOwnedByCurrentAdmin(v, scopeId) && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
       });
       if (hasPending || hasNewVersionUpdate) badge.classList.remove('hidden');
       else badge.classList.add('hidden');
@@ -4290,8 +4317,32 @@
     }
 
     let selectedViewerSearchPlayer = null;
+    let selectedViewerSearchOwnerAdminId = 'super_admin';
 
-    function searchAthleteForViewer() {
+    function getAllSearchableAthletes() {
+      const list = MASTER_PLAYERS_DATA.map(p => ({ ...p, ownerAdminId: 'super_admin', ownerAdminName: '지혜 님' }));
+      const extAdmins = Object.values(realtimeAuthData._admins || {});
+      extAdmins.forEach(adm => {
+        if (Array.isArray(adm.players)) {
+          adm.players.forEach(p => {
+            if (p && p.id && !list.some(x => x.id === p.id)) {
+              list.push({
+                id: p.id,
+                name: p.name || p.maskedName || '',
+                sport: p.sport || '',
+                mainEvent: p.mainEvent || '',
+                birth: p.birth || '',
+                ownerAdminId: adm.id,
+                ownerAdminName: adm.name || '관리자'
+              });
+            }
+          });
+        }
+      });
+      return list;
+    }
+
+    async function searchAthleteForViewer() {
       const inp = document.getElementById('input-search-viewer-player');
       const query = (inp ? inp.value : '').trim().toLowerCase();
       const container = document.getElementById('viewer-search-result-container');
@@ -4299,6 +4350,7 @@
       if (!container) return;
 
       selectedViewerSearchPlayer = null;
+      selectedViewerSearchOwnerAdminId = 'super_admin';
       if (btnSubmit) {
         btnSubmit.disabled = true;
         btnSubmit.className = 'flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-500 font-bold cursor-not-allowed transition';
@@ -4309,8 +4361,15 @@
         return;
       }
 
-      // Filter among master players
-      const matched = MASTER_PLAYERS_DATA.filter(p => p.name.includes(query) || (p.sport && p.sport.includes(query)) || query.includes(p.name));
+      try {
+        const res = await fetch(AUTH_API_ENDPOINT);
+        const json = await res.json();
+        if (json && json.data) realtimeAuthData = { ...realtimeAuthData, ...json.data };
+      } catch (e) {}
+
+      // Filter among all registered athletes across admins
+      const allAthletes = getAllSearchableAthletes();
+      const matched = allAthletes.filter(p => (p.name && p.name.toLowerCase().includes(query)) || (p.sport && p.sport.toLowerCase().includes(query)) || query.includes((p.name || '').toLowerCase()));
 
       if (matched.length === 0) {
         container.innerHTML = `
@@ -4324,23 +4383,24 @@
 
       container.innerHTML = matched.map((p, idx) => `
         <label class="flex items-center gap-3 p-3 rounded-2xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-blue-500/50 transition">
-          <input type="radio" name="viewer-search-target-radio" value="${p.id}" ${idx === 0 ? 'checked' : ''} onchange="onViewerSelectSearchTarget('${p.id}')" class="text-blue-600">
+          <input type="radio" name="viewer-search-target-radio" value="${p.id}" ${idx === 0 ? 'checked' : ''} onchange="onViewerSelectSearchTarget('${p.id}', '${p.ownerAdminId || 'super_admin'}')" class="text-blue-600">
           <div>
             <div class="font-bold text-slate-200 flex items-center gap-1.5">
-              <span>${p.sport.includes('육상') ? '🏃' : '🚴'}</span>
+              <span>${(p.sport || '').includes('육상') ? '🏃' : '🚴'}</span>
               <span>${p.name}</span>
               <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">${p.sport}</span>
             </div>
-            <div class="text-[10px] text-slate-400 mt-0.5">${p.mainEvent || ''} · ${p.birth || ''}</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">${p.mainEvent || ''} · ${p.birth || ''} (${p.ownerAdminName || '관리자'})</div>
           </div>
         </label>
       `).join('');
 
-      onViewerSelectSearchTarget(matched[0].id);
+      onViewerSelectSearchTarget(matched[0].id, matched[0].ownerAdminId || 'super_admin');
     }
 
-    function onViewerSelectSearchTarget(playerId) {
+    function onViewerSelectSearchTarget(playerId, ownerAdminId) {
       selectedViewerSearchPlayer = playerId;
+      selectedViewerSearchOwnerAdminId = ownerAdminId || 'super_admin';
       const btnSubmit = document.getElementById('btn-submit-viewer-add');
       if (btnSubmit) {
         btnSubmit.disabled = false;
@@ -4384,10 +4444,11 @@
       const dummyNames = ['외할머니', '코치님', '하람아빠'];
       dummyNames.forEach(d => { delete realtimeAuthData[d]; });
 
+      const scopeId = getCurrentAdminScopeId();
       const keys = Object.keys(realtimeAuthData).filter(k => {
         if (k.startsWith('_') || dummyNames.includes(k)) return false;
         const v = realtimeAuthData[k];
-        return v && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
+        return v && isViewerOwnedByCurrentAdmin(v, scopeId) && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
       });
       if (keys.length === 0) {
         container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">현재 대기 중인 열람 승인 신청이 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">승인 완료된 뷰어는 [🛡️ 관리자] 메뉴에서 관리할 수 있습니다.</span></div>';
@@ -4738,7 +4799,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.17';
+    const CURRENT_APP_VERSION = '2026.11.21.18';
 
     function checkForUpdates() {
       // Listen for Service Worker update
