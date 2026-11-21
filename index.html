@@ -174,7 +174,7 @@
     <!-- Bottom Footer -->
     <div class="text-center text-[11px] text-slate-600 py-3">
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.34</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.21.35</div>
     </div>
   </div>
 
@@ -739,7 +739,7 @@
       </div>
 
       <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.34
+        선수 성장노트 v2026.11.21.35
       </div>
     </div>
   </div>
@@ -3910,7 +3910,17 @@
           </div>
 
           <!-- Dynamic Other External Admins Accordions -->
-          ${externalAdmins.map((adm, aIdx) => `
+          ${externalAdmins.map((adm, aIdx) => {
+            const admPlayerIds = (adm.players || []).map(p => p.id);
+            const admViewerCount = viewerKeys.filter(k => {
+              const v = realtimeAuthData[k];
+              if (!v || !isViewerOwnedByCurrentAdmin(v, adm.id) || v.status !== 'approved' || !v.allowed || v.allowed === 'none') return false;
+              const allowedList = Array.isArray(v.allowedPlayers) && v.allowedPlayers.length > 0
+                ? v.allowedPlayers
+                : (v.allowed === 'all' ? admPlayerIds : [v.allowed]);
+              return allowedList.some(pid => admPlayerIds.includes(pid));
+            }).length;
+            return `
             <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm transition">
               <button type="button" onclick="toggleSaAccordion('sa-admin-acc-ext-${aIdx}')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-800/40 transition">
                 <div class="flex items-center gap-2.5">
@@ -3923,7 +3933,7 @@
                       <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">선수 관리자</span>
                     </div>
                     <div class="text-[10px] text-slate-400 mt-0.5">
-                      ${adm.email || '이메일 없음'} · 가입/최근: ${adm.lastLogin || adm.date || '오늘'}
+                      ${adm.email || '이메일 없음'} · 등록선수 ${adm.playersCount || 0}명 · 소속 뷰어 ${admViewerCount}명
                     </div>
                   </div>
                 </div>
@@ -3944,11 +3954,16 @@
                       <span>등록 관리 선수</span>
                       <span class="text-indigo-300 font-bold">${adm.playersCount || 0}명</span>
                     </div>
+                    <div class="flex items-center justify-between text-slate-400">
+                      <span>소속 뷰어</span>
+                      <span class="text-emerald-300 font-bold">${admViewerCount}명</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
       `;
     }
@@ -5153,7 +5168,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.34';
+    const CURRENT_APP_VERSION = '2026.11.21.35';
 
     function checkForUpdates() {
       // Listen for Service Worker update
