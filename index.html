@@ -2999,7 +2999,7 @@
       }
     }
 
-    function handleGoogleCredentialResponse(response) {
+    async function handleGoogleCredentialResponse(response) {
       if (!response || !response.credential) return;
       const payload = decodeJwtResponse(response.credential);
       if (!payload || !payload.email) return;
@@ -4905,7 +4905,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.21';
+    const CURRENT_APP_VERSION = '2026.11.21.22';
 
     function checkForUpdates() {
       // Listen for Service Worker update
