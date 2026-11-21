@@ -2580,15 +2580,7 @@
           cancel_on_tap_outside: true
         });
 
-        // Prompt Google One Tap Bottom Sheet!
-        const gate = document.getElementById('gate-login-screen');
-        if (gate && !gate.classList.contains('hidden')) {
-          google.accounts.id.prompt((notification) => {
-            if (notification.isNotDisplayed()) {
-              console.log('One Tap not displayed reason:', notification.getNotDisplayedReason());
-            }
-          });
-        }
+        // 지혜 님 지침: 들어가자마자 제멋대로 불쑥 뜨지 않고, 오직 버튼을 눌렀을 때만 뜨게 자동 prompt 제거!
       } catch (err) {
         console.warn('Google One Tap init error:', err);
       }
@@ -2596,11 +2588,7 @@
 
     function triggerGooglePromptManual() {
       if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-        google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            openGoogleAuthModal();
-          }
-        });
+        google.accounts.id.prompt();
       } else {
         openGoogleAuthModal();
       }
