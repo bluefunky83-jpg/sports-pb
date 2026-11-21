@@ -277,7 +277,7 @@
         </div>
       </div>
 
-      <button type="button" onclick="openPlayerManageModal()" class="px-3.5 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 whitespace-nowrap">
+      <button type="button" id="btn-manage-players-top" onclick="openPlayerManageModal()" class="px-3.5 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 whitespace-nowrap hidden">
         <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
         <span>선수관리</span>
       </button>
@@ -706,24 +706,27 @@
           </button>
         </div>
 
-        <!-- Exact Format Excel Export Button -->
-        <button type="button" onclick="exportToExcelExactFormat()" class="w-full py-3 rounded-2xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95">
-          <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <span>내 엑셀 양식 그대로 다운로드 (.csv)</span>
-        </button>
+        <!-- Admin-Only Backup & Export Section -->
+        <div id="section-admin-backup" class="space-y-2">
+          <!-- Exact Format Excel Export Button -->
+          <button type="button" onclick="exportToExcelExactFormat()" class="w-full py-3 rounded-2xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95">
+            <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>내 엑셀 양식 그대로 다운로드 (.csv)</span>
+          </button>
 
-        <!-- JSON Backup / Export -->
-        <button type="button" onclick="exportDataJson()" class="w-full py-3 rounded-2xl bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95">
-          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-          <span>데이터 파일로 내보내기 (백업)</span>
-        </button>
+          <!-- JSON Backup / Export -->
+          <button type="button" onclick="exportDataJson()" class="w-full py-3 rounded-2xl bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95">
+            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <span>데이터 파일로 내보내기 (백업)</span>
+          </button>
 
-        <!-- JSON Restore / Import -->
-        <label class="w-full py-3 rounded-2xl bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer">
-          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          <span>데이터 파일 불러오기 (복원)</span>
-          <input type="file" id="file-import-json" accept=".json" onchange="importDataJson(event)" class="hidden">
-        </label>
+          <!-- JSON Restore / Import -->
+          <label class="w-full py-3 rounded-2xl bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer">
+            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span>데이터 파일 불러오기 (복원)</span>
+            <input type="file" id="file-import-json" accept=".json" onchange="importDataJson(event)" class="hidden">
+          </label>
+        </div>
 
         <!-- Notion Guide & FAQ Link -->
         <a href="https://app.notion.com/p/FAQ-41ed8a73430d81da9e04dad5b6d157b3" target="_blank" class="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 text-blue-300 border border-blue-500/40 hover:from-blue-600/40 hover:to-indigo-600/40 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-sm">
@@ -2454,6 +2457,37 @@
 
     // 12. Settings & Backup/Export Functions
     function openSettingsModal() {
+      const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+      const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+      const modeLabel = document.getElementById('label-current-mode');
+      const btnAddPlayer = document.getElementById('btn-viewer-add-player');
+      const backupSec = document.getElementById('section-admin-backup');
+
+      const role = authUser?.role || 'viewer';
+
+      if (modeLabel) {
+        if (role === 'super_admin') {
+          modeLabel.className = 'px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-[11px]';
+          modeLabel.innerHTML = '👑 최고 관리자';
+        } else if (role === 'admin') {
+          modeLabel.className = 'px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold text-[11px]';
+          modeLabel.innerHTML = '🛡️ 선수 관리자';
+        } else {
+          modeLabel.className = 'px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-bold text-[11px]';
+          modeLabel.innerHTML = '👀 뷰어 (열람 전용)';
+        }
+      }
+
+      if (btnAddPlayer) {
+        if (role === 'viewer') btnAddPlayer.classList.remove('hidden');
+        else btnAddPlayer.classList.add('hidden');
+      }
+
+      if (backupSec) {
+        if (role === 'viewer') backupSec.classList.add('hidden');
+        else backupSec.classList.remove('hidden');
+      }
+
       document.getElementById('modal-settings').classList.remove('hidden');
     }
 
