@@ -6379,6 +6379,25 @@
       window.location.reload();
     }
 
+  
+    const _origOpenSettingsModal = openSettingsModal;
+    openSettingsModal = function() {
+      _origOpenSettingsModal();
+      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
+      const sec = document.getElementById('section-admin-backup');
+      const impJ = document.getElementById('btn-import-json-label');
+      const impX = document.getElementById('btn-import-xlsx-label');
+      if (sec) sec.classList.remove('hidden');
+      if (authUser.role === 'viewer') {
+        if (impJ) impJ.classList.add('hidden');
+        if (impX) impX.classList.add('hidden');
+      } else {
+        if (impJ) impJ.classList.remove('hidden');
+        if (impX) impX.classList.remove('hidden');
+      }
+      updateBackupStatusUI();
+    };
+
   </script>
 
   <!-- Update Notification Toast -->
