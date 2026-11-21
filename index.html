@@ -579,7 +579,10 @@
           </div>
           <div>
             <label class="block font-semibold text-slate-400 mb-1">생년월일 *</label>
-            <input type="text" id="form-player-birth" required placeholder="0000-00-00" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" inputmode="numeric" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+            <div class="flex gap-1.5 items-center">
+              <input type="text" id="form-player-birth" required placeholder="0000-00-00" maxlength="10" inputmode="numeric" oninput="formatBirthInput(this)" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              <input type="date" id="form-player-birth-picker" onchange="if(this.value){ document.getElementById('form-player-birth').value = this.value; }" title="달력에서 날짜 선택" class="w-9 h-[34px] bg-slate-800 border border-slate-700 rounded-xl px-1.5 text-xs text-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer flex-shrink-0">
+            </div>
           </div>
         </div>
 
@@ -840,6 +843,16 @@
           <button type="button" onclick="closeAdminProfileModal(); openAddEditPlayerModal();" class="w-full py-2 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold transition active:scale-95 text-center block mt-2">
             + 새 선수 추가 등록
           </button>
+        </div>
+
+        <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-emerald-300">👥 승인된 뷰어 관리</span>
+            <button type="button" onclick="openAdminProfileModal()" class="text-[10px] text-slate-400 hover:text-white">↻ 새로고침</button>
+          </div>
+          <div id="admin-approved-viewers-list" class="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+            <!-- Render approved viewers -->
+          </div>
         </div>
 
         <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
@@ -1143,6 +1156,10 @@
       const container = document.getElementById('event-tabs-container');
       if (!container) return;
       container.innerHTML = '';
+
+      if (!playersData || playersData.length === 0 || !currentPlayer) {
+        return;
+      }
 
       const events = getPlayerEvents(currentPlayer);
       const allTabs = [
@@ -2810,6 +2827,8 @@
           initPlayerSelectDropdown();
           renderEventTabs();
           renderCurrentView();
+          syncViewerLatestPermissionsOnce();
+          startViewerApprovedSyncPoller();
         }
       }
     }
@@ -3214,9 +3233,34 @@
         const resGet = await fetch(AUTH_API_ENDPOINT);
         const jsonGet = await resGet.json();
         const latestData = (jsonGet && jsonGet.data) ? { ...jsonGet.data } : {};
+        const prev = latestData[nick] || {};
+
+        const reqSet = new Set();
+        if (Array.isArray(prev.requestedPlayers)) {
+          prev.requestedPlayers.forEach(p => reqSet.add(p));
+        } else if (prev.targetPlayer) {
+          if (prev.targetPlayer === 'all') { reqSet.add('yusin'); reqSet.add('byeolha'); }
+          else reqSet.add(prev.targetPlayer);
+        } else if (prev.allowed && prev.allowed !== 'none') {
+          if (prev.allowed === 'all') { reqSet.add('yusin'); reqSet.add('byeolha'); }
+          else reqSet.add(prev.allowed);
+        }
+
+        if (targetPlayer === 'all') {
+          reqSet.add('yusin');
+          reqSet.add('byeolha');
+        } else if (targetPlayer) {
+          reqSet.add(targetPlayer);
+        }
+
+        const wasApproved = prev.status === 'approved' && prev.allowed && prev.allowed !== 'none';
         latestData[nick] = {
-          status: 'pending',
-          allowed: targetPlayer,
+          ...prev,
+          status: wasApproved ? 'approved' : 'pending',
+          pendingAdditional: wasApproved ? true : false,
+          allowed: wasApproved ? prev.allowed : targetPlayer,
+          targetPlayer: targetPlayer,
+          requestedPlayers: Array.from(reqSet),
           time: nowStr
         };
         realtimeAuthData = latestData;
@@ -3571,7 +3615,7 @@
     }
 
     // Admin Profile Modal Logic
-    function openAdminProfileModal() {
+    async function openAdminProfileModal() {
       const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
       if (authUserStr) {
         const user = JSON.parse(authUserStr);
@@ -3579,10 +3623,73 @@
         if (emailDisp) emailDisp.textContent = `${user.email || user.name} (선수 관리자)`;
       }
       renderAdminMyPlayers();
+      renderAdminApprovedViewers();
       document.getElementById('modal-admin-profile').classList.remove('hidden');
+
+      try {
+        const res = await fetch(AUTH_API_ENDPOINT);
+        const json = await res.json();
+        if (json && json.data) {
+          realtimeAuthData = { ...json.data };
+          renderAdminApprovedViewers();
+        }
+      } catch (e) {}
     }
     function closeAdminProfileModal() {
       document.getElementById('modal-admin-profile').classList.add('hidden');
+    }
+    function renderAdminApprovedViewers() {
+      const c = document.getElementById('admin-approved-viewers-list');
+      if (!c) return;
+      const dummyNames = ['외할머니', '코치님', '하람아빠'];
+      const approvedKeys = Object.keys(realtimeAuthData).filter(k => {
+        if (k.startsWith('_') || dummyNames.includes(k)) return false;
+        const v = realtimeAuthData[k];
+        return v && v.status === 'approved' && v.allowed && v.allowed !== 'none';
+      });
+      if (approvedKeys.length === 0) {
+        c.innerHTML = '<div class="py-4 text-center text-slate-500 text-[11px]">승인된 뷰어가 없습니다.</div>';
+        return;
+      }
+      c.innerHTML = '';
+      approvedKeys.forEach(nick => {
+        const item = realtimeAuthData[nick] || {};
+        if (!pendingViewerSelections[nick]) {
+          let initial = [];
+          if (Array.isArray(item.allowedPlayers)) initial = [...item.allowedPlayers];
+          else if (item.allowed === 'all') initial = ['yusin', 'byeolha'];
+          else if (item.allowed === 'yusin') initial = ['yusin'];
+          else if (item.allowed === 'byeolha') initial = ['byeolha'];
+          pendingViewerSelections[nick] = initial;
+        }
+        const selectedArr = pendingViewerSelections[nick] || [];
+        const isYusin = selectedArr.includes('yusin');
+        const isByeolha = selectedArr.includes('byeolha');
+        const isAll = isYusin && isByeolha;
+        const allowedLabel = isAll ? '전체 (2인)' : (isByeolha ? '김별하' : (isYusin ? '김유신' : '미선택'));
+
+        const card = document.createElement('div');
+        card.className = 'p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-extrabold text-white">${nick}</span>
+              <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">✅ ${allowedLabel}</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono">${item.time || ''}</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1 text-[11px]">
+            <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'all'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${isAll ? 'bg-indigo-600 text-white font-bold border-indigo-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">전체</button>
+            <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'yusin'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${isYusin ? 'bg-blue-600 text-white font-bold border-blue-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">김유신</button>
+            <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'byeolha'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${isByeolha ? 'bg-pink-600 text-white font-bold border-pink-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">김별하</button>
+          </div>
+          <div class="flex gap-1.5">
+            <button type="button" onclick="saveViewerPermission('${nick}')" class="flex-1 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px]">💾 저장</button>
+            <button type="button" onclick="deleteViewerFromApproval('${nick}')" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-700 text-[11px]">삭제</button>
+          </div>
+        `;
+        c.appendChild(card);
+      });
     }
     function renderAdminMyPlayers() {
       const c = document.getElementById('admin-my-players-list');
@@ -3780,19 +3887,19 @@
     }
 
 
-    // --- ANDROID BACK BUTTON INTERCEPT (History API) ---
-    let openModalsStack = [];
-    let isBackHistoryArmored = false;
-
-    function armorBackHistoryOnInteraction() {
-      if (isBackHistoryArmored) return;
-      isBackHistoryArmored = true;
-      if (window.history && window.history.pushState) {
-        window.history.pushState({ page: 'main_armed' }, '');
+    function formatBirthInput(el) {
+      const digits = el.value.replace(/\D/g, '').slice(0, 8);
+      if (digits.length >= 7) {
+        el.value = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+      } else if (digits.length >= 5) {
+        el.value = `${digits.slice(0, 4)}-${digits.slice(4)}`;
+      } else {
+        el.value = digits;
       }
     }
-    window.addEventListener('pointerdown', armorBackHistoryOnInteraction, { once: true, passive: true });
-    window.addEventListener('keydown', armorBackHistoryOnInteraction, { once: true, passive: true });
+
+    // --- ANDROID BACK BUTTON INTERCEPT (History API) ---
+    let openModalsStack = [];
 
     function pushModalHistory(modalId) {
       if (modalId && !openModalsStack.includes(modalId)) {
@@ -3816,25 +3923,13 @@
         return;
       }
 
-      // Check currently visible modals first (DOM truth)
-      let closedAny = false;
       for (const id of BACK_CHECK_MODAL_IDS) {
         const m = document.getElementById(id);
         if (m && !m.classList.contains('hidden')) {
           m.classList.add('hidden');
           openModalsStack = openModalsStack.filter(x => x !== id);
-          closedAny = true;
-          break;
+          return;
         }
-      }
-
-      if (closedAny) {
-        if (window.history && window.history.pushState) {
-          window.history.pushState({ page: 'main' }, '');
-        }
-      } else {
-        // No modals open: Show Exit Confirmation!
-        openAppExitModal();
       }
     });
 
@@ -3979,7 +4074,7 @@
       const hasPending = Object.keys(realtimeAuthData).some(k => {
         if (k.startsWith('_') || dummyNames.includes(k)) return false;
         const v = realtimeAuthData[k];
-        return v && (v.status === 'pending' || !v.approved || !v.allowed || v.allowed === 'none');
+        return v && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
       });
       if (hasPending) badge.classList.remove('hidden');
       else badge.classList.add('hidden');
@@ -4139,9 +4234,13 @@
       const dummyNames = ['외할머니', '코치님', '하람아빠'];
       dummyNames.forEach(d => { delete realtimeAuthData[d]; });
 
-      const keys = Object.keys(realtimeAuthData).filter(k => !k.startsWith('_') && !dummyNames.includes(k));
+      const keys = Object.keys(realtimeAuthData).filter(k => {
+        if (k.startsWith('_') || dummyNames.includes(k)) return false;
+        const v = realtimeAuthData[k];
+        return v && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
+      });
       if (keys.length === 0) {
-        container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">아직 열람을 신청한 뷰어가 없습니다.</div>';
+        container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">현재 대기 중인 열람 승인 신청이 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">승인 완료된 뷰어는 [🛡️ 관리자] 메뉴에서 관리할 수 있습니다.</span></div>';
         return;
       }
 
@@ -4152,7 +4251,7 @@
         // Initialize pending selections if not set
         if (!pendingViewerSelections[nick]) {
           let initial = [];
-          if (Array.isArray(item.allowedPlayers)) {
+          if (Array.isArray(item.allowedPlayers) && item.allowedPlayers.length > 0) {
             initial = [...item.allowedPlayers];
           } else if (item.allowed === 'all') {
             initial = ['yusin', 'byeolha'];
@@ -4160,6 +4259,16 @@
             initial = ['yusin'];
           } else if (item.allowed === 'byeolha') {
             initial = ['byeolha'];
+          }
+          if (Array.isArray(item.requestedPlayers)) {
+            item.requestedPlayers.forEach(p => { if (!initial.includes(p)) initial.push(p); });
+          } else if (item.targetPlayer === 'byeolha' && !initial.includes('byeolha')) {
+            initial.push('byeolha');
+          } else if (item.targetPlayer === 'yusin' && !initial.includes('yusin')) {
+            initial.push('yusin');
+          } else if (item.targetPlayer === 'all') {
+            if (!initial.includes('yusin')) initial.push('yusin');
+            if (!initial.includes('byeolha')) initial.push('byeolha');
           }
           pendingViewerSelections[nick] = initial;
         }
@@ -4170,14 +4279,17 @@
         const card = document.createElement('div');
         card.className = 'p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 space-y-2.5 shadow-md';
 
-        const reqPlayer = item.targetPlayer === 'byeolha' ? '김별하 (사이클)' : (item.targetPlayer === 'all' ? '전체 (유신/별하)' : '김유신 (육상)');
+        const reqArr = Array.isArray(item.requestedPlayers) && item.requestedPlayers.length > 0
+          ? item.requestedPlayers
+          : (item.targetPlayer === 'all' ? ['yusin', 'byeolha'] : [item.targetPlayer || item.allowed || 'yusin']);
+        const reqLabels = [];
+        if (reqArr.includes('yusin')) reqLabels.push('김유신 (육상)');
+        if (reqArr.includes('byeolha')) reqLabels.push('김별하 (사이클)');
+        const reqPlayer = reqLabels.length > 0 ? reqLabels.join(' · ') : '김유신 (육상)';
 
         let statusBadge = '';
-        if (isCurrentlyApproved) {
-          let allowedText = '전체 (2인)';
-          if (item.allowed === 'yusin') allowedText = '김유신';
-          else if (item.allowed === 'byeolha') allowedText = '김별하';
-          statusBadge = `<span class="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">✅ 승인됨 (${allowedText})</span>`;
+        if (item.pendingAdditional && isCurrentlyApproved) {
+          statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold">🆕 추가 열람 요청</span>';
         } else {
           statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">⏳ 승인 대기중</span>';
         }
@@ -4271,6 +4383,7 @@
       realtimeAuthData[nick] = {
         ...(realtimeAuthData[nick] || {}),
         status: isApproved ? 'approved' : 'pending',
+        pendingAdditional: false,
         allowed: allowedStr,
         allowedPlayers: [...selectedArr],
         approved: isApproved,
@@ -4287,6 +4400,7 @@
       }
 
       renderApprovalList();
+      renderAdminApprovedViewers();
       updatePendingBadge();
       updateSuperAdminStats();
 
@@ -4314,6 +4428,7 @@
       saveRegisteredViewers(list);
 
       renderApprovalList();
+      renderAdminApprovedViewers();
       updatePendingBadge();
       updateSuperAdminStats();
 
@@ -4351,6 +4466,7 @@
               authUser.approved = true;
               authUser.allowedPlayers = remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed];
               localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
+              syncDataForUserRole(authUser);
 
               // Auto unlock pending screen!
               const pendingScreen = document.getElementById('screen-pending-approval');
@@ -4358,6 +4474,7 @@
               initPlayerSelectDropdown();
               renderEventTabs();
               renderCurrentView();
+              startViewerApprovedSyncPoller();
               alert(`🎉 축하합니다! 선수 관리자(지혜 님)의 열람 승인이 완료되었습니다!\n[${remoteItem.allowed === 'all' ? '전체' : (remoteItem.allowed === 'byeolha' ? '김별하' : '김유신')}] 기록을 열람합니다.`);
             }
           }
@@ -4382,18 +4499,60 @@
             authUser.approved = true;
             authUser.allowedPlayers = remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed];
             localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
+            syncDataForUserRole(authUser);
 
             const pendingScreen = document.getElementById('screen-pending-approval');
             if (pendingScreen) pendingScreen.classList.add('hidden');
             initPlayerSelectDropdown();
             renderEventTabs();
             renderCurrentView();
+            startViewerApprovedSyncPoller();
             alert(`🎉 축하합니다! 선수 관리자(지혜 님)의 열람 승인이 확인되었습니다!\n[${remoteItem.allowed === 'all' ? '전체' : (remoteItem.allowed === 'byeolha' ? '김별하' : '김유신')}] 기록을 열람합니다.`);
             return;
           }
         }
       } catch (e) {}
       alert('아직 관리자의 승인을 기다리고 있습니다.\n관리자가 승인하면 자동으로 화면이 열립니다.');
+    }
+
+    let viewerApprovedSyncTimer = null;
+    async function syncViewerLatestPermissionsOnce() {
+      try {
+        const authUserStr = localStorage.getItem('ATHLETE_APP_AUTH_USER');
+        if (!authUserStr) return;
+        const authUser = JSON.parse(authUserStr);
+        if (authUser.role !== 'viewer' || !authUser.approved) return;
+
+        const res = await fetch(AUTH_API_ENDPOINT);
+        const json = await res.json();
+        if (!json || !json.data) return;
+        const remoteItem = json.data[authUser.name];
+        if (!remoteItem || remoteItem.status !== 'approved' || !remoteItem.allowed || remoteItem.allowed === 'none') return;
+
+        const nextAllowed = Array.isArray(remoteItem.allowedPlayers) && remoteItem.allowedPlayers.length > 0
+          ? [...remoteItem.allowedPlayers]
+          : (remoteItem.allowed === 'all' ? ['yusin', 'byeolha'] : [remoteItem.allowed]);
+
+        const prevStr = JSON.stringify([...(authUser.allowedPlayers || [])].sort());
+        const nextStr = JSON.stringify([...nextAllowed].sort());
+        if (prevStr !== nextStr) {
+          authUser.allowedPlayers = nextAllowed;
+          localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
+          syncDataForUserRole(authUser);
+          initPlayerSelectDropdown();
+          renderEventTabs();
+          renderCurrentView();
+        }
+      } catch (e) {}
+    }
+
+    function startViewerApprovedSyncPoller() {
+      if (viewerApprovedSyncTimer) clearInterval(viewerApprovedSyncTimer);
+      viewerApprovedSyncTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          syncViewerLatestPermissionsOnce();
+        }
+      }, 8000);
     }
 
     // --- Account Delete (회원 탈퇴: 지혜 님 필수 지침 반영) ---
@@ -4429,7 +4588,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.13';
+    const CURRENT_APP_VERSION = '2026.11.21.14';
 
     function checkForUpdates() {
       // Listen for Service Worker update
