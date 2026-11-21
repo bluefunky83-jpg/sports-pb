@@ -2833,16 +2833,16 @@
           currentPlayer = null;
         }
       } else if (user.role === 'viewer') {
-        // Viewer: only sees approved players
+        // Viewer: only sees approved players (never expose MASTER_DATA before approval!)
         const allowed = user.allowedPlayers || [];
         if (user.approved && allowed.length > 0) {
           playersData = MASTER_PLAYERS_DATA.filter(p => allowed.includes(p.id));
           appData = MASTER_APP_DATA;
           currentPlayer = playersData[0]?.id || 'yusin';
         } else {
-          playersData = MASTER_PLAYERS_DATA;
-          appData = MASTER_APP_DATA;
-          currentPlayer = user.targetPlayer || 'yusin';
+          playersData = [];
+          appData = {};
+          currentPlayer = '';
         }
       }
     }
@@ -2878,8 +2878,8 @@
         applyAuthModeUI('viewer');
         const hasPendingTarget = !!(authUser.targetPlayer || (Array.isArray(authUser.requestedPlayers) && authUser.requestedPlayers.length > 0));
         if (!authUser.approved) {
-          if (pendingScreen) {
-            if (hasPendingTarget) {
+          if (hasPendingTarget) {
+            if (pendingScreen) {
               pendingScreen.classList.remove('hidden');
               const nickDisp = document.getElementById('text-viewer-nickname-display');
               const targetName = authUser.targetPlayer === 'byeolha' ? '김별하 (사이클)' : (authUser.targetPlayer === 'all' ? '전체 (유신/별하)' : '김유신 (육상)');
@@ -2887,9 +2887,11 @@
                 nickDisp.innerHTML = `<span class="text-amber-300 font-bold font-mono">[${authUser.name}]</span> 님이 신청하신 <span class="text-blue-300 font-bold">[${targetName}]</span> 열람을 대기하고 있습니다.<br>선수 관리자(지혜 님)의 승인을 기다리는 중입니다.`;
               }
               startViewerApprovalPolling();
-            } else {
-              pendingScreen.classList.add('hidden');
             }
+          } else {
+            // No player requested yet: keep login gate visible behind the modal
+            if (gate) gate.classList.remove('hidden');
+            if (pendingScreen) pendingScreen.classList.add('hidden');
           }
         } else {
           if (pendingScreen) pendingScreen.classList.add('hidden');
@@ -4925,7 +4927,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.24';
+    const CURRENT_APP_VERSION = '2026.11.21.25';
 
     function checkForUpdates() {
       // Listen for Service Worker update
