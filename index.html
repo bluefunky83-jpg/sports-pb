@@ -60,8 +60,8 @@
 
       <!-- VIEW 1: Login Form -->
       <div id="auth-view-login" class="space-y-4">
-        <!-- Google Fast Login (Official Google One Tap & Button Container) -->
-        <div id="google-signin-btn-container" class="w-full flex justify-center">
+        <!-- Google Fast Login (One Tap Bottom Sheet Main + Official Button Fallback) -->
+        <div id="google-signin-btn-container" class="w-full space-y-2">
           <button type="button" onclick="triggerGooglePromptManual()" class="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center gap-2.5 shadow-md transition active:scale-95">
             <svg class="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -71,6 +71,12 @@
             </svg>
             <span>Google 계정으로 빠른 로그인</span>
           </button>
+          <div class="text-center">
+            <button type="button" onclick="toggleGoogleOfficialFallback()" class="text-[11px] text-slate-400 hover:text-blue-400 underline underline-offset-2 transition">
+              바텀시트가 안 뜨나요? Google 계정 창으로 열기
+            </button>
+            <div id="google-official-btn-wrapper" class="mt-2.5 flex justify-center hidden"></div>
+          </div>
         </div>
 
         <div class="flex items-center gap-2 my-2">
@@ -938,6 +944,7 @@
 
     let filterKind = 'ALL';
     let filterYear = 'ALL';
+    let filterPeriodYears = 'ALL';
     let searchMeet = '';
 
     let playerFilterLevel = 'all';
@@ -1346,9 +1353,76 @@
       `;
     }
 
-    // 8-2. Event Detail View (Chart + Filter + Meet Grouped List)
+    function getAvailableYearsForPlayer(playerId) {
+      const records = appData[playerId] || [];
+      const yearsSet = new Set();
+      records.forEach(r => {
+        if (r.date && /^\d{4}/.test(r.date)) {
+          yearsSet.add(parseInt(r.date.substring(0, 4), 10));
+        }
+      });
+      if (yearsSet.size === 0) {
+        return [new Date().getFullYear()];
+      }
+      const minYear = Math.min(...yearsSet);
+      const maxYear = Math.max(...yearsSet);
+      const list = [];
+      for (let y = maxYear; y >= minYear; y--) {
+        list.push(y);
+      }
+      return list;
+    }
+
+    function doesRecordMatchFilters(r) {
+      if (filterKind !== 'ALL' && r.kind !== filterKind) return false;
+      if (filterYear !== 'ALL' && (!r.date || !r.date.startsWith(filterYear))) return false;
+      if (filterPeriodYears !== 'ALL' && r.date) {
+        const n = parseInt(filterPeriodYears, 10);
+        const now = new Date();
+        const cutoff = new Date(now.getFullYear() - n, now.getMonth(), now.getDate());
+        const cutoffStr = cutoff.toISOString().split('T')[0];
+        if (r.date < cutoffStr) return false;
+      }
+      if (searchMeet && !(r.meet || '').toLowerCase().includes(searchMeet)) return false;
+      return true;
+    }
+
+    // 8-2. Event Detail View (Sticky Top Filter + Chart with Period Badges + Meet Grouped List)
     function renderEventDetailView(container) {
+      const availableYears = getAvailableYearsForPlayer(currentPlayer);
+      const yearOptionsHtml = availableYears.map(y => `<option value="${y}" ${String(filterYear) === String(y) ? 'selected' : ''}>${y}년</option>`).join('');
+      const hasAnyFilter = filterKind !== 'ALL' || filterYear !== 'ALL' || filterPeriodYears !== 'ALL' || searchMeet !== '';
+
+      const periodBtnsHtml = [
+        { val: 'ALL', label: '전체' },
+        { val: '1', label: '1년' },
+        { val: '2', label: '2년' },
+        { val: '3', label: '3년' }
+      ].map(p => {
+        const isActive = filterPeriodYears === p.val;
+        return `<button type="button" onclick="setPeriodYears('${p.val}')" class="px-1.5 py-0.5 rounded text-[10px] font-bold transition ${isActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}">${p.label}</button>`;
+      }).join('');
+
       container.innerHTML = `
+        <!-- Sticky Top Filter Bar (탭을 이동해도 조건 고정!) -->
+        <div class="p-3 bg-slate-900/60 border border-slate-800/80 rounded-2xl mb-4 space-y-2">
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <select id="filter-kind" onchange="updateFilters('kind')" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200">
+              <option value="ALL" ${filterKind === 'ALL' ? 'selected' : ''}>구분: 전체</option>
+              <option value="공식" ${filterKind === '공식' ? 'selected' : ''}>공식대회</option>
+              <option value="비공식" ${filterKind === '비공식' ? 'selected' : ''}>전문실기</option>
+            </select>
+            <select id="filter-year" onchange="updateFilters('year')" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200">
+              <option value="ALL" ${filterYear === 'ALL' ? 'selected' : ''}>연도: 전체</option>
+              ${yearOptionsHtml}
+            </select>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input type="text" id="search-meet" value="${searchMeet.replace(/"/g, '&quot;')}" oninput="updateFilters('search')" placeholder="대회명 검색..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+            ${hasAnyFilter ? `<button type="button" onclick="resetAllFilters()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-bold whitespace-nowrap transition active:scale-95">초기화</button>` : ''}
+          </div>
+        </div>
+
         <!-- Chart Section -->
         <div class="p-4 rounded-3xl bg-slate-900 border border-slate-800 mb-4 shadow-xl">
           <div class="flex items-center justify-between mb-3 px-1">
@@ -1356,29 +1430,13 @@
               <span class="w-2 h-2 rounded-full bg-blue-500"></span>
               <span>성장 기록 추이</span>
             </h3>
-            <span class="text-[10px] text-slate-500">기록 단축 흐름 (초/분초)</span>
+            <div class="flex items-center gap-1" id="period-badges-container">
+              ${periodBtnsHtml}
+            </div>
           </div>
           <div class="h-56 relative">
             <canvas id="growthChart"></canvas>
           </div>
-        </div>
-
-        <!-- Filter Bar -->
-        <div class="p-3 bg-slate-900/60 border border-slate-800/80 rounded-2xl mb-4 space-y-2">
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <select id="filter-kind" onchange="updateFilters()" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200">
-              <option value="ALL">구분: 전체</option>
-              <option value="공식">공식대회</option>
-              <option value="비공식">전문실기</option>
-            </select>
-            <select id="filter-year" onchange="updateFilters()" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200">
-              <option value="ALL">연도: 전체</option>
-              <option value="2026">2026년</option>
-              <option value="2025">2025년</option>
-              <option value="2024">2024년</option>
-            </select>
-          </div>
-          <input type="text" id="search-meet" oninput="updateFilters()" placeholder="대회명 검색..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
         </div>
 
         <!-- Meet Grouped List Header -->
@@ -1399,10 +1457,46 @@
       renderMeetGroupedList();
     }
 
-    function updateFilters() {
-      filterKind = document.getElementById('filter-kind').value;
-      filterYear = document.getElementById('filter-year').value;
-      searchMeet = (document.getElementById('search-meet').value || '').trim().toLowerCase();
+    function setPeriodYears(val) {
+      filterPeriodYears = val;
+      if (val !== 'ALL') {
+        filterYear = 'ALL';
+      }
+      renderEventDetailView(document.getElementById('view-container'));
+    }
+
+    function resetAllFilters() {
+      filterKind = 'ALL';
+      filterYear = 'ALL';
+      filterPeriodYears = 'ALL';
+      searchMeet = '';
+      renderEventDetailView(document.getElementById('view-container'));
+    }
+
+    function updateFilters(source) {
+      const kindEl = document.getElementById('filter-kind');
+      const yearEl = document.getElementById('filter-year');
+      const searchEl = document.getElementById('search-meet');
+
+      if (kindEl) filterKind = kindEl.value;
+      if (yearEl) filterYear = yearEl.value;
+      if (searchEl) searchMeet = (searchEl.value || '').trim().toLowerCase();
+
+      if (source === 'year' && filterYear !== 'ALL') {
+        filterPeriodYears = 'ALL';
+        const periodContainer = document.getElementById('period-badges-container');
+        if (periodContainer) {
+          periodContainer.innerHTML = [
+            { val: 'ALL', label: '전체' },
+            { val: '1', label: '1년' },
+            { val: '2', label: '2년' },
+            { val: '3', label: '3년' }
+          ].map(p => {
+            const isActive = filterPeriodYears === p.val;
+            return `<button type="button" onclick="setPeriodYears('${p.val}')" class="px-1.5 py-0.5 rounded text-[10px] font-bold transition ${isActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}">${p.label}</button>`;
+          }).join('');
+        }
+      }
 
       renderChart();
       renderMeetGroupedList();
@@ -1415,12 +1509,7 @@
 
       const records = (appData[currentPlayer] || []).filter(r => isEventMatch(r.event, currentEvent) && parseFloat(r.seconds) > 0);
       
-      let filtered = records.filter(r => {
-        if (filterKind !== 'ALL' && r.kind !== filterKind) return false;
-        if (filterYear !== 'ALL' && !r.date.startsWith(filterYear)) return false;
-        if (searchMeet && !r.meet.toLowerCase().includes(searchMeet)) return false;
-        return true;
-      });
+      let filtered = records.filter(doesRecordMatchFilters);
 
       filtered.sort((a, b) => a.date.localeCompare(b.date));
 
@@ -1519,12 +1608,7 @@
 
       const records = (appData[currentPlayer] || []).filter(r => isEventMatch(r.event, currentEvent));
 
-      let filtered = records.filter(r => {
-        if (filterKind !== 'ALL' && r.kind !== filterKind) return false;
-        if (filterYear !== 'ALL' && !r.date.startsWith(filterYear)) return false;
-        if (searchMeet && !r.meet.toLowerCase().includes(searchMeet)) return false;
-        return true;
-      });
+      let filtered = records.filter(doesRecordMatchFilters);
 
       if (countElem) countElem.textContent = `${filtered.length}건`;
 
@@ -2757,6 +2841,13 @@
     // --- Google Identity Services (One Tap & Official OAuth) ---
     const GOOGLE_CLIENT_ID = "42761119105-h6ur4e366pj5h39glvtntbb2j7u7vlmb.apps.googleusercontent.com";
 
+    function toggleGoogleOfficialFallback() {
+      const wrapper = document.getElementById('google-official-btn-wrapper');
+      if (wrapper) {
+        wrapper.classList.toggle('hidden');
+      }
+    }
+
     function initGoogleOneTap() {
       if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
         setTimeout(initGoogleOneTap, 200);
@@ -2771,13 +2862,13 @@
           cancel_on_tap_outside: true
         });
 
-        // 공식 구글 로그인 버튼 마운트 (쿨다운 씹힘 방지!)
-        const btnContainer = document.getElementById('google-signin-btn-container');
-        if (btnContainer) {
-          google.accounts.id.renderButton(btnContainer, {
+        // 보조 링크용 공식 구글 로그인 버튼 마운트 (평소엔 hidden)
+        const officialWrapper = document.getElementById('google-official-btn-wrapper');
+        if (officialWrapper) {
+          google.accounts.id.renderButton(officialWrapper, {
             theme: 'outline',
             size: 'large',
-            width: 320,
+            width: 300,
             text: 'signin_with',
             shape: 'pill',
             locale: 'ko'
@@ -4297,7 +4388,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.07';
+    const CURRENT_APP_VERSION = '2026.11.21.08';
 
     function checkForUpdates() {
       // Listen for Service Worker update
