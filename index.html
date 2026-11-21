@@ -3087,26 +3087,7 @@
 
       // Strictly separate Viewer Login vs Admin Login (동명이인/역할 혼선 원천 차단)
       if (currentLoginRole === 'viewer') {
-        // Match existing local viewer strictly by email (never by name!)
-        const viewers = getRegisteredViewers();
-        const matchedViewer = viewers.find(v => v.email && v.email.toLowerCase() === email);
-        if (matchedViewer) {
-          const user = {
-            id: matchedViewer.id,
-            name: matchedViewer.name,
-            email: payload.email,
-            role: 'viewer',
-            approved: matchedViewer.approved,
-            targetPlayer: matchedViewer.targetPlayer || '',
-            allowedPlayers: matchedViewer.allowedPlayers || []
-          };
-          localStorage.setItem('ATHLETE_APP_AUTH_USER', JSON.stringify(user));
-          checkInitialAuthGate();
-          alert(`👀 ${matchedViewer.name} 뷰어님, Google 계정으로 로그인되었습니다.`);
-          return;
-        }
-
-        // Check cloud for existing viewer record strictly by email
+        // Check cloud strictly by email (ignore stale localStorage cache!)
         let remoteMatch = null;
         try {
           const res = await fetch(AUTH_API_ENDPOINT);
@@ -3121,6 +3102,12 @@
             }
           }
         } catch (e) {}
+
+        // Clean up any stale local viewer cache for this email if server has no record
+        if (!remoteMatch) {
+          const staleLocal = getRegisteredViewers().filter(v => !(v.email && v.email.toLowerCase() === email));
+          saveRegisteredViewers(staleLocal);
+        }
 
         if (remoteMatch && remoteMatch.status === 'approved') {
           const user = {
@@ -5049,7 +5036,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.21.26';
+    const CURRENT_APP_VERSION = '2026.11.21.27';
 
     function checkForUpdates() {
       // Listen for Service Worker update
