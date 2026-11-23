@@ -4813,20 +4813,42 @@
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         return { ok: false, reason: 'JSON 최상위 구조가 올바른 객체가 아닙니다.' };
       }
-      if (!parsed.appData || typeof parsed.appData !== 'object' || Array.isArray(parsed.appData)) {
-        return { ok: false, reason: '필수 항목(appData)이 없거나 형식이 올바르지 않습니다.' };
+
+      // 신규 형식(players/records)과 운영·구형 형식(appData/playersData)을 모두 받아 정규화한다.
+      const hasPlayers = Array.isArray(parsed.players);
+      const hasRecords = !!parsed.records && typeof parsed.records === 'object' && !Array.isArray(parsed.records);
+      const hasPlayersData = Array.isArray(parsed.playersData);
+      const hasAppData = !!parsed.appData && typeof parsed.appData === 'object' && !Array.isArray(parsed.appData);
+
+      let players = null;
+      let records = null;
+      let format = '';
+      if (hasPlayers || hasRecords) {
+        if (!hasPlayers || !hasRecords) {
+          return { ok: false, reason: '신규 백업 형식이 완전하지 않습니다(players와 records가 모두 필요합니다).' };
+        }
+        players = parsed.players;
+        records = parsed.records;
+        format = 'current';
+      } else if (hasPlayersData || hasAppData) {
+        if (!hasPlayersData || !hasAppData) {
+          return { ok: false, reason: '구형 백업 형식이 완전하지 않습니다(playersData와 appData가 모두 필요합니다).' };
+        }
+        players = parsed.playersData;
+        records = parsed.appData;
+        format = 'legacy';
+      } else {
+        return { ok: false, reason: '백업 파일에 선수·기록 데이터(players/records 또는 appData/playersData)가 없습니다.' };
       }
-      if (!Array.isArray(parsed.playersData)) {
-        return { ok: false, reason: '필수 항목(playersData)이 없거나 배열 형식이 아닙니다.' };
-      }
-      for (let i = 0; i < parsed.playersData.length; i++) {
-        const p = parsed.playersData[i];
+
+      for (let i = 0; i < players.length; i++) {
+        const p = players[i];
         if (!p || typeof p !== 'object' || !p.id || !p.name) {
           return { ok: false, reason: `선수 정보(${i + 1}번째 항목)에 필수값(id, name)이 누락되었습니다.` };
         }
       }
-      for (const pid of Object.keys(parsed.appData)) {
-        const recs = parsed.appData[pid];
+      for (const pid of Object.keys(records)) {
+        const recs = records[pid];
         if (!Array.isArray(recs)) {
           return { ok: false, reason: `선수 기록(${pid}) 형식이 배열이 아닙니다.` };
         }
@@ -4837,10 +4859,22 @@
           }
         }
       }
-      if (parsed.savedTeammates !== undefined && !Array.isArray(parsed.savedTeammates)) {
+      const teammates = parsed.savedTeammates !== undefined ? parsed.savedTeammates : (Array.isArray(parsed.teammates) ? parsed.teammates : undefined);
+      if (teammates !== undefined && !Array.isArray(teammates)) {
         return { ok: false, reason: '팀원 목록(savedTeammates) 형식이 올바르지 않습니다.' };
       }
-      return { ok: true };
+      return {
+        ok: true,
+        format: format,
+        playersData: players,
+        appData: records,
+        savedTeammates: teammates,
+        playersCount: players.length,
+        recordsCount: Object.keys(records).reduce((sum, pid) => sum + (Array.isArray(records[pid]) ? records[pid].length : 0), 0),
+        exportedAt: parsed.exportedAt || '',
+        ownerUid: parsed.ownerUid || '',
+        ownerEmail: parsed.ownerEmail || ''
+      };
     }
 
     function importDataJson(e) {
@@ -6158,46 +6192,174 @@
       updateBackupStatusUI();
     };
 
-    exportDataJson = function() {
+    function buildBackupJsonPayload() {
       const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
       const totalRecordsCount = Object.values(appData).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0);
-      const payload = {
-        appVersion: CURRENT_APP_VERSION, schemaVersion: '2.0', exportedAt: new Date().toISOString(),
-        ownerUid: authUser.id || '', ownerEmail: authUser.email || '',
-        playersCount: playersData.length, recordsCount: totalRecordsCount,
-        players: playersData, records: appData
+      return {
+        appName: '선수 성장노트',
+        appVersion: CURRENT_APP_VERSION,
+        schemaVersion: '2.0',
+        exportedAt: new Date().toISOString(),
+        ownerUid: authUser.id || '',
+        ownerEmail: authUser.email || '',
+        playersCount: playersData.length,
+        recordsCount: totalRecordsCount,
+        players: playersData,
+        records: appData,
+        // 구형 복원기(운영 앱 포함)와의 호환용 별칭 — 같은 내용을 두 이름으로 담는다.
+        appData: appData,
+        playersData: playersData,
+        savedTeammates: savedTeammates
       };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url;
-      a.download = `선수성장노트_백업_${new Date().toISOString().split('T')[0]}.json`;
-      a.click(); URL.revokeObjectURL(url);
-      recordBackupCompleted();
+    }
+
+    function pushPreRestoreBackup() {
+      try {
+        const entry = {
+          savedAt: new Date().toISOString(),
+          appData: JSON.parse(JSON.stringify(appData || {})),
+          playersData: JSON.parse(JSON.stringify(playersData || [])),
+          savedTeammates: JSON.parse(JSON.stringify(savedTeammates || []))
+        };
+        let historyList = [];
+        try {
+          const rawHist = localStorage.getItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS');
+          if (rawHist) {
+            const parsedHist = JSON.parse(rawHist);
+            if (Array.isArray(parsedHist)) historyList = parsedHist;
+          }
+        } catch (e) {}
+        historyList.unshift(entry);
+        if (historyList.length > 3) historyList = historyList.slice(0, 3);
+        while (historyList.length > 0) {
+          try {
+            localStorage.setItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS', JSON.stringify(historyList));
+            break;
+          } catch (quotaErr) {
+            historyList.pop();
+          }
+        }
+        localStorage.setItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUP', JSON.stringify(entry));
+        return true;
+      } catch (e) {
+        console.warn('pre-restore auto backup failed:', e);
+        return false;
+      }
+    }
+
+    function applyBackupRestore(validated) {
+      const prevAppData = appData;
+      const prevPlayersData = playersData;
+      const prevSavedTeammates = savedTeammates;
+      const prevCurrentPlayer = currentPlayer;
+      try {
+        const nextPlayers = JSON.parse(JSON.stringify(validated.playersData));
+        const nextRecords = JSON.parse(JSON.stringify(validated.appData));
+        nextPlayers.forEach(p => { if (!Array.isArray(nextRecords[p.id])) nextRecords[p.id] = []; });
+        appData = nextRecords;
+        playersData = nextPlayers;
+        if (validated.savedTeammates !== undefined) {
+          savedTeammates = JSON.parse(JSON.stringify(validated.savedTeammates));
+        }
+        if (!playersData.some(p => p.id === currentPlayer)) {
+          currentPlayer = playersData.length > 0 ? playersData[0].id : '';
+        }
+        if (!saveDataToStorage()) {
+          throw new Error('브라우저 저장소 용량이 초과되어 데이터를 저장할 수 없습니다.');
+        }
+        initPlayerSelectDropdown();
+        renderEventTabs();
+        renderCurrentView();
+        return { ok: true };
+      } catch (err) {
+        appData = prevAppData;
+        playersData = prevPlayersData;
+        savedTeammates = prevSavedTeammates;
+        currentPlayer = prevCurrentPlayer;
+        let rollbackSaved = false;
+        try { rollbackSaved = saveDataToStorage(); } catch (e) { rollbackSaved = false; }
+        if (!rollbackSaved) {
+          try {
+            localStorage.removeItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUP');
+            localStorage.removeItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS');
+          } catch (e) {}
+          try { rollbackSaved = saveDataToStorage(); } catch (e) { rollbackSaved = false; }
+        }
+        return { ok: false, error: err && err.message ? err.message : String(err), rollbackSaved: rollbackSaved };
+      }
+    }
+
+    exportDataJson = function() {
+      try {
+        const payload = buildBackupJsonPayload();
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `선수성장노트_백업_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        recordBackupCompleted();
+      } catch (err) {
+        alert('백업 파일을 만들 수 없습니다: ' + (err && err.message ? err.message : err));
+      }
     };
 
     importDataJson = function(e) {
+      const inputEl = e.target;
       const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
-      if (authUser.role === 'viewer') { alert('뷰어 계정은 데이터 복원을 할 수 없습니다.'); e.target.value = ''; return; }
-      const file = e.target.files[0]; if (!file) return;
+      if (authUser.role === 'viewer') { alert('뷰어 계정은 데이터 복원을 할 수 없습니다.'); if (inputEl) inputEl.value = ''; return; }
+      const file = inputEl && inputEl.files ? inputEl.files[0] : null;
+      if (!file) return;
       const reader = new FileReader();
       reader.onload = function(evt) {
+        let parsed = null;
         try {
-          const parsed = JSON.parse(evt.target.result);
-          const v = validateBackupJson(parsed);
-          if (!v.ok) { alert('❌ 복원 차단: ' + v.error); return; }
-          if (parsed.ownerUid && parsed.ownerUid !== authUser.id) {
-            alert(`❌ 소유권 불일치 차단!\n현재 계정(${authUser.email})과 백업 파일 계정(${parsed.ownerEmail || parsed.ownerUid})이 달라 복원할 수 없습니다.`);
-            return;
-          }
-          const ok = confirm(`📂 백업 복원 미리보기\n- 생성일: ${parsed.exportedAt || '알 수 없음'}\n- 계정: ${parsed.ownerEmail || authUser.email}\n- 선수: ${v.playersCount}명 / 기록: ${v.recordsCount}건\n\n⚠️ 현재 데이터가 백업 파일 내용으로 덮어씌워집니다. 진행할까요?`);
-          if (!ok) return;
-          pushPreRestoreBackup();
-          playersData = parsed.players; appData = parsed.records;
-          saveDataToStorage(); syncAdminToCloud(authUser);
-          initPlayerSelectDropdown(); renderEventTabs(); renderCurrentView();
-          alert('✅ 백업 복원이 안전하게 완료되었습니다.');
-        } catch (err) { alert('❌ 올바른 JSON 파일이 아닙니다.'); }
-        finally { e.target.value = ''; }
+          parsed = JSON.parse(evt.target.result);
+        } catch (err) {
+          alert('❌ 복원 차단: 올바른 JSON 파일이 아닙니다.\n기존 데이터는 그대로 유지됩니다.');
+          if (inputEl) inputEl.value = '';
+          return;
+        }
+        const v = validateBackupJson(parsed);
+        if (!v.ok) {
+          alert('❌ 복원 차단: ' + v.reason + '\n\n기존 데이터는 그대로 유지됩니다.');
+          if (inputEl) inputEl.value = '';
+          return;
+        }
+        if (v.ownerUid && authUser.id && v.ownerUid !== authUser.id) {
+          alert('❌ 소유권 불일치 차단!\n현재 계정(' + (authUser.email || authUser.id) + ')과 백업 파일 계정(' + (v.ownerEmail || v.ownerUid) + ')이 달라 복원할 수 없습니다.');
+          if (inputEl) inputEl.value = '';
+          return;
+        }
+        const currentRecordCount = Object.values(appData).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0);
+        const dateLabel = v.exportedAt ? String(v.exportedAt).slice(0, 10) : '알 수 없음';
+        const ok = confirm(
+          '📂 백업 복원 미리보기\n' +
+          '- 생성일: ' + dateLabel + '\n' +
+          '- 형식: ' + (v.format === 'legacy' ? '구형(appData/playersData)' : '신규(players/records)') + '\n' +
+          '- 계정: ' + (v.ownerEmail || '기록 없음') + '\n' +
+          '- 백업 내용: 선수 ' + v.playersCount + '명 / 기록 ' + v.recordsCount + '건\n' +
+          '- 현재 데이터: 선수 ' + playersData.length + '명 / 기록 ' + currentRecordCount + '건\n\n' +
+          '현재 데이터는 복원 직전 브라우저에 자동 임시 백업됩니다.\n' +
+          '백업 파일 내용으로 복원할까요?'
+        );
+        if (!ok) { if (inputEl) inputEl.value = ''; return; }
+        pushPreRestoreBackup();
+        const res = applyBackupRestore(v);
+        if (res.ok) {
+          alert('✅ 백업 복원이 완료되었습니다. (선수 ' + v.playersCount + '명 / 기록 ' + v.recordsCount + '건)');
+          try { closeSettingsModal(); } catch (e) {}
+        } else {
+          alert('복원 중 오류가 발생하여 기존 데이터를 안전하게 복구·유지했습니다.\n(' + res.error + ')');
+        }
+        if (inputEl) inputEl.value = '';
+      };
+      reader.onerror = function() {
+        alert('파일을 읽는 중 오류가 발생했습니다. 기존 데이터는 유지됩니다.');
+        if (inputEl) inputEl.value = '';
       };
       reader.readAsText(file);
     };
@@ -6206,88 +6368,186 @@
       if (typeof XLSX === 'undefined') { alert('엑셀 라이브러리를 불러오는 중입니다.'); return; }
       const p = playersData.find(x => x.id === currentPlayer) || playersData[0];
       if (!p) { alert('내보낼 선수가 없습니다.'); return; }
-      const recs = (appData[p.id] || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+      const recs = (appData[p.id] || []).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
       const isTrack = p.sport === '육상';
-      const rows = recs.map(r => {
-        const dStr = (r.date || '').replace(/-/g, '.');
-        const rankStr = [r.round, r.rank].filter(Boolean).join(' ').trim();
-        const meetName = r.kind === '비공식' && !String(r.meet || '').includes('전문실기') ? (r.meet || '전남체중고 전문실기') : (r.meet || '');
-        const teamMembers = Array.isArray(r.runners) ? r.runners.join(',') : '';
-        if (isTrack) {
-          return {
-            '날짜': dStr, '대회명': meetName, '종목': r.event || '',
-            '공식기록': r.kind === '공식' ? r.seconds : '',
-            '비공식기록': r.kind === '비공식' ? r.seconds : '',
-            '풍속': r.wind || '', '팀멤버': teamMembers, '순위': rankStr, '비고': r.note || ''
-          };
-        } else {
-          return {
-            '날짜': dStr, '대회명': meetName, '종목': r.event || '',
-            '공식기록': r.kind === '공식' ? r.seconds : '',
-            '비공식기록': r.kind === '비공식' ? r.seconds : '',
-            '팀멤버': teamMembers, '순위': rankStr, '비고': r.note || ''
-          };
+
+      const ROUND_WORDS = ['준결승전', '준결승', '결승전', '결승', '예선', '본선', '준결', '1차', '2차', '3차', '4차'];
+      const normalizeRoundWord = (w) => {
+        if (w === '준결' || w === '준결승전') return '준결승';
+        if (w === '결승전') return '결승';
+        return w;
+      };
+      // 데이터의 round 하나에 라운드(예선/준결승/결승)와 차수(1차~4차)가 함께 저장돼 있어
+      // 백업 출력에서만 라운드/차수로 분리하고, rank에 섞인 라운드 문자열은 걷어낸다.
+      const splitRoundRank = (r) => {
+        let round = String(r.round || '').trim();
+        let rankRaw = String(r.rank === 0 || r.rank ? r.rank : '').trim();
+        const tokens = rankRaw.split(/\s+/).filter(Boolean);
+        while (tokens.length > 0 && ROUND_WORDS.indexOf(tokens[0]) >= 0) {
+          if (!round) round = normalizeRoundWord(tokens[0]);
+          tokens.shift();
         }
+        const rest = tokens.join(' ').trim();
+        return { round: round, rank: /^\d+$/.test(rest) ? Number(rest) : rest };
+      };
+      const runnersOf = (r) => {
+        if (Array.isArray(r.runners) && r.runners.length > 0) return r.runners.map(n => String(n).trim()).filter(Boolean);
+        if (r.relay) return String(r.relay).split(/[\/,]/).map(n => n.trim()).filter(Boolean);
+        return [];
+      };
+      const legOf = (runners) => {
+        const me = String(p.name || '').replace(/\s+/g, '');
+        for (let i = 0; i < runners.length; i++) {
+          if (String(runners[i]).replace(/\s+/g, '') === me) return i + 1;
+        }
+        return '';
+      };
+      const secOf = (v) => {
+        const n = Number(v);
+        return (v !== '' && v !== null && v !== undefined && isFinite(n) && n > 0) ? n : '';
+      };
+      const put = (obj, key, val) => { if (val !== '' && val !== null && val !== undefined) obj[key] = val; };
+
+      const rows = recs.map(r => {
+        const row = {};
+        put(row, '날짜', String(r.date || '').replace(/-/g, '.'));
+        put(row, '대회명', String(r.meet || ''));
+        put(row, '종목', String(r.event || ''));
+        const rr = splitRoundRank(r);
+        const isChasu = /^[1-4]차$/.test(rr.round);
+        put(row, '라운드', isChasu ? '' : rr.round);
+        put(row, '공식기록', r.kind === '비공식' ? '' : secOf(r.seconds));
+        put(row, '비공식기록', r.kind === '비공식' ? secOf(r.seconds) : '');
+        put(row, '차수', isChasu ? Number(rr.round.charAt(0)) : '');
+        put(row, '순위', rr.rank);
+        const runners = runnersOf(r);
+        if (isTrack) put(row, '풍속', String(r.wind || ''));
+        put(row, '엔트리', runners.join(','));
+        put(row, '순번', legOf(runners));
+        put(row, '비고/메모', String(r.note || ''));
+        return row;
       });
+
+      const headers = isTrack
+        ? ['날짜', '대회명', '종목', '라운드', '공식기록', '비공식기록', '차수', '순위', '풍속', '엔트리', '순번', '비고/메모']
+        : ['날짜', '대회명', '종목', '라운드', '공식기록', '비공식기록', '차수', '순위', '엔트리', '순번', '비고/메모'];
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(rows);
+      const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
       XLSX.utils.book_append_sheet(wb, ws, p.name);
       XLSX.writeFile(wb, `${p.name}_성장기록_${new Date().toISOString().split('T')[0]}.xlsx`);
       recordBackupCompleted();
     }
 
     function parseExcelRowsForPlayer(wb, p, existing) {
-      const sheetName = wb.SheetNames.includes(p.name) ? p.name : wb.SheetNames.find(n => !n.includes('기록변화')) || wb.SheetNames[0];
+      let sheetName = wb.SheetNames.includes(p.name) ? p.name : null;
+      if (!sheetName) {
+        const sport = String(p.sport || '');
+        sheetName = (sport ? wb.SheetNames.find(n => n.includes(sport)) : null) ||
+          wb.SheetNames.find(n => !n.includes('기록변화')) || wb.SheetNames[0];
+      }
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
       const parsedNew = []; let dupCount = 0; let errCount = 0;
-      rows.forEach((row, idx) => {
-        const rawDate = String(row['날짜'] || '').trim();
-        if (!rawDate) return;
-        const date = rawDate.replace(/\./g, '-').slice(0, 10);
-        const meet = String(row['대회명'] || '').trim();
-        const eventName = String(row['종목'] || '').trim();
-        const toSeconds = (v) => {
-          if (v === undefined || v === null) return NaN;
-          if (typeof v === 'number') return v;
-          const s = String(v).trim();
-          if (!s) return NaN;
-          if (s.includes(':')) {
-            const parts = s.split(':');
+
+      const ROUND_WORDS = ['준결승전', '준결승', '결승전', '결승', '예선', '본선', '준결', '1차', '2차', '3차', '4차'];
+      const normalizeRoundWord = (w) => {
+        if (w === '준결' || w === '준결승전') return '준결승';
+        if (w === '결승전') return '결승';
+        return w;
+      };
+      const cell = (row, keys) => {
+        for (const k of keys) {
+          if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') return row[k];
+        }
+        return '';
+      };
+      const toSeconds = (v) => {
+        if (v === undefined || v === null) return NaN;
+        if (typeof v === 'number') return v;
+        const s = String(v).trim();
+        if (!s) return NaN;
+        if (s.includes(':')) {
+          const parts = s.split(':');
+          if (parts.length === 2) {
             const mm = parseFloat(parts[0]);
             const ss = parseFloat(parts[1]);
             if (isNaN(mm) || isNaN(ss)) return NaN;
             return mm * 60 + ss;
           }
-          return parseFloat(s);
-        };
-        const validSec = (v) => !isNaN(v) && v > 0;
-        const officialSec = toSeconds(row['공식기록']);
-        const unofficialSec = toSeconds(row['비공식기록']);
+          if (parts.length === 3) {
+            const hh = parseFloat(parts[0]);
+            const mm = parseFloat(parts[1]);
+            const ss = parseFloat(parts[2]);
+            if (isNaN(hh) || isNaN(mm) || isNaN(ss)) return NaN;
+            return hh * 3600 + mm * 60 + ss;
+          }
+          return NaN;
+        }
+        return parseFloat(s);
+      };
+      const validSec = (v) => !isNaN(v) && v > 0;
+      const splitRoundRank = (roundCell, rankCell) => {
+        let round = normalizeRoundWord(String(roundCell || '').trim());
+        const tokens = String(rankCell || '').trim().split(/\s+/).filter(Boolean);
+        while (tokens.length > 0 && ROUND_WORDS.indexOf(tokens[0]) >= 0) {
+          if (!round) round = normalizeRoundWord(tokens[0]);
+          tokens.shift();
+        }
+        const rest = tokens.join(' ').trim();
+        return { round: round, rank: /^\d+$/.test(rest) ? String(Number(rest)) : rest };
+      };
+      const dateFromSerial = (n) => {
+        const d = new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000);
+        return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+      };
+      const isDuplicate = (date, eventName, meet, sec) => {
+        const same = (r) => r && r.date === date && r.event === eventName &&
+          String(r.meet || '') === meet && Math.abs(Number(r.seconds) - sec) < 0.0011;
+        return existing.some(same) || parsedNew.some(same);
+      };
+
+      rows.forEach((row, idx) => {
+        const rawDateCell = cell(row, ['날짜']);
+        if (rawDateCell === '' || rawDateCell === null || rawDateCell === undefined) return;
+        let date = '';
+        if (typeof rawDateCell === 'number') {
+          date = dateFromSerial(rawDateCell);
+        } else {
+          date = String(rawDateCell).trim().replace(/[./]/g, '-').slice(0, 10);
+        }
+        const meet = String(cell(row, ['대회명']) || '').trim();
+        const eventName = String(cell(row, ['종목']) || '').trim();
+        const rr = splitRoundRank(cell(row, ['라운드']), cell(row, ['순위']));
+        let round = rr.round;
+        if (!round) {
+          const chasu = String(cell(row, ['차수']) || '').trim();
+          const cm = chasu.match(/^([1-4])\s*차?$/);
+          if (cm) round = cm[1] + '차';
+        }
+        const officialSec = toSeconds(cell(row, ['공식기록']));
+        const unofficialSec = toSeconds(cell(row, ['비공식기록']));
         let sec; let kind;
         if (validSec(officialSec)) {
           sec = officialSec; kind = '공식';
         } else if (validSec(unofficialSec)) {
           sec = unofficialSec; kind = '비공식';
         } else {
-          sec = toSeconds(row['기록']);
-          const ftimeSec = toSeconds(row['F.time']);
+          sec = toSeconds(cell(row, ['기록', '기록2']));
+          const ftimeSec = toSeconds(cell(row, ['F.time']));
           kind = validSec(ftimeSec) ? '비공식' : ((meet.includes('전문실기') || meet === '전남체중고') ? '비공식' : '공식');
         }
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !eventName || isNaN(sec) || sec <= 0) { errCount++; return; }
-        const rankFull = String(row['순위'] || '').trim();
-        let round = ''; let rank = rankFull;
-        if (/^(예선|준결|결승|본선|[1-4]차)$/.test(rankFull)) { round = rankFull; rank = ''; }
-        else if (rankFull.includes(' ')) { const sp = rankFull.split(/\s+/); round = sp[0]; rank = sp.slice(1).join(' '); }
-        const isDup = existing.some(ex => ex.date === date && ex.event === eventName && Math.abs(ex.seconds - sec) < 0.001 && ex.meet === meet);
-        if (isDup) { dupCount++; return; }
-        const rawRunners = (row['팀멤버'] !== undefined && row['팀멤버'] !== '') ? row['팀멤버'] : row['릴레이조'];
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !eventName || !validSec(sec)) { errCount++; return; }
+        if (isDuplicate(date, eventName, meet, sec)) { dupCount++; return; }
+        const rawRunners = cell(row, ['엔트리', '팀멤버', '릴레이조']);
+        const runners = rawRunners !== ''
+          ? String(rawRunners).split(/[,，、\/]/).map(s => s.trim()).filter(Boolean)
+          : [];
         parsedNew.push({
           id: 'rec_xlsx_' + Date.now() + '_' + idx,
-          date, event: eventName, kind, meet, round, rank,
-          wind: row['풍속'] !== undefined && row['풍속'] !== '' ? String(row['풍속']) : '',
+          date: date, event: eventName, kind: kind, meet: meet, round: round, rank: rr.rank,
+          wind: String(cell(row, ['풍속']) || '').trim(),
           seconds: sec,
-          runners: rawRunners ? String(rawRunners).split(',').map(s => s.trim()).filter(Boolean) : [],
-          note: String(row['비고'] || '').trim()
+          runners: runners,
+          note: String(cell(row, ['비고/메모', '비고', '메모']) || '').trim()
         });
       });
       return { sheetName, parsedNew, dupCount, errCount };
