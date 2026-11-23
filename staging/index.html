@@ -6212,18 +6212,20 @@
         const dStr = (r.date || '').replace(/-/g, '.');
         const rankStr = [r.round, r.rank].filter(Boolean).join(' ').trim();
         const meetName = r.kind === '비공식' && !String(r.meet || '').includes('전문실기') ? (r.meet || '전남체중고 전문실기') : (r.meet || '');
+        const teamMembers = Array.isArray(r.runners) ? r.runners.join(',') : '';
         if (isTrack) {
           return {
-            '날짜': dStr, '대회명': meetName, '종목': r.event || '', '규격': '', '순위': rankStr,
-            '기록': r.seconds, '풍속': r.wind || '', '릴레이조': Array.isArray(r.runners) ? r.runners.join(',') : '',
-            '반응시간': '', '신기록': '', '비고': r.note || '',
-            '공식기록': r.kind === '공식' ? r.seconds : '', 'F.time': r.kind === '비공식' ? r.seconds : '', '기록표시': r.seconds
+            '날짜': dStr, '대회명': meetName, '종목': r.event || '',
+            '공식기록': r.kind === '공식' ? r.seconds : '',
+            '비공식기록': r.kind === '비공식' ? r.seconds : '',
+            '풍속': r.wind || '', '팀멤버': teamMembers, '순위': rankStr, '비고': r.note || ''
           };
         } else {
           return {
-            '날짜': dStr, '대회명': meetName, '종목': r.event || '', '기록': r.seconds,
-            '기록2': r.seconds >= 60 ? formatTime(r.seconds) : '', '순위': rankStr, '비고': r.note || '',
-            '공식기록': r.kind === '공식' ? r.seconds : '', '비공식기록': r.kind === '비공식' ? r.seconds : ''
+            '날짜': dStr, '대회명': meetName, '종목': r.event || '',
+            '공식기록': r.kind === '공식' ? r.seconds : '',
+            '비공식기록': r.kind === '비공식' ? r.seconds : '',
+            '팀멤버': teamMembers, '순위': rankStr, '비고': r.note || ''
           };
         }
       });
@@ -6244,24 +6246,47 @@
         const date = rawDate.replace(/\./g, '-').slice(0, 10);
         const meet = String(row['대회명'] || '').trim();
         const eventName = String(row['종목'] || '').trim();
-        let sec = parseFloat(row['기록']);
-        if (isNaN(sec) && typeof row['기록'] === 'string' && row['기록'].includes(':')) {
-          const parts = row['기록'].split(':');
-          sec = parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+        const toSeconds = (v) => {
+          if (v === undefined || v === null) return NaN;
+          if (typeof v === 'number') return v;
+          const s = String(v).trim();
+          if (!s) return NaN;
+          if (s.includes(':')) {
+            const parts = s.split(':');
+            const mm = parseFloat(parts[0]);
+            const ss = parseFloat(parts[1]);
+            if (isNaN(mm) || isNaN(ss)) return NaN;
+            return mm * 60 + ss;
+          }
+          return parseFloat(s);
+        };
+        const validSec = (v) => !isNaN(v) && v > 0;
+        const officialSec = toSeconds(row['공식기록']);
+        const unofficialSec = toSeconds(row['비공식기록']);
+        let sec; let kind;
+        if (validSec(officialSec)) {
+          sec = officialSec; kind = '공식';
+        } else if (validSec(unofficialSec)) {
+          sec = unofficialSec; kind = '비공식';
+        } else {
+          sec = toSeconds(row['기록']);
+          const ftimeSec = toSeconds(row['F.time']);
+          kind = validSec(ftimeSec) ? '비공식' : ((meet.includes('전문실기') || meet === '전남체중고') ? '비공식' : '공식');
         }
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !eventName || isNaN(sec) || sec <= 0) { errCount++; return; }
-        const kind = (meet.includes('전문실기') || meet === '전남체중고') ? '비공식' : '공식';
         const rankFull = String(row['순위'] || '').trim();
         let round = ''; let rank = rankFull;
-        if (rankFull.includes(' ')) { const sp = rankFull.split(/\s+/); round = sp[0]; rank = sp.slice(1).join(' '); }
+        if (/^(예선|준결|결승|본선|[1-4]차)$/.test(rankFull)) { round = rankFull; rank = ''; }
+        else if (rankFull.includes(' ')) { const sp = rankFull.split(/\s+/); round = sp[0]; rank = sp.slice(1).join(' '); }
         const isDup = existing.some(ex => ex.date === date && ex.event === eventName && Math.abs(ex.seconds - sec) < 0.001 && ex.meet === meet);
         if (isDup) { dupCount++; return; }
+        const rawRunners = (row['팀멤버'] !== undefined && row['팀멤버'] !== '') ? row['팀멤버'] : row['릴레이조'];
         parsedNew.push({
           id: 'rec_xlsx_' + Date.now() + '_' + idx,
           date, event: eventName, kind, meet, round, rank,
           wind: row['풍속'] !== undefined && row['풍속'] !== '' ? String(row['풍속']) : '',
           seconds: sec,
-          runners: row['릴레이조'] ? String(row['릴레이조']).split(',').map(s => s.trim()).filter(Boolean) : [],
+          runners: rawRunners ? String(rawRunners).split(',').map(s => s.trim()).filter(Boolean) : [],
           note: String(row['비고'] || '').trim()
         });
       });
