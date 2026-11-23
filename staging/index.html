@@ -6264,6 +6264,9 @@
         if (!playersData.some(p => p.id === currentPlayer)) {
           currentPlayer = playersData.length > 0 ? playersData[0].id : '';
         }
+        if (currentEvent !== 'ALL_PB' && getPlayerEvents(currentPlayer).indexOf(currentEvent) < 0) {
+          currentEvent = 'ALL_PB';
+        }
         if (!saveDataToStorage()) {
           throw new Error('브라우저 저장소 용량이 초과되어 데이터를 저장할 수 없습니다.');
         }
@@ -6347,7 +6350,11 @@
           '백업 파일 내용으로 복원할까요?'
         );
         if (!ok) { if (inputEl) inputEl.value = ''; return; }
-        pushPreRestoreBackup();
+        if (!pushPreRestoreBackup()) {
+          alert('복원 직전 임시 백업을 브라우저에 저장하지 못했습니다.\n현재 데이터를 잃지 않도록 먼저 [JSON 백업 다운로드]로 내보낸 뒤 다시 시도해 주세요.');
+          if (inputEl) inputEl.value = '';
+          return;
+        }
         const res = applyBackupRestore(v);
         if (res.ok) {
           alert('✅ 백업 복원이 완료되었습니다. (선수 ' + v.playersCount + '명 / 기록 ' + v.recordsCount + '건)');
