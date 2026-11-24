@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>staging 3단계 390×844 검증 (임시 검수 페이지)</title>
+  <style>
+    body { font-family: monospace; background: #0f172a; color: #e2e8f0; padding: 12px; margin: 0; }
+    h2 { font-size: 14px; }
+    pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: #111827; padding: 10px; border-radius: 8px; }
+    #frame-wrap { width: 390px; height: 844px; border: 2px solid #38bdf8; overflow: hidden; }
+    iframe { width: 390px; height: 844px; border: 0; display: block; }
+  </style>
+</head>
+<body>
+  <h2>선수 성장노트 staging 3단계 · 390×844 가로 넘침 / JS 오류 / 사진 UI 검증</h2>
+  <pre id="out">실행 중...</pre>
+  <div id="frame-wrap"><iframe id="app-frame" width="390" height="844" title="staging app"></iframe></div>
+  <script>
+    const OUT = document.getElementById('out');
+    const lines = [];
+    function say(msg) { lines.push(msg); OUT.textContent = lines.join('\n'); }
+
+    const frame = document.getElementById('app-frame');
+
+    fetch('staging/index.html?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.text())
+      .then(html => {
+        const collector = `<script>
+window.__errs = [];
+window.addEventListener('error', function (e) { window.__errs.push('error: ' + (e.message || e)); });
+window.addEventListener('unhandledrejection', function (e) {
+  window.__errs.push('unhandledrejection: ' + ((e.reason && (e.reason.message || e.reason)) || 'unknown'));
+});
+(function () {
+  var orig = console.error;
+  console.error = function () {
+    try { window.__errs.push('console.error: ' + Array.prototype.slice.call(arguments).map(String).join(' ')); } catch (err) {}
+    orig.apply(console, arguments);
+  };
+})();
+<\\/script>`;
+
+        const injected = html.replace('<head>', '<head>\n' + collector);
+        const doc = frame.contentDocument;
+        doc.open();
+        doc.write(injected);
+        doc.close();
+
+        const w = frame.contentWindow;
+
+        function overflowReport(label) {
+          const d = doc.documentElement;
+          const b = doc.body;
+          const cw = d.clientWidth;
+          const sw = Math.max(d.scrollWidth, b ? b.scrollWidth : 0);
+          const bad = [];
+          const all = doc.querySelectorAll('body *');
+          for (let i = 0; i < all.length; i++) {
+            const el = all[i];
+            const st = w.getComputedStyle(el);
+            if (st.display === 'none' || st.visibility === 'hidden' || el.getClientRects().length === 0) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 && r.height === 0) continue;
+            const right = r.right + w.scrollX;
+            const left = r.left + w.scrollX;
+            if (right > cw + 1 || left < -1) {
+              bad.push((el.id ? '#' + el.id : el.tagName.toLowerCase()) + ' [' + Math.round(left) + '~' + Math.round(right) + '] ' + (el.className && typeof el.className === 'string' ? el.className.split(' ').slice(0, 3).join('.') : ''));
+            }
+          }
+          say(label + ' | viewport=' + d.clientWidth + 'x' + d.clientHeight + ' scrollWidth=' + sw + ' clientWidth=' + cw + ' => ' + (sw <= cw ? 'PASS 가로넘침 0' : 'FAIL 가로넘침 ' + (sw - cw) + 'px'));
+          say('   넘치는 요소 ' + bad.length + '개' + (bad.length ? ':\n   - ' + bad.slice(0, 8).join('\n   - ') : ''));
+          return { sw: sw, cw: cw, bad: bad };
+        }
+
+        setTimeout(function () {
+          say('URL: ' + (w.location.href || '(about:srcdoc)'));
+          say('로그인 상태: ' + (w.localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') ? '있음' : '없음'));
+          say('선수 목록: ' + (w.playersData || []).map(p => p.name + ' / ' + p.sport + ' / ' + p.mainEvent).join(' | '));
+          say('기록 건수: ' + Object.keys(w.appData || {}).map(k => k + '=' + (Array.isArray(w.appData[k]) ? w.appData[k].length : '?')).join(', '));
+          say('사진 UI 노드 수: ' + doc.querySelectorAll('[id*="photo"], [id*="Photo"]').length + ' => ' + (doc.querySelectorAll('[id*="photo"], [id*="Photo"]').length === 0 ? 'PASS 없음' : 'FAIL 남음'));
+          overflowReport('[1] 초기 화면');
+
+          try {
+            w.openAddEditPlayerModal('yusin');
+          } catch (e) { say('openAddEditPlayerModal 오류: ' + e.message); }
+          setTimeout(function () {
+            const modalText = doc.getElementById('modal-player-form').textContent;
+            say('[2] 프로필 수정 모달 사진 문구(사진 선택/선수 프로필 사진): ' + ((modalText.includes('사진 선택') || modalText.includes('선수 프로필 사진')) ? 'FAIL 남음' : 'PASS 없음'));
+            const sel = doc.getElementById('form-player-event');
+            say('[3] 주종목 옵션(유신): ' + Array.from(sel.options).map(o => o.value).join(', ') + ' / 선택값=' + sel.value);
+            overflowReport('[4] 선수 프로필 수정 모달');
+
+            try { w.closeAddEditPlayerModal(); } catch (e) {}
+
+            // 기록 추가 모달
+            try {
+              const addBtn = Array.from(doc.querySelectorAll('button')).find(b => b.textContent.trim() === '기록 추가');
+              if (addBtn) addBtn.click();
+            } catch (e) { say('기록 추가 모달 오류: ' + e.message); }
+            setTimeout(function () {
+              const recModal = doc.getElementById('modal-record');
+              say('[5] 기록 모달 표시: ' + (recModal && !recModal.classList.contains('hidden') ? '열림' : '닫힘'));
+              overflowReport('[6] 기록 추가 모달');
+              try { w.closeRecordModal(); } catch (e) {}
+
+              const errs = (w.__errs || []);
+              say('[7] JavaScript 오류 ' + errs.length + '건 => ' + (errs.length === 0 ? 'PASS' : 'FAIL'));
+              errs.slice(0, 10).forEach(e => say('   ! ' + e));
+              say('DONE');
+            }, 500);
+          }, 500);
+        }, 2500);
+      })
+      .catch(err => say('staging/index.html 로드 실패: ' + err));
+  </script>
+</body>
+</html>
