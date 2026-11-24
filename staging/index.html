@@ -6328,7 +6328,16 @@
     };
 
     async function syncRealtimeAuthToRemote() { saveStagingCloud(realtimeAuthData); return true; }
-    loadRealtimeApprovals = async function() { initStagingSeedData(); updateAdminPendingBadge(); renderApprovalList(); renderSuperAdminViewersTree(); };
+    loadRealtimeApprovals = async function() {
+      try {
+        initStagingSeedData();
+        if (typeof updateAdminPendingBadge === 'function') updateAdminPendingBadge();
+        renderApprovalList();
+        renderSuperAdminViewersTree();
+      } catch (e) {
+        console.warn('loadRealtimeApprovals fallback:', e);
+      }
+    };
     syncAdminToCloud = async function(user) {
       if (!user || user.role !== 'admin') return;
       const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');

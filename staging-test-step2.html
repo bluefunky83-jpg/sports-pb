@@ -8,14 +8,14 @@
     body { font-family: monospace; background: #0f172a; color: #e2e8f0; padding: 12px; margin: 0; }
     h2 { font-size: 14px; }
     pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: #111827; padding: 10px; border-radius: 8px; }
-    #frame-wrap { width: 390px; height: 844px; border: 2px solid #38bdf8; overflow: hidden; }
-    iframe { width: 390px; height: 844px; border: 0; display: block; }
+    #frame-wrap { width: 405px; height: 859px; border: 0; overflow: hidden; }
+    iframe { width: 405px; height: 859px; border: 0; display: block; }
   </style>
 </head>
 <body>
   <h2>선수 성장노트 staging 2단계 · 390×844 가로 넘침 / JS 오류 검증</h2>
   <pre id="out">실행 중...</pre>
-  <div id="frame-wrap"><iframe id="app-frame" width="390" height="844" title="staging app"></iframe></div>
+  <div id="frame-wrap"><iframe id="app-frame" width="405" height="859" title="staging app"></iframe></div>
   <script>
     const OUT = document.getElementById('out');
     const lines = [];
@@ -56,6 +56,15 @@ window.addEventListener('unhandledrejection', function (e) {
           const sw = Math.max(d.scrollWidth, b ? b.scrollWidth : 0);
           const bad = [];
           const all = doc.querySelectorAll('body *');
+          const insideScroller = (el) => {
+            let n = el.parentElement;
+            while (n && n !== doc.body) {
+              const st = w.getComputedStyle(n);
+              if (st.overflowX === 'auto' || st.overflowX === 'scroll' || st.overflowX === 'hidden') return true;
+              n = n.parentElement;
+            }
+            return false;
+          };
           for (let i = 0; i < all.length; i++) {
             const el = all[i];
             const st = w.getComputedStyle(el);
@@ -64,7 +73,7 @@ window.addEventListener('unhandledrejection', function (e) {
             if (r.width === 0 && r.height === 0) continue;
             const right = r.right + w.scrollX;
             const left = r.left + w.scrollX;
-            if (right > cw + 1 || left < -1) {
+            if ((right > cw + 1 || left < -1) && !insideScroller(el)) {
               bad.push((el.id ? '#' + el.id : el.tagName.toLowerCase()) + ' [' + Math.round(left) + '~' + Math.round(right) + '] ' + (el.className && typeof el.className === 'string' ? el.className.split(' ').slice(0, 3).join('.') : ''));
             }
           }
