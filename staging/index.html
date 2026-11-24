@@ -3056,8 +3056,9 @@
         el.classList.remove('hidden');
         return;
       }
-      if (formOriginalMainEvent && currentValue && String(formOriginalMainEvent) !== currentValue) {
-        el.textContent = `저장된 주종목 ‘${formOriginalMainEvent}’은(는) 등록된 세부 종목이 아니어서 ‘${currentValue}’(으)로 표시합니다. 저장하면 주종목이 바뀝니다.`;
+      const originalIsLegacy = !!formOriginalMainEvent && names.indexOf(String(formOriginalMainEvent)) < 0;
+      if (originalIsLegacy && currentValue && String(formOriginalMainEvent) !== currentValue) {
+        el.textContent = `저장된 주종목 ‘${formOriginalMainEvent}’은(는) 등록된 세부 종목이 아니어서 ‘${currentValue}’(으)로 선택했습니다. 저장하면 주종목이 바뀝니다.`;
         el.classList.remove('hidden');
         return;
       }
