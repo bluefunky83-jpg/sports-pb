@@ -287,6 +287,22 @@
       </button>
     </div>
 
+    <!-- Main View Mode: PB 기록 / 연간 종합노트 + 이미지 저장·공유 -->
+    <div class="mb-3">
+      <div class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-900 border border-slate-800">
+        <button type="button" id="btn-main-mode-pb" onclick="setMainViewMode('PB')" class="py-2 rounded-xl text-xs font-bold transition bg-blue-600 text-white shadow-lg shadow-blue-500/20">PB 기록</button>
+        <button type="button" id="btn-main-mode-annual" onclick="setMainViewMode('ANNUAL')" class="py-2 rounded-xl text-xs font-bold transition text-slate-400 hover:text-white">연간 종합노트</button>
+      </div>
+      <div class="flex items-center gap-2 mt-2">
+        <button type="button" id="btn-capture-save" onclick="saveViewImage()" class="flex-1 h-9 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1 transition active:scale-95">
+          <span>📷</span><span>이미지 저장</span>
+        </button>
+        <button type="button" id="btn-capture-share" onclick="shareViewImage()" class="flex-1 h-9 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1 transition active:scale-95">
+          <span>📤</span><span>공유</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Event Category Tabs (Horizontal Scroll) -->
     <div class="relative mb-4">
       <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs" id="event-tabs-container">
@@ -302,6 +318,9 @@
   </div>
 
   <!-- Bottom Floating Action Button (Add Record) -->
+  <!-- 이미지 저장·공유 안내 토스트 -->
+  <div id="capture-toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-24 z-[60] max-w-[320px] px-4 py-2.5 rounded-xl border text-[11px] font-bold text-white shadow-2xl text-center bg-slate-800/95 border-slate-600"></div>
+
   <div id="btn-add-record-fixed" class="fixed bottom-6 right-6 z-40">
     <button type="button" onclick="openRecordModal()" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold px-5 py-3.5 rounded-2xl shadow-xl shadow-blue-600/40 flex items-center gap-2 transition border border-blue-400/30">
       <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
@@ -1788,6 +1807,8 @@
     function renderEventTabs() {
       const container = document.getElementById('event-tabs-container');
       if (!container) return;
+      const tabsWrap = container.parentElement;
+      if (tabsWrap) tabsWrap.classList.toggle('hidden', mainViewMode === 'ANNUAL');
       container.innerHTML = '';
 
       if (!playersData || playersData.length === 0 || !currentPlayer) {
@@ -1912,6 +1933,13 @@
         return;
       }
 
+      syncMainViewModeUI();
+
+      if (mainViewMode === 'ANNUAL') {
+        renderAnnualNoteView(container);
+        return;
+      }
+
       if (currentEvent === 'ALL_PB') {
         renderPBView(container);
       } else {
@@ -2029,6 +2057,912 @@
           ${sectionsHtml}
         </div>
       `;
+    }
+
+    // ============================================================
+    // 8-3. 메인 뷰 모드 (PB 기록 / 연간 종합노트)
+    // ============================================================
+    let mainViewMode = 'PB';   // 'PB' | 'ANNUAL'
+    let annualYear = null;     // 연간 종합노트 연도(최초 진입 시 시스템 시간 기준 현재 연도)
+
+    function getSystemYear() {
+      return new Date().getFullYear();
+    }
+
+    function isTeamEventName(eventName) {
+      const ev = String(eventName || '');
+      return ev.includes('mR') || ev.includes('릴레이') || ev.includes('단체');
+    }
+
+    // 연도는 날짜 접두사 완전 일치로만 판정한다(다른 연도 혼입 0건).
+    function getRecordsForYear(playerId, year) {
+      const records = appData[playerId] || [];
+      const prefix = String(year) + '-';
+      return records.filter(r => r && typeof r.date === 'string' && r.date.indexOf(prefix) === 0);
+    }
+
+    // 기존 대회 목록과 같은 라운드 정렬 기준(예선 < 준결 < 결승, 1차 < 2차 < 3차).
+    function getRoundSortRank(round) {
+      const r = String(round || '');
+      if (!r) return 50;
+      if (r.includes('1차')) return 1;
+      if (r.includes('2차')) return 2;
+      if (r.includes('3차')) return 3;
+      if (r.includes('예')) return 10;
+      if (r.includes('준결')) return 20;
+      if (r.includes('결')) return 30;
+      return 40;
+    }
+
+    function sortRecordsChronological(list) {
+      return (Array.isArray(list) ? list.slice() : []).sort((a, b) => {
+        const da = String((a && a.date) || '');
+        const db = String((b && b.date) || '');
+        if (da !== db) return da < db ? -1 : 1;
+        const ra = getRoundSortRank(a && a.round);
+        const rb = getRoundSortRank(b && b.round);
+        if (ra !== rb) return ra - rb;
+        return String((a && a.id) || '').localeCompare(String((b && b.id) || ''));
+      });
+    }
+
+    function getEventTimeline(records, eventName) {
+      const list = (Array.isArray(records) ? records : []).filter(r => {
+        if (!r) return false;
+        if (!isEventMatch(r.event, eventName)) return false;
+        const s = parseFloat(r.seconds);
+        return Number.isFinite(s) && s > 0;
+      });
+      return sortRecordsChronological(list);
+    }
+
+    // '직전 연도 말까지'의 누적 PB. 해당 연도(포함 이후) 기록은 절대 섞지 않는다.
+    function getPbBeforeYear(records, eventName, year) {
+      const cutoff = String(year) + '-01-01';
+      let best = null;
+      (Array.isArray(records) ? records : []).forEach(r => {
+        if (!r || !isEventMatch(r.event, eventName)) return;
+        const d = String(r.date || '');
+        if (!d || d >= cutoff) return;
+        const s = parseFloat(r.seconds);
+        if (!Number.isFinite(s) || s <= 0) return;
+        if (best === null || s < best) best = s;
+      });
+      return best;
+    }
+
+    // 해당 연도 말까지 남아 있는 '최초 기록'(진행 막대의 왼쪽 기준점).
+    function getFirstRecordUpToYear(records, eventName, year) {
+      const limit = String(year + 1) + '-01-01';
+      const timeline = getEventTimeline(records, eventName).filter(r => String(r.date || '') < limit);
+      if (timeline.length === 0) return null;
+      return parseFloat(timeline[0].seconds);
+    }
+
+    // 해당 연도 안에서 '직전 누적 PB'를 경신한 횟수. 종목 첫 기록은 경신이 아니라 최초 설정으로 본다.
+    function countEventRenewalsInYear(records, eventName, year) {
+      const prefix = String(year) + '-';
+      const timeline = getEventTimeline(records, eventName);
+      let running = null;
+      let count = 0;
+      timeline.forEach(r => {
+        const s = parseFloat(r.seconds);
+        if (running === null) {
+          running = s;
+          return;
+        }
+        if (s < running - 1e-9) {
+          if (String(r.date || '').indexOf(prefix) === 0) count += 1;
+          running = s;
+        }
+      });
+      return count;
+    }
+
+    function countPbRenewalsInYear(playerId, year) {
+      const records = appData[playerId] || [];
+      let total = 0;
+      getPlayerEvents(playerId).forEach(ev => {
+        total += countEventRenewalsInYear(records, ev, year);
+      });
+      return total;
+    }
+
+    // 출전 대회 수: 그 해 '공식' 기록이 있는 대회명 기준(같은 대회의 여러 날짜·라운드·종목은 1회).
+    function getAnnualMeetCount(playerId, year) {
+      const seen = {};
+      let count = 0;
+      getRecordsForYear(playerId, year).forEach(r => {
+        if (!r || r.kind !== '공식') return;
+        const name = String(r.meet || '').trim();
+        if (!name || seen[name]) return;
+        seen[name] = true;
+        count += 1;
+      });
+      return count;
+    }
+
+    // 총 경기 수: 그 해 저장된 기록 건수(실기 포함, 라운드별 1경기).
+    function getAnnualGameCount(playerId, year) {
+      return getRecordsForYear(playerId, year).length;
+    }
+
+    // 종목별 표시 정밀도: 3자리 기록이 있는 종목(사이클 트랙)은 3자리, 그 외는 2자리.
+    function getEventDecimalPlaces(records, eventName) {
+      let decimals = 2;
+      (Array.isArray(records) ? records : []).forEach(r => {
+        if (!r || !isEventMatch(r.event, eventName)) return;
+        const s = parseFloat(r.seconds);
+        if (!Number.isFinite(s) || s <= 0) return;
+        if (Math.abs(s * 1000 - Math.round(s * 1000)) < 1e-6 && Math.abs(s * 100 - Math.round(s * 100)) > 1e-9) {
+          decimals = 3;
+        }
+      });
+      return decimals;
+    }
+
+    function formatAnnualTime(sec, decimals) {
+      const d = decimals === 3 ? 3 : 2;
+      const v = parseFloat(sec);
+      if (!Number.isFinite(v)) return '-';
+      if (v >= 60) {
+        const m = Math.floor(v / 60);
+        const rest = (v - m * 60).toFixed(d);
+        return m + ':' + rest.padStart(d + 3, '0');
+      }
+      return v.toFixed(d) + '초';
+    }
+
+    // 그 해에 뛴 종목만 카드로 만든다. 이전 PB/목표가 없으면 숫자를 만들지 않고 null로 둔다.
+    function getAnnualEventCards(playerId, year) {
+      const records = appData[playerId] || [];
+      const yearRecords = getRecordsForYear(playerId, year);
+      const cards = [];
+      getPlayerEvents(playerId).forEach(ev => {
+        const yearEvent = yearRecords.filter(r => r && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
+        if (yearEvent.length === 0) return;
+        let yearBest = null;
+        yearEvent.forEach(r => {
+          const s = parseFloat(r.seconds);
+          if (yearBest === null || s < yearBest) yearBest = s;
+        });
+        const prior = getPbBeforeYear(records, ev, year);
+        // PB는 더 좋은 기록일 때만 갱신되므로 '연도 말 누적 PB'는 이전 PB와 그 해 최고 중 더 좋은 값이다.
+        const current = prior === null ? yearBest : Math.min(prior, yearBest);
+        const reduction = prior === null ? null : Math.max(0, prior - current);
+        const rate = (prior === null || prior <= 0) ? null : ((prior - current) / prior) * 100;
+        cards.push({
+          event: ev,
+          isTeam: isTeamEventName(ev),
+          decimals: getEventDecimalPlaces(records, ev),
+          yearBest: yearBest,
+          prior: prior,
+          current: current,
+          first: getFirstRecordUpToYear(records, ev, year),
+          reduction: reduction,
+          rate: rate,
+          renewals: countEventRenewalsInYear(records, ev, year)
+        });
+      });
+      return cards;
+    }
+
+    function getAnnualBarGeometry(card) {
+      const vals = [];
+      if (Number.isFinite(card.first)) vals.push(card.first);
+      if (Number.isFinite(card.prior)) vals.push(card.prior);
+      if (Number.isFinite(card.current)) vals.push(card.current);
+      if (vals.length < 2 || !Number.isFinite(card.current)) return null;
+      const worst = Math.max.apply(null, vals);
+      const best = Math.min.apply(null, vals);
+      if (!(worst - best > 1e-9)) return null;
+      const pos = v => Math.max(0, Math.min(100, ((worst - v) / (worst - best)) * 100));
+      const priorPos = Number.isFinite(card.prior) ? pos(card.prior) : 0;
+      const currentPos = pos(card.current);
+      return {
+        blue: Number.isFinite(card.prior) ? priorPos : 0,
+        amber: Math.max(0, currentPos - priorPos),
+        currentPos: currentPos
+      };
+    }
+
+    function getAnnualYearBounds(playerId) {
+      const records = appData[playerId] || [];
+      let firstYear = null;
+      records.forEach(r => {
+        const y = parseInt(String((r && r.date) || '').slice(0, 4), 10);
+        if (Number.isFinite(y) && (firstYear === null || y < firstYear)) firstYear = y;
+      });
+      const thisYear = getSystemYear();
+      return {
+        min: firstYear === null ? thisYear : Math.min(firstYear - 1, thisYear),
+        max: thisYear
+      };
+    }
+
+    function getAnnualSelectedYear(playerId) {
+      const bounds = getAnnualYearBounds(playerId);
+      if (!Number.isFinite(annualYear)) annualYear = bounds.max;
+      if (annualYear > bounds.max) annualYear = bounds.max;
+      if (annualYear < bounds.min) annualYear = bounds.min;
+      return annualYear;
+    }
+
+    function setMainViewMode(mode) {
+      if (mode !== 'PB' && mode !== 'ANNUAL') return;
+      mainViewMode = mode;
+      if (mode === 'ANNUAL') getAnnualSelectedYear(currentPlayer);
+      syncMainViewModeUI();
+      renderEventTabs();
+      renderCurrentView();
+    }
+
+    function stepAnnualYear(delta) {
+      const bounds = getAnnualYearBounds(currentPlayer);
+      const current = getAnnualSelectedYear(currentPlayer);
+      const next = current + (delta > 0 ? 1 : -1);
+      if (next < bounds.min || next > bounds.max) return;
+      annualYear = next;
+      renderCurrentView();
+    }
+
+    function syncMainViewModeUI() {
+      const pbBtn = document.getElementById('btn-main-mode-pb');
+      const anBtn = document.getElementById('btn-main-mode-annual');
+      const activeCls = 'py-2 rounded-xl text-xs font-bold transition bg-blue-600 text-white shadow-lg shadow-blue-500/20';
+      const idleCls = 'py-2 rounded-xl text-xs font-bold transition text-slate-400 hover:text-white';
+      if (pbBtn) pbBtn.className = mainViewMode === 'ANNUAL' ? idleCls : activeCls;
+      if (anBtn) anBtn.className = mainViewMode === 'ANNUAL' ? activeCls : idleCls;
+    }
+
+    // ============================================================
+    // 8-4. 연간 종합노트 화면
+    // ============================================================
+    function renderAnnualSummaryHtml(meetCount, gameCount, renewalCount) {
+      const stat = (label, value, sub, accent) => `
+        <div class="rounded-2xl bg-slate-900 border border-slate-800 py-3 text-center shadow-md">
+          <div class="text-[10px] text-slate-400 font-semibold leading-tight">${label}</div>
+          <div class="text-[22px] leading-none font-black ${accent} mt-1">${value}<span class="text-[10px] font-bold text-slate-400 ml-0.5">회</span></div>
+          <div class="text-[9px] text-slate-500 mt-1 leading-none">${sub}</div>
+        </div>`;
+      return `
+        <div class="grid grid-cols-3 gap-2 mb-4">
+          ${stat('출전 대회', meetCount, '공식 대회', 'text-blue-300')}
+          ${stat('총 경기', gameCount, '실기 포함', 'text-white')}
+          ${stat('PB 경신', renewalCount, '이 해 기록', 'text-amber-300')}
+        </div>`;
+    }
+
+    function renderAnnualEventCardHtml(card) {
+      const decimals = card.decimals;
+      const priorText = Number.isFinite(card.prior) ? formatAnnualTime(card.prior, decimals) : '-';
+      const currentText = formatAnnualTime(card.current, decimals);
+      const firstText = Number.isFinite(card.first) ? formatAnnualTime(card.first, decimals) : '-';
+
+      let badgeHtml = '';
+      if (card.prior === null) {
+        badgeHtml = '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">비교 불가</span>';
+      } else if (card.reduction > 0) {
+        badgeHtml = `<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/40">-${card.reduction.toFixed(decimals)}초 단축</span>`;
+      } else {
+        badgeHtml = '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">경신 없음</span>';
+      }
+
+      const geom = getAnnualBarGeometry(card);
+      const bluePct = geom ? Math.max(0, Math.min(100, geom.blue)) : 0;
+      const amberPct = geom ? Math.max(0, Math.min(100 - bluePct, geom.amber)) : 0;
+      const barHtml = geom
+        ? `<div class="relative h-2 rounded-full bg-slate-800 overflow-hidden my-2">
+            <div class="absolute inset-y-0 left-0 rounded-full bg-blue-500/60" style="width:${bluePct.toFixed(2)}%"></div>
+            <div class="absolute inset-y-0 rounded-full bg-amber-400" style="left:${bluePct.toFixed(2)}%;width:${amberPct.toFixed(2)}%"></div>
+          </div>`
+        : '<div class="relative h-2 rounded-full bg-slate-800 overflow-hidden my-2"></div>';
+
+      const rateText = card.rate === null ? '비교 불가' : (card.rate > 0 ? '+' + card.rate.toFixed(1) + '%' : card.rate.toFixed(1) + '%');
+      const rateClass = card.rate !== null && card.rate > 0 ? 'text-emerald-300' : 'text-slate-400';
+      const slowerNote = Number.isFinite(card.yearBest) && card.yearBest > card.current + 1e-9
+        ? `<div class="text-[9px] text-slate-500 mt-1">올해 최고 ${formatAnnualTime(card.yearBest, decimals)} (PB 미경신)</div>`
+        : '';
+
+      return `
+        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-md">
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="w-6 h-6 shrink-0 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-[11px]">${card.isTeam ? '👥' : '🏃'}</span>
+              <span class="text-[13px] font-bold text-white truncate">${card.event}</span>
+            </div>
+            ${badgeHtml}
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-[10px] text-slate-500 shrink-0">이전 PB</span>
+            <span class="text-[14px] font-bold text-slate-300 font-mono">${priorText}</span>
+            <span class="text-slate-600 text-[11px]">→</span>
+            <span class="text-[19px] font-black text-white font-mono leading-none">${currentText}</span>
+          </div>
+          ${barHtml}
+          <div class="grid grid-cols-3 text-[10px] leading-tight">
+            <div><div class="font-mono text-slate-300">${firstText}</div><div class="text-[9px] text-slate-500">최초 기록</div></div>
+            <div class="text-center"><div class="font-mono text-slate-300">${priorText}</div><div class="text-[9px] text-slate-500">이전 PB</div></div>
+            <div class="text-right"><div class="font-mono font-bold text-amber-300">${currentText}</div><div class="text-[9px] text-slate-500">현재 PB</div></div>
+          </div>
+          <div class="flex items-center justify-between mt-2 text-[10px] gap-2">
+            <span class="text-slate-400 shrink-0">개선율 <b class="${rateClass}">${rateText}</b></span>
+            <span class="text-slate-500 truncate">PB 경신 ${card.renewals}회 · 목표 -</span>
+          </div>
+          ${slowerNote}
+        </div>`;
+    }
+
+    function renderAnnualNoteView(container) {
+      const player = playersData.find(p => p.id === currentPlayer) || null;
+      const year = getAnnualSelectedYear(currentPlayer);
+      const bounds = getAnnualYearBounds(currentPlayer);
+      const cards = getAnnualEventCards(currentPlayer, year);
+      const meetCount = getAnnualMeetCount(currentPlayer, year);
+      const gameCount = getAnnualGameCount(currentPlayer, year);
+      const renewalCount = countPbRenewalsInYear(currentPlayer, year);
+      const personalCards = cards.filter(c => !c.isTeam);
+      const teamCards = cards.filter(c => c.isTeam);
+      const playerName = player ? (player.name || '선수') : '선수';
+      const sportText = player ? (player.sport || '') : '';
+
+      const sectionHtml = (title, list) => {
+        if (list.length === 0) return '';
+        return `
+          <div class="space-y-2 mb-4">
+            <h2 class="text-xs font-bold text-white px-1 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>${title}
+            </h2>
+            <div class="space-y-2.5">${list.map(renderAnnualEventCardHtml).join('')}</div>
+          </div>`;
+      };
+
+      const emptyHtml = cards.length === 0
+        ? `<div class="py-12 px-4 text-center rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-400 leading-relaxed">
+             ${year}년에는 ${playerName} 선수의 기록이 없습니다.<br>좌우 화살표로 다른 연도를 확인해 주세요.
+           </div>`
+        : '';
+
+      container.innerHTML = `
+        <div class="space-y-1">
+          <div class="flex items-center justify-between mb-3">
+            <button type="button" ${year <= bounds.min ? 'disabled' : ''} onclick="stepAnnualYear(-1)" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-lg font-bold flex items-center justify-center transition active:scale-95 disabled:opacity-30 disabled:cursor-default">‹</button>
+            <div class="text-center min-w-0">
+              <div class="text-base font-extrabold text-white leading-tight">${year}년</div>
+              <div class="text-[10px] text-slate-500 truncate">${playerName} · ${sportText}</div>
+            </div>
+            <button type="button" ${year >= bounds.max ? 'disabled' : ''} onclick="stepAnnualYear(1)" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-lg font-bold flex items-center justify-center transition active:scale-95 disabled:opacity-30 disabled:cursor-default">›</button>
+          </div>
+          ${renderAnnualSummaryHtml(meetCount, gameCount, renewalCount)}
+          ${emptyHtml}
+          ${sectionHtml('개인 종목 PB 변화', personalCards)}
+          ${sectionHtml('단체 종목 PB 변화', teamCards)}
+          <div class="text-[10px] text-slate-500 px-1 pt-1 leading-relaxed">
+            · 이전 PB는 직전 연도 말까지의 최고기록입니다. · 개선율은 이전 PB 대비 단축 비율입니다. · 목표 기록은 아직 등록된 값이 없어 ‘-’로 표시합니다.
+          </div>
+        </div>
+      `;
+    }
+
+    // ============================================================
+    // 8-5. 이미지 저장·공유 (Canvas 직접 그리기, 외부 라이브러리 없음)
+    // ============================================================
+    const CAPTURE_WIDTH = 390;
+    const CAPTURE_SCALE = 2;
+
+    function capFont(weight, size) {
+      return weight + ' ' + size + 'px "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", system-ui, sans-serif';
+    }
+
+    function capRoundRect(ctx, x, y, w, h, r, fill, stroke) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.arcTo(x + w, y, x + w, y + h, rr);
+      ctx.arcTo(x + w, y + h, x, y + h, rr);
+      ctx.arcTo(x, y + h, x, y, rr);
+      ctx.arcTo(x, y, x + w, y, rr);
+      ctx.closePath();
+      if (fill) {
+        ctx.fillStyle = fill;
+        ctx.fill();
+      }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    // y는 글자 baseline. maxWidth가 있으면 말줄임 처리.
+    function capText(ctx, text, x, y, font, color, opts) {
+      const o = opts || {};
+      ctx.save();
+      ctx.font = font;
+      ctx.fillStyle = color;
+      ctx.textAlign = o.align || 'left';
+      ctx.textBaseline = 'alphabetic';
+      let str = String(text === null || text === undefined ? '' : text);
+      let width = ctx.measureText(str).width;
+      if (o.maxWidth && width > o.maxWidth) {
+        while (str.length > 1 && ctx.measureText(str + '…').width > o.maxWidth) {
+          str = str.slice(0, -1);
+        }
+        str = str + '…';
+        width = ctx.measureText(str).width;
+      }
+      ctx.fillText(str, x, y);
+      ctx.restore();
+      return width;
+    }
+
+    function capTextWidth(ctx, text, font) {
+      ctx.save();
+      ctx.font = font;
+      const w = ctx.measureText(String(text === null || text === undefined ? '' : text)).width;
+      ctx.restore();
+      return w;
+    }
+
+    // 오른쪽 끝이 rightX에 오도록 배지(둥근 알약)를 그린다.
+    function capBadge(ctx, text, rightX, y, bg, border, color, font) {
+      const padX = 7;
+      const w = capTextWidth(ctx, text, font) + padX * 2;
+      const h = 17;
+      capRoundRect(ctx, rightX - w, y, w, h, 8.5, bg, border);
+      capText(ctx, text, rightX - padX, y + 12, font, color, { align: 'right' });
+      return w;
+    }
+
+    function capGlyph(ctx, kind, x, y, size, color) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 1.7;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      if (kind === 'arrow') {
+        ctx.beginPath();
+        ctx.moveTo(x + size * 0.2, y + size * 0.8);
+        ctx.lineTo(x + size * 0.8, y + size * 0.2);
+        ctx.moveTo(x + size * 0.46, y + size * 0.2);
+        ctx.lineTo(x + size * 0.8, y + size * 0.2);
+        ctx.lineTo(x + size * 0.8, y + size * 0.54);
+        ctx.stroke();
+      } else if (kind === 'flag') {
+        ctx.beginPath();
+        ctx.moveTo(x + size * 0.3, y + size * 0.84);
+        ctx.lineTo(x + size * 0.3, y + size * 0.18);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + size * 0.3, y + size * 0.2);
+        ctx.lineTo(x + size * 0.8, y + size * 0.34);
+        ctx.lineTo(x + size * 0.3, y + size * 0.48);
+        ctx.closePath();
+        ctx.fill();
+      } else if (kind === 'list') {
+        [0.28, 0.5, 0.72].forEach((p, i) => {
+          ctx.beginPath();
+          ctx.arc(x + size * 0.2, y + size * p, size * 0.055, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(x + size * 0.38, y + size * p);
+          ctx.lineTo(x + size * 0.8 - (i === 1 ? size * 0.12 : 0), y + size * p);
+          ctx.stroke();
+        });
+      } else if (kind === 'group') {
+        [
+          [0.26, 0.4],
+          [0.5, 0.32],
+          [0.74, 0.4]
+        ].forEach(pt => {
+          ctx.beginPath();
+          ctx.arc(x + size * pt[0], y + size * pt[1], size * 0.1, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.beginPath();
+        ctx.arc(x + size * 0.5, y + size * 0.76, size * 0.26, Math.PI, 0);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function capIconTile(ctx, x, y, size, glyphKind, color) {
+      capRoundRect(ctx, x, y, size, size, size * 0.3, 'rgba(59,130,246,0.14)', 'rgba(59,130,246,0.35)');
+      capGlyph(ctx, glyphKind, x, y, size, color);
+    }
+
+    function drawCapturePbCard(ctx, x, y, w, ev, records, isTeam, measureOnly) {
+      const list = (Array.isArray(records) ? records : []).filter(r => r && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
+      if (list.length === 0) return 0;
+      let best = list[0];
+      list.forEach(r => {
+        if (parseFloat(r.seconds) < parseFloat(best.seconds)) best = r;
+      });
+      const decimals = getEventDecimalPlaces(records, ev);
+      const timeText = formatAnnualTime(parseFloat(best.seconds), decimals);
+      let runners = [];
+      if (Array.isArray(best.runners) && best.runners.length > 0) {
+        runners = best.runners.slice();
+      } else if (best.relay) {
+        runners = String(best.relay).split('/').map(s => s.trim()).filter(Boolean);
+      }
+      const hasRunners = isTeam && runners.length > 0;
+      const h = hasRunners ? 96 : 76;
+
+      if (!measureOnly) {
+        capRoundRect(ctx, x, y, w, h, 14, '#0f172a', '#1e293b');
+      }
+
+      const renewal = getPbRenewalInfo(currentPlayer, ev, records);
+      let badgeText;
+      let badgeBg;
+      let badgeBorder;
+      let badgeColor;
+      if (renewal) {
+        badgeText = '★PB갱신★';
+        badgeBg = '#facc15';
+        badgeBorder = '#facc15';
+        badgeColor = '#020617';
+      } else if (isTeam) {
+        badgeText = '단체 최고기록';
+        badgeBg = 'rgba(59,130,246,0.16)';
+        badgeBorder = 'rgba(59,130,246,0.4)';
+        badgeColor = '#93c5fd';
+      } else {
+        badgeText = '개인최고 (PB)';
+        badgeBg = 'rgba(245,158,11,0.16)';
+        badgeBorder = 'rgba(245,158,11,0.4)';
+        badgeColor = '#fcd34d';
+      }
+      const badgeW = capTextWidth(ctx, badgeText, capFont(700, 9)) + 14;
+
+      capText(ctx, ev, x + 14, y + 24, capFont(800, 13), '#e2e8f0', { maxWidth: w - 28 - badgeW - 8 });
+      if (!measureOnly) capBadge(ctx, badgeText, x + w - 14, y + 12, badgeBg, badgeBorder, badgeColor, capFont(700, 9));
+      capText(ctx, timeText, x + 14, y + 52, capFont(800, 23), '#ffffff');
+      const dateW = capTextWidth(ctx, best.date || '', capFont(500, 10));
+      capText(ctx, best.meet || '', x + 14, y + (hasRunners ? 70 : 67), capFont(500, 11), '#94a3b8', { maxWidth: w - 28 - dateW - 8 });
+      capText(ctx, best.date || '', x + w - 14, y + (hasRunners ? 70 : 67), capFont(500, 10), '#64748b', { align: 'right' });
+
+      if (hasRunners) {
+        const stripY = y + 76;
+        if (!measureOnly) capRoundRect(ctx, x + 14, stripY, w - 28, 14, 5, '#020617', '#1e293b');
+        const runnerText = runners.map((n, i) => (i + 1) + '주자 ' + n).join(' · ');
+        capText(ctx, runnerText, x + 21, stripY + 10.5, capFont(500, 8.5), '#94a3b8', { maxWidth: w - 42 });
+      }
+      return h;
+    }
+
+    function drawCaptureSectionHeader(ctx, y, PAD, title, measureOnly) {
+      if (!measureOnly) {
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(PAD, y + 1, 3, 12);
+      }
+      capText(ctx, title, PAD + 9, y + 12, capFont(800, 12.5), '#e2e8f0');
+      return y + 22;
+    }
+
+    function drawCapturePb(ctx, y, PAD, innerW, measureOnly) {
+      const records = appData[currentPlayer] || [];
+      const personal = [];
+      const team = [];
+      getPlayerEvents(currentPlayer).forEach(ev => {
+        if (getEventBestSeconds(records, ev) === null) return;
+        (isTeamEventName(ev) ? team : personal).push(ev);
+      });
+
+      if (personal.length > 0) {
+        y = drawCaptureSectionHeader(ctx, y, PAD, '개인 최고기록 (Personal Best)', measureOnly);
+        personal.forEach(ev => {
+          const h = drawCapturePbCard(ctx, PAD, y, innerW, ev, records, false, measureOnly);
+          y += h + 8;
+        });
+        y += 6;
+      }
+      if (team.length > 0) {
+        y = drawCaptureSectionHeader(ctx, y, PAD, '릴레이 / 단체전 최고기록 (Team Best)', measureOnly);
+        team.forEach(ev => {
+          const h = drawCapturePbCard(ctx, PAD, y, innerW, ev, records, true, measureOnly);
+          y += h + 8;
+        });
+        y += 6;
+      }
+      return y;
+    }
+
+    function drawCaptureAnnualCard(ctx, x, y, w, card, measureOnly) {
+      const decimals = card.decimals;
+      const priorText = Number.isFinite(card.prior) ? formatAnnualTime(card.prior, decimals) : '-';
+      const currentText = formatAnnualTime(card.current, decimals);
+      const firstText = Number.isFinite(card.first) ? formatAnnualTime(card.first, decimals) : '-';
+      const slower = Number.isFinite(card.yearBest) && card.yearBest > card.current + 1e-9;
+      const h = slower ? 150 : 138;
+
+      if (!measureOnly) capRoundRect(ctx, x, y, w, h, 14, '#0f172a', '#1e293b');
+      if (!measureOnly) capIconTile(ctx, x + 14, y + 13, 22, card.isTeam ? 'group' : 'arrow', card.isTeam ? '#93c5fd' : '#bfdbfe');
+
+      // 배지
+      let badgeText;
+      let badgeBg;
+      let badgeBorder;
+      let badgeColor;
+      if (card.prior === null) {
+        badgeText = '비교 불가';
+        badgeBg = '#1e293b';
+        badgeBorder = '#334155';
+        badgeColor = '#94a3b8';
+      } else if (card.reduction > 0) {
+        badgeText = '-' + card.reduction.toFixed(decimals) + '초 단축';
+        badgeBg = 'rgba(251,191,36,0.16)';
+        badgeBorder = 'rgba(251,191,36,0.45)';
+        badgeColor = '#fcd34d';
+      } else {
+        badgeText = '경신 없음';
+        badgeBg = '#1e293b';
+        badgeBorder = '#334155';
+        badgeColor = '#94a3b8';
+      }
+      const badgeW = capTextWidth(ctx, badgeText, capFont(700, 9.5)) + 14;
+      capText(ctx, card.event, x + 44, y + 29, capFont(800, 14), '#ffffff', { maxWidth: w - 58 - badgeW - 8 });
+      if (!measureOnly) capBadge(ctx, badgeText, x + w - 14, y + 12, badgeBg, badgeBorder, badgeColor, capFont(700, 9.5));
+
+      // 이전 PB → 현재 PB
+      capText(ctx, '이전 PB', x + 14, y + 54, capFont(600, 9.5), '#64748b');
+      const priorW = capText(ctx, priorText, x + 52, y + 54, capFont(700, 13.5), '#cbd5e1');
+      const arrowX = x + 52 + priorW + 8;
+      capText(ctx, '→', arrowX, y + 54, capFont(500, 11), '#475569');
+      capText(ctx, currentText, arrowX + 18, y + 55, capFont(800, 18), '#ffffff');
+
+      // 진행 막대 (파랑 = 누적 성장, 노랑 = 이 해 단축분)
+      const barX = x + 14;
+      const barW = w - 28;
+      const barY = y + 66;
+      const geom = getAnnualBarGeometry(card);
+      if (!measureOnly) {
+        capRoundRect(ctx, barX, barY, barW, 6, 3, '#1e293b', null);
+        if (geom) {
+          const blueW = Math.max(0, Math.min(barW, barW * geom.blue / 100));
+          const amberW = Math.max(0, Math.min(barW - blueW, barW * geom.amber / 100));
+          if (blueW > 0.5) capRoundRect(ctx, barX, barY, blueW, 6, 3, 'rgba(59,130,246,0.65)', null);
+          if (amberW > 0.5) capRoundRect(ctx, barX + blueW, barY, amberW, 6, 3, '#fbbf24', null);
+        }
+      }
+
+      // 기준점 3개: 최초 기록 / 이전 PB / 현재 PB
+      capText(ctx, firstText, barX, y + 88, capFont(600, 10), '#cbd5e1');
+      capText(ctx, '최초 기록', barX, y + 99, capFont(500, 8.5), '#64748b');
+      capText(ctx, priorText, x + w / 2, y + 88, capFont(600, 10), '#cbd5e1', { align: 'center' });
+      capText(ctx, '이전 PB', x + w / 2, y + 99, capFont(500, 8.5), '#64748b', { align: 'center' });
+      capText(ctx, currentText, x + w - 14, y + 88, capFont(700, 10), '#fcd34d', { align: 'right' });
+      capText(ctx, '현재 PB', x + w - 14, y + 99, capFont(500, 8.5), '#64748b', { align: 'right' });
+
+      // 개선율 · PB 경신 횟수 · 목표
+      const rateText = card.rate === null ? '비교 불가' : (card.rate > 0 ? '+' + card.rate.toFixed(1) + '%' : card.rate.toFixed(1) + '%');
+      const rateW = capText(ctx, '개선율 ', x + 14, y + 118, capFont(500, 9.5), '#64748b');
+      capText(ctx, rateText, x + 14 + rateW, y + 118, capFont(700, 9.5), card.rate !== null && card.rate > 0 ? '#6ee7b7' : '#94a3b8');
+      capText(ctx, 'PB 경신 ' + card.renewals + '회 · 목표 -', x + w - 14, y + 118, capFont(500, 9.5), '#64748b', { align: 'right' });
+
+      if (slower) {
+        capText(ctx, '올해 최고 ' + formatAnnualTime(card.yearBest, decimals) + ' (PB 미경신)', x + 14, y + 132, capFont(500, 9), '#64748b');
+      }
+      return h;
+    }
+
+    function drawCaptureAnnualSection(ctx, y, PAD, innerW, title, cards, measureOnly) {
+      if (cards.length === 0) return y;
+      y = drawCaptureSectionHeader(ctx, y, PAD, title, measureOnly);
+      cards.forEach(card => {
+        const h = drawCaptureAnnualCard(ctx, PAD, y, innerW, card, measureOnly);
+        y += h + 8;
+      });
+      return y + 6;
+    }
+
+    function drawCaptureAnnual(ctx, y, PAD, innerW, measureOnly) {
+      const year = getAnnualSelectedYear(currentPlayer);
+      const cards = getAnnualEventCards(currentPlayer, year);
+      const meetCount = getAnnualMeetCount(currentPlayer, year);
+      const gameCount = getAnnualGameCount(currentPlayer, year);
+      const renewalCount = countPbRenewalsInYear(currentPlayer, year);
+
+      const gap = 8;
+      const cw = (innerW - gap * 2) / 3;
+      const ch = 92;
+      const stats = [
+        { label: '출전 대회', value: meetCount, sub: '공식 대회', glyph: 'flag', color: '#93c5fd' },
+        { label: '총 경기', value: gameCount, sub: '실기 포함', glyph: 'list', color: '#ffffff' },
+        { label: 'PB 경신', value: renewalCount, sub: '이 해 기록', glyph: 'arrow', color: '#fcd34d' }
+      ];
+      stats.forEach((s, i) => {
+        const x = PAD + i * (cw + gap);
+        if (!measureOnly) {
+          capRoundRect(ctx, x, y, cw, ch, 14, '#0f172a', '#1e293b');
+          capIconTile(ctx, x + cw / 2 - 11, y + 12, 22, s.glyph, s.color);
+        }
+        capText(ctx, s.label, x + cw / 2, y + 50, capFont(600, 10.5), '#94a3b8', { align: 'center' });
+        capText(ctx, String(s.value) + '회', x + cw / 2, y + 76, capFont(800, 21), '#f8fafc', { align: 'center' });
+        capText(ctx, s.sub, x + cw / 2, y + 87, capFont(500, 8.5), '#64748b', { align: 'center' });
+      });
+      y += ch + 18;
+
+      const personal = cards.filter(c => !c.isTeam);
+      const team = cards.filter(c => c.isTeam);
+      y = drawCaptureAnnualSection(ctx, y, PAD, innerW, '개인 종목 PB 변화', personal, measureOnly);
+      y = drawCaptureAnnualSection(ctx, y, PAD, innerW, '단체 종목 PB 변화', team, measureOnly);
+
+      if (cards.length === 0) {
+        if (!measureOnly) capRoundRect(ctx, PAD, y, innerW, 88, 14, '#0f172a', '#1e293b');
+        capText(ctx, year + '년에는 기록이 없습니다.', CAPTURE_WIDTH / 2, y + 38, capFont(700, 12), '#94a3b8', { align: 'center' });
+        capText(ctx, '좌우 화살표로 다른 연도를 확인해 주세요.', CAPTURE_WIDTH / 2, y + 58, capFont(500, 10), '#64748b', { align: 'center' });
+        y += 88;
+      }
+      return y;
+    }
+
+    function drawCaptureScene(ctx, mode, measureOnly) {
+      const W = CAPTURE_WIDTH;
+      const PAD = 18;
+      const innerW = W - PAD * 2;
+      const player = playersData.find(p => p.id === currentPlayer) || null;
+      const playerName = player ? (player.name || '선수') : '선수';
+      const sportText = player ? (player.sport || '') : '';
+      const mainEvent = player ? (player.mainEvent || '') : '';
+      const now = new Date();
+      const stamp = now.getFullYear() + '.' + String(now.getMonth() + 1).padStart(2, '0') + '.' + String(now.getDate()).padStart(2, '0');
+      let y = 28;
+
+      capText(ctx, '선수 성장노트', PAD, y, capFont(700, 11), '#64748b');
+      capText(ctx, stamp + ' 기준', W - PAD, y, capFont(500, 10), '#475569', { align: 'right' });
+      y += 12;
+
+      const title = mode === 'ANNUAL' ? (getAnnualSelectedYear(currentPlayer) + '년 연간 종합노트') : '전체 PB 기록';
+      capText(ctx, title, PAD, y + 22, capFont(800, 22), '#f8fafc');
+      y += 32;
+      const subLine = playerName + (sportText ? ' · ' + sportText : '') + (mainEvent ? ' · ' + mainEvent : '');
+      capText(ctx, subLine, PAD, y + 4, capFont(600, 12), '#94a3b8', { maxWidth: innerW });
+      y += 18;
+      if (!measureOnly) {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(PAD, y, innerW, 1);
+      }
+      y += 20;
+
+      if (mode === 'ANNUAL') {
+        y = drawCaptureAnnual(ctx, y, PAD, innerW, measureOnly);
+      } else {
+        y = drawCapturePb(ctx, y, PAD, innerW, measureOnly);
+      }
+
+      y += 2;
+      if (!measureOnly) {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(PAD, y, innerW, 1);
+      }
+      y += 16;
+      capText(ctx, '선수 성장노트 · 기록 이미지', PAD, y, capFont(500, 10), '#475569');
+      capText(ctx, stamp, W - PAD, y, capFont(500, 10), '#475569', { align: 'right' });
+      return y + 22;
+    }
+
+    function buildCaptureCanvas(mode) {
+      const measureCanvas = document.createElement('canvas');
+      measureCanvas.width = CAPTURE_WIDTH;
+      measureCanvas.height = 10;
+      const mctx = measureCanvas.getContext('2d');
+      const measured = drawCaptureScene(mctx, mode, true);
+      const height = Math.max(240, Math.ceil(measured));
+
+      let scale = CAPTURE_SCALE;
+      if (height * scale > 16000) scale = 1;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(CAPTURE_WIDTH * scale);
+      canvas.height = Math.round(height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, CAPTURE_WIDTH, height);
+      drawCaptureScene(ctx, mode, false);
+      return { canvas: canvas, height: height, scale: scale };
+    }
+
+    function getCaptureFileName(mode) {
+      const player = playersData.find(p => p.id === currentPlayer);
+      const name = player ? (player.name || '선수') : '선수';
+      const d = new Date();
+      const stamp = String(d.getFullYear()) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+      const label = mode === 'ANNUAL' ? (getAnnualSelectedYear(currentPlayer) + '년_연간종합노트') : '전체PB';
+      return '선수성장노트_' + name + '_' + label + '_' + stamp + '.png';
+    }
+
+    function getCaptureShareText(mode) {
+      const player = playersData.find(p => p.id === currentPlayer);
+      const name = player ? (player.name || '선수') : '선수';
+      if (mode === 'ANNUAL') return name + ' 선수의 ' + getAnnualSelectedYear(currentPlayer) + '년 연간 종합노트';
+      return name + ' 선수의 전체 PB 기록';
+    }
+
+    function canvasToBlobAsync(canvas) {
+      return new Promise((resolve, reject) => {
+        if (typeof canvas.toBlob !== 'function') {
+          reject(new Error('toBlob 미지원'));
+          return;
+        }
+        canvas.toBlob(function (blob) {
+          if (blob) resolve(blob);
+          else reject(new Error('이미지 변환 실패'));
+        }, 'image/png');
+      });
+    }
+
+    function showCaptureToast(message, type) {
+      const el = document.getElementById('capture-toast');
+      if (!el) return;
+      el.textContent = String(message || '');
+      el.className = 'fixed left-1/2 -translate-x-1/2 bottom-24 z-[60] max-w-[320px] px-4 py-2.5 rounded-xl border text-[11px] font-bold text-white shadow-2xl text-center ' +
+        (type === 'error' ? 'bg-rose-900/95 border-rose-700' : 'bg-slate-800/95 border-slate-600');
+      if (showCaptureToast.timer) clearTimeout(showCaptureToast.timer);
+      showCaptureToast.timer = setTimeout(function () {
+        el.classList.add('hidden');
+      }, 2800);
+    }
+
+    function downloadBlobFile(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        try {
+          document.body.removeChild(a);
+        } catch (e) {}
+        URL.revokeObjectURL(url);
+      }, 1500);
+    }
+
+    async function saveViewImage() {
+      const mode = mainViewMode === 'ANNUAL' ? 'ANNUAL' : 'PB';
+      try {
+        const built = buildCaptureCanvas(mode);
+        const blob = await canvasToBlobAsync(built.canvas);
+        downloadBlobFile(blob, getCaptureFileName(mode));
+        showCaptureToast('이미지를 저장했습니다. (갤러리/다운로드 확인)');
+      } catch (err) {
+        console.error('saveViewImage error:', err);
+        showCaptureToast('이미지를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+      }
+    }
+
+    async function shareViewImage() {
+      const mode = mainViewMode === 'ANNUAL' ? 'ANNUAL' : 'PB';
+      try {
+        const built = buildCaptureCanvas(mode);
+        const blob = await canvasToBlobAsync(built.canvas);
+        const filename = getCaptureFileName(mode);
+        let file = null;
+        try {
+          file = new File([blob], filename, { type: 'image/png' });
+        } catch (e) {
+          file = null;
+        }
+        if (file && typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: '선수 성장노트', text: getCaptureShareText(mode) });
+            return;
+          } catch (err) {
+            if (err && err.name === 'AbortError') return;
+          }
+        }
+        downloadBlobFile(blob, filename);
+        showCaptureToast('이 기기에서는 이미지 공유를 지원하지 않아 저장으로 대신했습니다.');
+      } catch (err) {
+        console.error('shareViewImage error:', err);
+        showCaptureToast('이미지를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.', 'error');
+      }
     }
 
     function getAvailableYearsForPlayer(playerId) {
