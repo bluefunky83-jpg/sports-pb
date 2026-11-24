@@ -997,6 +997,10 @@
     const PLAYERS_KEY = 'STAGING_ATHLETE_GROWTH_PLAYERS_V3';
     const TEAMMATES_KEY = 'STAGING_ATHLETE_GROWTH_TEAMMATES_V3';
 
+    // PB 갱신 배지(★PB갱신★)는 갱신 시점부터 7일만 유지한다.
+    const PB_BADGE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+    const PB_BADGE_STORAGE_PREFIX = 'STAGING_PB_BADGE_TIMESTAMPS_V1';
+
     let currentPlayer = 'yusin';
     let currentEvent = 'ALL_PB';
     let selectedKind = '공식';
@@ -1529,6 +1533,108 @@
       return `${sec.toFixed(2)}초`;
     }
 
+    // 5-1. PB 갱신 배지: 저장 키·판정·기록
+    function getPbBadgeOwnerKey() {
+      try {
+        const raw = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
+        const u = raw ? JSON.parse(raw) : null;
+        if (u && u.role === 'super_admin') return 'super_admin';
+        if (u && (u.email || u.name)) return getStableAdminId(u.email, u.name);
+      } catch (e) {}
+      return 'guest';
+    }
+
+    function getPbBadgeStorageKey() {
+      return PB_BADGE_STORAGE_PREFIX + '_' + getPbBadgeOwnerKey();
+    }
+
+    function readPbBadgeTimestamps() {
+      try {
+        const raw = localStorage.getItem(getPbBadgeStorageKey());
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+        return parsed;
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function writePbBadgeTimestamps(map) {
+      try {
+        localStorage.setItem(getPbBadgeStorageKey(), JSON.stringify(map || {}));
+        return true;
+      } catch (e) {
+        console.warn('writePbBadgeTimestamps failed:', e);
+        return false;
+      }
+    }
+
+    // 만료(7일 경과)된 항목만 덜어낸다. 화면 표시는 시간으로 다시 판정하므로 저장 정리용.
+    function prunePbBadgeTimestamps(map, nowMs) {
+      const now = typeof nowMs === 'number' ? nowMs : Date.now();
+      const cleaned = {};
+      Object.keys(map || {}).forEach(pid => {
+        const perPlayer = map[pid];
+        if (!perPlayer || typeof perPlayer !== 'object' || Array.isArray(perPlayer)) return;
+        const keptEvents = {};
+        Object.keys(perPlayer).forEach(evName => {
+          const entry = perPlayer[evName];
+          if (!entry || typeof entry.ts !== 'number') return;
+          const age = now - entry.ts;
+          if (age >= 0 && age < PB_BADGE_TTL_MS) keptEvents[evName] = entry;
+        });
+        if (Object.keys(keptEvents).length > 0) cleaned[pid] = keptEvents;
+      });
+      return cleaned;
+    }
+
+    // 기존 앱 PB 계산 규칙과 동일: 해당 종목 기록 중 seconds > 0 인 값의 최소값.
+    function getEventBestSeconds(records, eventName) {
+      let best = null;
+      (Array.isArray(records) ? records : []).forEach(r => {
+        if (!r || !isEventMatch(r.event, eventName)) return;
+        const sec = parseFloat(r.seconds);
+        if (!Number.isFinite(sec) || sec <= 0) return;
+        if (best === null || sec < best) best = sec;
+      });
+      return best;
+    }
+
+    // 7일 안에 실제 PB가 경신됐고, 지금 화면의 최고기록이 그 갱신 기록일 때만 배지를 켠다.
+    function getPbRenewalInfo(playerId, eventName, records) {
+      const map = readPbBadgeTimestamps();
+      const perPlayer = map[playerId];
+      if (!perPlayer || typeof perPlayer !== 'object') return null;
+      if (!Object.prototype.hasOwnProperty.call(perPlayer, eventName)) return null;
+      const entry = perPlayer[eventName];
+      if (!entry || typeof entry.ts !== 'number' || typeof entry.best !== 'number') return null;
+      const age = Date.now() - entry.ts;
+      if (!(age >= 0 && age < PB_BADGE_TTL_MS)) return null;
+      const currentBest = getEventBestSeconds(records, eventName);
+      if (currentBest === null) return null;
+      if (Math.abs(entry.best - currentBest) > 0.0005) return null;
+      return entry;
+    }
+
+    // 기록 저장 직전 상태를 기준으로 '진짜 PB 경신'인지 판정한다. 경신이면 새 기록(초), 아니면 null.
+    function detectPbRenewalSeconds(playerId, eventName, newSeconds) {
+      const priorBest = getEventBestSeconds(appData[playerId] || [], eventName);
+      // 직전 PB가 없는 종목(첫 기록)은 '갱신'이 아니므로 배지를 켜지 않는다.
+      if (priorBest === null) return null;
+      const sec = parseFloat(newSeconds);
+      if (!Number.isFinite(sec) || sec <= 0) return null;
+      return sec < priorBest ? sec : null;
+    }
+
+    function recordPbRenewal(playerId, eventName, bestSeconds) {
+      const now = Date.now();
+      const map = prunePbBadgeTimestamps(readPbBadgeTimestamps(), now);
+      if (!map[playerId] || typeof map[playerId] !== 'object') map[playerId] = {};
+      map[playerId][eventName] = { ts: now, best: bestSeconds };
+      return writePbBadgeTimestamps(map);
+    }
+
     // 6. Navigation: Switch Player & Populate Dropdown
     function initPlayerSelectDropdown() {
       const select = document.getElementById('select-player');
@@ -1625,19 +1731,58 @@
     // 7. Event Tabs Navigation (Dynamic from Player's Events)
     function getPlayerEvents(playerId) {
       const p = playersData.find(x => x.id === playerId);
+      let baseEvents;
       if (p && Array.isArray(p.events) && p.events.length > 0) {
-        return p.events.map(ev => typeof ev === 'object' ? ev.name : ev);
+        baseEvents = p.events.map(ev => typeof ev === 'object' ? ev.name : ev);
+      } else if (p && p.sport === '육상') {
+        baseEvents = ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'];
+      } else if (p && p.sport === '사이클') {
+        baseEvents = ['1Lap', '500m독주', '1km추발', '2km단체추발'];
+      } else if (playerId === 'yusin') {
+        baseEvents = ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'];
+      } else {
+        baseEvents = ['1Lap', '500m독주', '1km추발', '2km단체추발'];
       }
-      if (p && p.sport === '육상') {
-        return ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'];
-      }
-      if (p && p.sport === '사이클') {
-        return ['1Lap', '500m독주', '1km추발', '2km단체추발'];
-      }
-      if (playerId === 'yusin') {
-        return ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'];
-      }
-      return ['1Lap', '500m독주', '1km추발', '2km단체추발'];
+      // 등록된 세부 종목 목록에 없더라도 기록이 남아 있는 종목은 탭·조회에서 빠지지 않게 합친다.
+      // (선수 프로필의 events 자체는 건드리지 않는다.)
+      return mergeRecordEventsIntoEventList(baseEvents, appData[playerId] || []);
+    }
+
+    // 기록에만 존재하는 종목을 등록 종목 목록에 안전하게 합친다(중복·표기 변형 제외).
+    function mergeRecordEventsIntoEventList(baseEvents, records) {
+      const list = Array.isArray(baseEvents) ? baseEvents.slice() : [];
+      const extras = [];
+      (Array.isArray(records) ? records : []).forEach(r => {
+        if (!r || !r.event) return;
+        const name = String(r.event).trim();
+        if (!name) return;
+        const alreadyListed = list.some(ev => isEventMatch(name, ev) || isEventMatch(ev, name));
+        if (alreadyListed) return;
+        const alreadyExtra = extras.some(ev => isEventMatch(name, ev) || isEventMatch(ev, name));
+        if (!alreadyExtra) extras.push(name);
+      });
+      extras.forEach(name => {
+        // '300m'처럼 거리(m)가 분명한 종목은 가까운 순서 자리에 끼워 넣고, 아니면 뒤에 붙인다.
+        const meters = parsePlainMeterEvent(name);
+        let insertAt = -1;
+        if (meters !== null) {
+          insertAt = list.findIndex(ev => {
+            const m = parsePlainMeterEvent(ev);
+            return m !== null && m > meters;
+          });
+        }
+        if (insertAt >= 0) list.splice(insertAt, 0, name);
+        else list.push(name);
+      });
+      return list;
+    }
+
+    // '100m'·'300m'처럼 숫자+m 로 끝나는 종목만 거리(m)로 읽는다('500m독주', '4x100mR' 등은 대상 아님).
+    function parsePlainMeterEvent(name) {
+      const m = String(name || '').trim().match(/^(\d+(?:\.\d+)?)m$/i);
+      if (!m) return null;
+      const meters = parseFloat(m[1]);
+      return Number.isFinite(meters) ? meters : null;
     }
 
     function renderEventTabs() {
@@ -1796,9 +1941,12 @@
         const best = evRecs[0];
         const formatted = formatTimeDisplay(best.seconds, ev);
 
-        const badgeHtml = isTeam 
-          ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40">단체 최고기록</span>'
-          : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">개인최고 (PB)</span>';
+        const renewalInfo = getPbRenewalInfo(currentPlayer, ev, records);
+        const badgeHtml = renewalInfo
+          ? '<span class="shrink-0 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-400 text-slate-950 border border-yellow-500/60 shadow-sm">★PB갱신★</span>'
+          : (isTeam 
+            ? '<span class="shrink-0 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40">단체 최고기록</span>'
+            : '<span class="shrink-0 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">개인최고 (PB)</span>');
 
         let runnersHtml = '';
         if (isTeam) {
@@ -2796,6 +2944,10 @@
         updatedAt: Date.now()
       };
 
+      // 저장 직전 상태의 해당 종목 PB와 비교해, 실제로 더 좋은 기록일 때만 갱신 시점을 남긴다.
+      // (동일·더 느린 기록, 메모/대회명만 수정, 단순 재접속으로는 배지가 시작되지 않는다)
+      const pbRenewalSeconds = detectPbRenewalSeconds(currentPlayer, targetEvent, totalSec);
+
       if (!appData[currentPlayer]) appData[currentPlayer] = [];
 
       const prevAppData = JSON.parse(JSON.stringify(appData));
@@ -2812,6 +2964,12 @@
         // 저장에 실패하면 입력화면을 닫지 않고, 저장된 것처럼 보이지 않게 한다.
         return;
       }
+
+      // 기록 저장이 실제로 성공한 뒤에만 갱신 시점을 남긴다.
+      if (pbRenewalSeconds !== null) {
+        recordPbRenewal(currentPlayer, targetEvent, pbRenewalSeconds);
+      }
+
       renderCurrentView();
 
       if (keepOpen) {
