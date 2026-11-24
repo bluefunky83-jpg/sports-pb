@@ -4951,6 +4951,8 @@
           currentPlayer = '';
         }
       }
+      // 역할과 무관하게, 공식기록 기준과 맞지 않는 예전 PB 갱신 배지를 한 번 정리한다.
+      reconcilePbBadgeTimestamps();
     }
 
     // --- Global Gate & Auth State Management ---
