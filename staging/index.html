@@ -2333,6 +2333,14 @@
         </div>`;
     }
 
+    function getPlayerSportIcon(playerId) {
+      const p = playersData.find(x => x.id === playerId);
+      const sport = p ? String(p.sport || '') : '';
+      if (sport.indexOf('사이클') >= 0) return '🚴';
+      if (sport.indexOf('육상') >= 0) return '🏃';
+      return '🏅';
+    }
+
     function renderAnnualEventCardHtml(card) {
       const decimals = card.decimals;
       const priorText = Number.isFinite(card.prior) ? formatAnnualTime(card.prior, decimals) : '-';
@@ -2368,7 +2376,7 @@
         <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-md">
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <div class="flex items-center gap-1.5 min-w-0">
-              <span class="w-6 h-6 shrink-0 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-[11px]">${card.isTeam ? '👥' : '🏃'}</span>
+              <span class="w-6 h-6 shrink-0 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-[11px]">${card.isTeam ? '👥' : getPlayerSportIcon(currentPlayer)}</span>
               <span class="text-[13px] font-bold text-white truncate">${card.event}</span>
             </div>
             ${badgeHtml}
