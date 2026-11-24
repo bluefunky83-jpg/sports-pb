@@ -2937,6 +2937,8 @@
 
     // 개인/단체 아코디언 상태 (여러 카드를 동시에 펼칠 수 있다)
     let formAccordionOpen = { personal: true, team: false };
+    // 수정 모달을 열었을 때 저장되어 있던 주종목 (목록에 없으면 안내한다)
+    let formOriginalMainEvent = '';
 
     function escapeEventText(str) {
       return String(str == null ? '' : str)
@@ -3041,6 +3043,8 @@
     function showMainEventNotice(resolved) {
       const el = document.getElementById('main-event-notice');
       if (!el) return;
+      const select = document.getElementById('form-player-event');
+      const currentValue = select ? select.value : '';
       const names = getRegisteredEventNames(formCurrentEvents);
       if (names.length === 0) {
         el.textContent = '세부 종목을 먼저 추가하면 주종목을 고를 수 있습니다.';
@@ -3049,6 +3053,11 @@
       }
       if (resolved && resolved.changed && resolved.previous) {
         el.textContent = `‘${resolved.previous}’은(는) 등록된 세부 종목이 아니어서 ‘${resolved.value}’(으)로 선택했습니다. 저장하면 주종목이 바뀝니다.`;
+        el.classList.remove('hidden');
+        return;
+      }
+      if (formOriginalMainEvent && currentValue && String(formOriginalMainEvent) !== currentValue) {
+        el.textContent = `저장된 주종목 ‘${formOriginalMainEvent}’은(는) 등록된 세부 종목이 아니어서 ‘${currentValue}’(으)로 표시합니다. 저장하면 주종목이 바뀝니다.`;
         el.classList.remove('hidden');
         return;
       }
@@ -3235,6 +3244,7 @@
           ? [...p.events]
           : getDefaultEventsForSport(p.sport || '육상');
         resetFormAccordionForEvents();
+        formOriginalMainEvent = String(p.mainEvent || '');
         setFormPlayerSport(p.sport || '육상', false, p.mainEvent || '');
       } else {
         title.textContent = '새 선수 등록';
@@ -3245,6 +3255,7 @@
         setPlayerPhotoPreview('');
         formCurrentEvents = getDefaultEventsForSport('육상');
         resetFormAccordionForEvents();
+        formOriginalMainEvent = '';
         setFormPlayerSport('육상', true, '');
       }
 
