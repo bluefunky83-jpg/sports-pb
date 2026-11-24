@@ -89,10 +89,10 @@
 
       win.switchPlayer('byeolha');
       await sleep(400);
-      win.annualYear = 2026;
-      win.renderCurrentView();
+      win.stepAnnualYear(1);
       await sleep(400);
       measure('연간 2026 별하');
+      say('byeolha year label=' + (doc.querySelector('#view-container .text-base.font-extrabold') || {}).textContent);
 
       win.setMainViewMode('PB');
       await sleep(350);
@@ -101,6 +101,9 @@
       win.switchPlayer('yusin');
       await sleep(350);
       measure('PB view (유신 복귀)');
+      win.setMainViewMode('ANNUAL');
+      await sleep(400);
+      measure('연간 2026 유신 (최종 화면)');
 
       // 이미지 생성(캔버스) 크기 확인 — 다운로드 없이 캔버스만 만들어 본다
       var pbCanvas = win.buildCaptureCanvas('PB');
