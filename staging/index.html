@@ -630,47 +630,62 @@
         </div>
 
         <div class="grid grid-cols-2 gap-2">
-          <div>
+          <div class="min-w-0">
             <label class="block font-semibold text-slate-400 mb-1">종목 대분류 *</label>
-            <select id="form-player-sport" onchange="onSportSelectChange(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+            <select id="form-player-sport" onchange="onSportSelectChange(this.value)" class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
               <option value="육상">🏃 육상</option>
               <option value="사이클">🚴 사이클</option>
             </select>
           </div>
-          <div>
+          <div class="min-w-0">
             <label class="block font-semibold text-slate-400 mb-1">주종목 *</label>
-            <select id="form-player-event" onchange="onMainEventSelectChange(this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-              <!-- Dynamically populated options -->
+            <select id="form-player-event" onchange="onMainEventSelectChange(this.value)" class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              <!-- 등록된 세부 종목만 동적으로 표시 -->
             </select>
           </div>
         </div>
+        <p id="main-event-notice" class="hidden text-[10px] leading-relaxed text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl px-2.5 py-1.5 break-words"></p>
 
-        <!-- Event Categories Management (Toggle Chips) -->
-        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
-          <label class="block font-semibold text-blue-400 text-xs flex items-center justify-between">
-            <span>🏃 출전 세부 종목 탭 관리</span>
-            <span class="text-[10px] text-slate-500">터치해서 On/Off</span>
-          </label>
-          <div class="flex flex-wrap gap-1.5" id="form-player-events-chips">
-            <!-- Dynamically populated toggle chips -->
+        <!-- Event Categories: 개인·단체 아코디언 카드 (동시 펼침 허용) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label class="block font-semibold text-blue-400 text-xs">🏃 출전 세부 종목</label>
+            <span class="text-[10px] text-slate-500 shrink-0">카드를 눌러 펼치기</span>
           </div>
-          <div class="space-y-1.5 pt-1.5 border-t border-slate-900 mt-2">
-            <div class="flex gap-1.5">
-              <input type="text" id="input-new-event" placeholder="새 종목명 입력" class="flex-1 min-w-0 w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-              <button type="button" onclick="addEventToCurrentFormPlayer()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs whitespace-nowrap shrink-0 active:scale-95 transition">
-                + 종목 추가
-              </button>
+
+          <div class="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden">
+            <button type="button" id="acc-header-personal" onclick="toggleEventAccordion('personal')" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left active:scale-[0.99] transition">
+              <span class="flex items-center gap-1.5 min-w-0">
+                <span class="text-sm shrink-0">👤</span>
+                <span class="text-xs font-bold text-slate-200 truncate">개인 종목</span>
+                <span id="acc-count-personal" class="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-600/20 text-blue-300 border border-blue-500/30 font-bold">0</span>
+              </span>
+              <span id="acc-chevron-personal" class="shrink-0 text-slate-400 text-xs">▾</span>
+            </button>
+            <div id="acc-body-personal" class="px-3 pb-3 pt-2 space-y-2 border-t border-slate-900">
+              <div id="chips-personal" class="flex flex-wrap gap-1.5"></div>
+              <div class="flex gap-1.5">
+                <input type="text" id="input-new-event-personal" placeholder="새 개인 종목 (예: 800m)" class="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                <button type="button" onclick="addEventToCurrentFormPlayer('personal')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs whitespace-nowrap shrink-0 active:scale-95 transition">+ 추가</button>
+              </div>
             </div>
-            <div class="flex items-center gap-2 text-[11px] px-1">
-              <span class="text-slate-400">구분:</span>
-              <label class="flex items-center gap-1 cursor-pointer text-slate-300">
-                <input type="radio" name="new-event-type" id="new-event-personal" value="personal" checked class="text-blue-500">
-                <span>개인전</span>
-              </label>
-              <label class="flex items-center gap-1 cursor-pointer text-slate-300 ml-2">
-                <input type="radio" name="new-event-type" id="new-event-team" value="team" class="text-blue-500">
-                <span>단체 / 릴레이</span>
-              </label>
+          </div>
+
+          <div class="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden">
+            <button type="button" id="acc-header-team" onclick="toggleEventAccordion('team')" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left active:scale-[0.99] transition">
+              <span class="flex items-center gap-1.5 min-w-0">
+                <span class="text-sm shrink-0">👥</span>
+                <span class="text-xs font-bold text-slate-200 truncate">단체 종목</span>
+                <span id="acc-count-team" class="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold">0</span>
+              </span>
+              <span id="acc-chevron-team" class="shrink-0 text-slate-400 text-xs">▸</span>
+            </button>
+            <div id="acc-body-team" class="px-3 pb-3 pt-2 space-y-2 border-t border-slate-900 hidden">
+              <div id="chips-team" class="flex flex-wrap gap-1.5"></div>
+              <div class="flex gap-1.5">
+                <input type="text" id="input-new-event-team" placeholder="새 단체 종목 (예: 1600mR)" class="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                <button type="button" onclick="addEventToCurrentFormPlayer('team')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs whitespace-nowrap shrink-0 active:scale-95 transition">+ 추가</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1034,6 +1049,49 @@
     // Pure Master Data Snapshot (must be captured BEFORE loadDataFromStorage!)
     const MASTER_PLAYERS_DATA = JSON.parse(JSON.stringify(playersData));
     const MASTER_APP_DATA = JSON.parse(JSON.stringify(appData));
+
+    // 최고관리자(Super Admin)가 수정한 선수 프로필은 로컬에만 보관한다.
+    // MASTER_PLAYERS_DATA 리터럴은 건드리지 않고, 재접속 시 로컬 저장본을 마스터 위에 입혀 복원한다.
+    function readSavedSuperAdminPlayers() {
+      try {
+        const raw = localStorage.getItem(PLAYERS_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function mergeMasterPlayersWithSaved(masterList, savedList) {
+      const master = Array.isArray(masterList) ? masterList : [];
+      const saved = Array.isArray(savedList) ? savedList : [];
+      const savedById = {};
+      saved.forEach(p => {
+        if (p && p.id) savedById[p.id] = p;
+      });
+
+      const merged = master.map(m => {
+        const s = savedById[m.id];
+        if (!s) return JSON.parse(JSON.stringify(m));
+        const next = Object.assign({}, m, s);
+        if (!next.code) next.code = m.code;
+        if (!next.ownerAdminId) next.ownerAdminId = m.ownerAdminId;
+        if (!Array.isArray(next.events)) next.events = JSON.parse(JSON.stringify(Array.isArray(m.events) ? m.events : []));
+        if (next.name == null || next.name === '') next.name = m.name;
+        if (next.sport == null || next.sport === '') next.sport = m.sport;
+        return next;
+      });
+
+      // 마스터에 없는, 최고관리자가 직접 추가한 선수도 유지한다.
+      saved.forEach(s => {
+        if (!s || !s.id) return;
+        if (master.some(m => m.id === s.id)) return;
+        merged.push(Object.assign({}, s));
+      });
+
+      return merged;
+    }
 
     function getStableAdminId(email, name) {
       const base = (email && email.includes('@')) ? email.trim().toLowerCase() : (name || 'user').trim().toLowerCase();
@@ -2877,149 +2935,275 @@
       ]
     };
 
+    // 개인/단체 아코디언 상태 (여러 카드를 동시에 펼칠 수 있다)
+    let formAccordionOpen = { personal: true, team: false };
+
+    function escapeEventText(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getFormEventName(ev) {
+      if (ev && typeof ev === 'object') return String(ev.name == null ? '' : ev.name).trim();
+      return String(ev == null ? '' : ev).trim();
+    }
+
+    function isFormEventTeam(ev) {
+      return !!(ev && typeof ev === 'object' && ev.isTeam);
+    }
+
+    function getFormEventType(ev) {
+      return isFormEventTeam(ev) ? 'team' : 'personal';
+    }
+
+    function getRegisteredEventNames(events) {
+      const names = [];
+      (Array.isArray(events) ? events : []).forEach(ev => {
+        const name = getFormEventName(ev);
+        if (name && names.indexOf(name) < 0) names.push(name);
+      });
+      return names;
+    }
+
+    // 주종목 후보는 이 선수에게 등록된 세부 종목뿐이다.
+    // 기존 값이 목록에 없으면(예: '단거리 400m') 뜻이 유지되는 종목을 찾고, 없으면 첫 종목으로 정리한다.
+    function resolveMainEventForEvents(events, currentMain) {
+      const names = getRegisteredEventNames(events);
+      const cur = String(currentMain == null ? '' : currentMain).trim();
+      if (names.length === 0) return { value: '', changed: false, previous: cur, reason: 'empty' };
+      if (cur && names.indexOf(cur) >= 0) return { value: cur, changed: false, previous: cur, reason: 'exact' };
+      if (cur) {
+        const insideOldLabel = names.filter(n => cur.indexOf(n) >= 0);
+        if (insideOldLabel.length === 1) return { value: insideOldLabel[0], changed: true, previous: cur, reason: 'old-label' };
+        const insideNewEvent = names.filter(n => n.indexOf(cur) >= 0);
+        if (insideNewEvent.length === 1) return { value: insideNewEvent[0], changed: true, previous: cur, reason: 'old-label' };
+        // '트랙 독주'처럼 단어 하나만 등록 종목과 겹치는 기존 라벨은 그 단어로 이어준다.
+        const tokens = cur.split(/[\s/\-_,()]+/).filter(t => t.length >= 2);
+        for (let i = 0; i < tokens.length; i++) {
+          const tokenMatches = names.filter(n => n.indexOf(tokens[i]) >= 0);
+          if (tokenMatches.length === 1) {
+            return { value: tokenMatches[0], changed: true, previous: cur, reason: 'old-label-token' };
+          }
+        }
+      }
+      return {
+        value: names[0],
+        changed: !!cur && cur !== names[0],
+        previous: cur,
+        reason: cur ? 'fallback' : 'initial'
+      };
+    }
+
+    function getSportCatalog(sport) {
+      const key = `${sport}_${(SPORT_MAIN_EVENTS[sport] || ['단거리'])[0]}`;
+      return EVENT_CATALOG[key] || EVENT_CATALOG['육상_단거리'];
+    }
+
+    function getDefaultEventsForSport(sport) {
+      return getSportCatalog(sport).map(c => (c.isTeam ? { name: c.name, isTeam: true } : c.name));
+    }
+
+    function toggleEventAccordion(type) {
+      const key = type === 'team' ? 'team' : 'personal';
+      formAccordionOpen[key] = !formAccordionOpen[key];
+      applyEventAccordionState();
+    }
+
+    function applyEventAccordionState() {
+      ['personal', 'team'].forEach(type => {
+        const body = document.getElementById('acc-body-' + type);
+        const chevron = document.getElementById('acc-chevron-' + type);
+        const isOpen = !!formAccordionOpen[type];
+        if (body) body.classList.toggle('hidden', !isOpen);
+        if (chevron) chevron.textContent = isOpen ? '▾' : '▸';
+      });
+    }
+
+    function resetFormAccordionForEvents() {
+      const hasTeam = formCurrentEvents.some(ev => getFormEventType(ev) === 'team');
+      const hasPersonal = formCurrentEvents.some(ev => getFormEventType(ev) === 'personal');
+      formAccordionOpen = { personal: hasPersonal || !hasTeam, team: hasTeam };
+    }
+
+    function updateFormEventCounts() {
+      ['personal', 'team'].forEach(type => {
+        const badge = document.getElementById('acc-count-' + type);
+        if (!badge) return;
+        const count = formCurrentEvents.filter(ev => getFormEventType(ev) === type).length;
+        badge.textContent = String(count);
+      });
+    }
+
+    function showMainEventNotice(resolved) {
+      const el = document.getElementById('main-event-notice');
+      if (!el) return;
+      const names = getRegisteredEventNames(formCurrentEvents);
+      if (names.length === 0) {
+        el.textContent = '세부 종목을 먼저 추가하면 주종목을 고를 수 있습니다.';
+        el.classList.remove('hidden');
+        return;
+      }
+      if (resolved && resolved.changed && resolved.previous) {
+        el.textContent = `‘${resolved.previous}’은(는) 등록된 세부 종목이 아니어서 ‘${resolved.value}’(으)로 선택했습니다. 저장하면 주종목이 바뀝니다.`;
+        el.classList.remove('hidden');
+        return;
+      }
+      el.textContent = '';
+      el.classList.add('hidden');
+    }
+
     function onSportSelectChange(sport) {
-      setFormPlayerSport(sport, true);
+      setFormPlayerSport(sport, true, '');
     }
 
     function onMainEventSelectChange(mainEvent) {
-      renderFormEventsChips();
+      showMainEventNotice({ changed: false, previous: mainEvent, value: mainEvent });
     }
 
-    function renderMainEventSelectOptions(sport, selectedEvent = null) {
+    // 주종목 드롭다운: 등록된 세부 종목만 표시한다.
+    function renderMainEventSelectOptions(desiredMainEvent) {
       const select = document.getElementById('form-player-event');
-      if (!select) return;
+      if (!select) return null;
 
-      const options = SPORT_MAIN_EVENTS[sport] || ['단거리'];
-      const current = (selectedEvent && options.includes(selectedEvent)) ? selectedEvent : options[0];
-      select.innerHTML = options.map(opt => `<option value="${opt}" ${opt === current ? 'selected' : ''}>${opt}</option>`).join('');
+      const current = (desiredMainEvent === undefined || desiredMainEvent === null) ? select.value : String(desiredMainEvent);
+      const names = getRegisteredEventNames(formCurrentEvents);
+      const resolved = resolveMainEventForEvents(formCurrentEvents, current);
+
+      if (names.length === 0) {
+        select.innerHTML = '<option value="">세부 종목 먼저 추가</option>';
+        select.disabled = true;
+      } else {
+        select.disabled = false;
+        select.innerHTML = names
+          .map(n => `<option value="${escapeEventText(n)}"${n === resolved.value ? ' selected' : ''}>${escapeEventText(n)}</option>`)
+          .join('');
+        select.value = resolved.value;
+      }
+      showMainEventNotice(resolved);
+      return resolved;
     }
 
-    function setFormPlayerSport(sport, autoFillEvents = false) {
+    function setFormPlayerSport(sport, autoFillEvents = false, desiredMainEvent = undefined) {
       const sportSelect = document.getElementById('form-player-sport');
       if (sportSelect) sportSelect.value = sport;
 
-      renderMainEventSelectOptions(sport);
-
       if (autoFillEvents) {
-        if (sport === '육상') {
-          formCurrentEvents = [
-            '100m', '200m', '400m', 
-            { name: '4x100mR', isTeam: true }, 
-            { name: '4x400mR', isTeam: true }, 
-            { name: '4x400mR(Mixed)', isTeam: true }
-          ];
-        } else {
-          formCurrentEvents = [
-            '1Lap', '500m독주', '1km추발', 
-            { name: '2km단체추발', isTeam: true },
-            '도로독주', '개인도로'
-          ];
-        }
+        formCurrentEvents = getDefaultEventsForSport(sport);
       }
-      renderFormEventsChips();
+      renderFormEventsChips(desiredMainEvent);
     }
 
-    function renderFormEventsChips() {
-      const container = document.getElementById('form-player-events-chips');
-      if (!container) return;
-      container.innerHTML = '';
+    function renderFormEventsChips(desiredMainEvent) {
+      const sportSelect = document.getElementById('form-player-sport');
+      const sport = (sportSelect && sportSelect.value) || '육상';
+      const catalog = getSportCatalog(sport);
 
-      const sport = document.getElementById('form-player-sport').value || '육상';
-      const mainEvent = document.getElementById('form-player-event').value || (sport === '육상' ? '단거리' : '트랙');
-      const catalogKey = `${sport}_${mainEvent}`;
-      const catalog = EVENT_CATALOG[catalogKey] || EVENT_CATALOG['육상_단거리'];
+      ['personal', 'team'].forEach(type => {
+        const container = document.getElementById('chips-' + type);
+        if (!container) return;
+        container.innerHTML = '';
+        const typeIsTeam = type === 'team';
 
-      // 1. Catalog Toggle Chips
-      catalog.forEach(catItem => {
-        const isSelected = formCurrentEvents.some(ev => {
-          const evName = typeof ev === 'object' ? ev.name : ev;
-          return evName === catItem.name;
+        const buildChip = (name, nameIsTeam, isSelected) => {
+          const chip = document.createElement('div');
+          chip.className = 'inline-flex items-center gap-1 max-w-full px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ' +
+            (isSelected
+              ? (typeIsTeam
+                ? 'bg-indigo-600 border-indigo-400 text-white shadow-sm'
+                : 'bg-blue-600 border-blue-400 text-white shadow-sm')
+              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200');
+
+          const mark = document.createElement('span');
+          mark.className = 'shrink-0';
+          mark.textContent = isSelected ? '✓' : '+';
+          chip.appendChild(mark);
+
+          const label = document.createElement('span');
+          label.className = 'min-w-0 break-all text-left';
+          label.textContent = name;
+          chip.appendChild(label);
+
+          if (isSelected) {
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'shrink-0 w-4 h-4 ml-0.5 rounded-full flex items-center justify-center text-[11px] leading-none transition active:scale-90 ' +
+              (typeIsTeam ? 'bg-indigo-800 hover:bg-red-500 text-indigo-100 hover:text-white' : 'bg-blue-800 hover:bg-red-500 text-blue-100 hover:text-white');
+            removeBtn.textContent = '×';
+            removeBtn.onclick = () => toggleCatalogEvent(name, nameIsTeam);
+            chip.appendChild(removeBtn);
+          } else {
+            chip.classList.add('cursor-pointer', 'active:scale-95');
+            chip.onclick = () => toggleCatalogEvent(name, nameIsTeam);
+          }
+          return chip;
+        };
+
+        // 1) 대분류 기본 카탈로그 (등록 여부를 칩으로 On/Off)
+        catalog.filter(c => !!c.isTeam === typeIsTeam).forEach(catItem => {
+          const isSelected = formCurrentEvents.some(ev => getFormEventName(ev) === catItem.name);
+          container.appendChild(buildChip(catItem.name, catItem.isTeam, isSelected));
         });
 
-        const badgeText = catItem.isTeam ? '단체' : '개인';
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.onclick = () => toggleCatalogEvent(catItem.name, catItem.isTeam);
+        // 2) 직접 추가한 종목 (카탈로그에 없는 것)
+        formCurrentEvents
+          .filter(ev => getFormEventType(ev) === type && !catalog.some(c => c.name === getFormEventName(ev)))
+          .forEach(ev => {
+            container.appendChild(buildChip(getFormEventName(ev), typeIsTeam, true));
+          });
 
-        if (isSelected) {
-          chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs border border-blue-400 shadow-sm transition active:scale-95';
-          chip.innerHTML = `
-            <span>✓</span>
-            <span>${catItem.name}</span>
-            <span class="text-[9px] px-1 py-0.2 rounded bg-blue-800 text-blue-200">${badgeText}</span>
-          `;
-        } else {
-          chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 text-slate-400 hover:text-slate-200 text-xs border border-slate-800 transition active:scale-95';
-          chip.innerHTML = `
-            <span class="text-slate-600">+</span>
-            <span>${catItem.name}</span>
-            <span class="text-[9px] px-1 py-0.2 rounded bg-slate-950 text-slate-500">${badgeText}</span>
-          `;
+        if (container.children.length === 0) {
+          const empty = document.createElement('span');
+          empty.className = 'text-[10px] text-slate-500';
+          empty.textContent = '등록된 종목이 없습니다.';
+          container.appendChild(empty);
         }
-        container.appendChild(chip);
       });
 
-      // 2. Custom Extra Events not in catalog
-      const customEvents = formCurrentEvents.filter(ev => {
-        const evName = typeof ev === 'object' ? ev.name : ev;
-        return !catalog.some(c => c.name === evName);
-      });
-
-      customEvents.forEach(ev => {
-        const evName = typeof ev === 'object' ? ev.name : ev;
-        const isTeam = typeof ev === 'object' ? ev.isTeam : false;
-        const badgeText = isTeam ? '단체' : '개인';
-
-        const chip = document.createElement('div');
-        chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-950/80 border border-indigo-500/50 text-indigo-200 text-xs font-semibold';
-        chip.innerHTML = `
-          <span>✓</span>
-          <span>${evName}</span>
-          <span class="text-[9px] px-1 py-0.2 rounded bg-indigo-900 text-indigo-300">${badgeText}</span>
-          <button type="button" onclick="removeCustomEvent('${evName}')" class="w-4 h-4 rounded-full bg-indigo-800 hover:bg-red-500 hover:text-white flex items-center justify-center text-[11px] text-indigo-200 leading-none ml-0.5 transition active:scale-90">×</button>
-        `;
-        container.appendChild(chip);
-      });
+      updateFormEventCounts();
+      applyEventAccordionState();
+      return renderMainEventSelectOptions(desiredMainEvent);
     }
 
     function toggleCatalogEvent(name, isTeam) {
-      const idx = formCurrentEvents.findIndex(ev => {
-        const evName = typeof ev === 'object' ? ev.name : ev;
-        return evName === name;
-      });
+      const idx = formCurrentEvents.findIndex(ev => getFormEventName(ev) === name);
 
       if (idx >= 0) {
         formCurrentEvents.splice(idx, 1);
       } else {
-        formCurrentEvents.push({ name: name, isTeam: isTeam });
+        formCurrentEvents.push({ name: name, isTeam: !!isTeam });
       }
       renderFormEventsChips();
     }
 
     function removeCustomEvent(name) {
-      const idx = formCurrentEvents.findIndex(ev => {
-        const evName = typeof ev === 'object' ? ev.name : ev;
-        return evName === name;
-      });
+      const idx = formCurrentEvents.findIndex(ev => getFormEventName(ev) === name);
       if (idx >= 0) {
         formCurrentEvents.splice(idx, 1);
         renderFormEventsChips();
       }
     }
 
-    function addEventToCurrentFormPlayer() {
-      const input = document.getElementById('input-new-event');
+    // 카드(개인/단체) 안의 입력칸에서 새 세부 종목을 추가한다.
+    function addEventToCurrentFormPlayer(type) {
+      const eventType = type === 'team' ? 'team' : 'personal';
+      const input = document.getElementById('input-new-event-' + eventType);
       const val = (input && input.value ? input.value : '').trim();
       if (!val) return;
 
-      const isTeam = document.getElementById('new-event-team').checked;
-      const exists = formCurrentEvents.some(e => (typeof e === 'object' ? e.name : e) === val);
+      const exists = formCurrentEvents.some(ev => getFormEventName(ev) === val);
       if (!exists) {
-        formCurrentEvents.push({ name: val, isTeam: isTeam });
-        renderFormEventsChips();
+        formCurrentEvents.push({ name: val, isTeam: eventType === 'team' });
+        formAccordionOpen[eventType] = true;
       }
-      input.value = '';
-      input.focus();
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+      renderFormEventsChips();
     }
 
 
@@ -3046,19 +3230,22 @@
         nameInput.value = p.name || '';
         setFormPlayerGender(p.gender || '남');
         birthInput.value = p.birth || '';
-        setFormPlayerSport(p.sport || '육상', false);
-        renderMainEventSelectOptions(p.sport || '육상', p.mainEvent);
         setPlayerPhotoPreview(p.photo || '');
-        formCurrentEvents = Array.isArray(p.events) ? [...p.events] : (playerId === 'yusin' ? ['100m', '200m', '400m', { name: '4x100mR', isTeam: true }, { name: '4x400mR', isTeam: true }, { name: '4x400mR(Mixed)', isTeam: true }] : ['1Lap', '500m독주', '1km추발', { name: '2km단체추발', isTeam: true }]);
+        formCurrentEvents = Array.isArray(p.events) && p.events.length > 0
+          ? [...p.events]
+          : getDefaultEventsForSport(p.sport || '육상');
+        resetFormAccordionForEvents();
+        setFormPlayerSport(p.sport || '육상', false, p.mainEvent || '');
       } else {
         title.textContent = '새 선수 등록';
         idInput.value = '';
         nameInput.value = '';
         setFormPlayerGender('남');
         birthInput.value = '';
-        setFormPlayerSport('육상', true);
-        renderMainEventSelectOptions('육상', '단거리');
         setPlayerPhotoPreview('');
+        formCurrentEvents = getDefaultEventsForSport('육상');
+        resetFormAccordionForEvents();
+        setFormPlayerSport('육상', true, '');
       }
 
       renderFormEventsChips();
@@ -3077,9 +3264,20 @@
       const gender = document.getElementById('form-player-gender').value;
       const birth = document.getElementById('form-player-birth').value;
       const sport = document.getElementById('form-player-sport').value.trim();
-      const mainEvent = document.getElementById('form-player-event').value.trim();
+      const mainEventSelect = document.getElementById('form-player-event');
+      // 주종목은 등록된 세부 종목 중에서만 저장한다(목록에서 해진 경우 유효한 첫 종목으로 정리).
+      const mainEvent = resolveMainEventForEvents(formCurrentEvents, mainEventSelect ? mainEventSelect.value : '').value;
 
       if (!name) return;
+
+      // 세부 종목은 이름 중복 없이 { name, isTeam } 형태로 정리해 저장한다.
+      const cleanEvents = [];
+      formCurrentEvents.forEach(ev => {
+        const evName = getFormEventName(ev);
+        if (!evName) return;
+        if (cleanEvents.some(x => getFormEventName(x) === evName)) return;
+        cleanEvents.push({ name: evName, isTeam: isFormEventTeam(ev) });
+      });
 
       const photoBase64 = document.getElementById('form-player-photo-base64').value || '';
       if (id) {
@@ -3091,7 +3289,7 @@
           p.sport = sport;
           p.mainEvent = mainEvent;
           p.photo = photoBase64;
-          p.events = [...formCurrentEvents];
+          p.events = cleanEvents;
           p.updatedAt = Date.now();
         }
       } else {
@@ -3103,7 +3301,7 @@
           birth: birth,
           sport: sport,
           mainEvent: mainEvent,
-          events: [...formCurrentEvents],
+          events: cleanEvents,
           photo: photoBase64,
           updatedAt: Date.now()
         });
@@ -3295,8 +3493,8 @@
     function syncDataForUserRole(user) {
       if (!user) return;
       if (user.role === 'super_admin') {
-        // Jihye owns all Yusin & Byeolha data
-        playersData = JSON.parse(JSON.stringify(MASTER_PLAYERS_DATA));
+        // Jihye owns all Yusin & Byeolha data (기록은 마스터 스냅샷 유지, 선수 프로필은 로컬 수정본 반영)
+        playersData = mergeMasterPlayersWithSaved(MASTER_PLAYERS_DATA, readSavedSuperAdminPlayers());
         appData = JSON.parse(JSON.stringify(MASTER_APP_DATA));
         if (!currentPlayer || (currentPlayer !== 'yusin' && currentPlayer !== 'byeolha')) {
           currentPlayer = 'yusin';
