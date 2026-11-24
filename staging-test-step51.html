@@ -35,6 +35,12 @@
       var w = frame.contentWindow;
       if (!w || w.__collectorAttached) return;
       w.__collectorAttached = true;
+      try {
+        var d = frame.contentDocument;
+        var st = d.createElement('style');
+        st.textContent = 'html{overflow-y:scroll !important}';
+        (d.head || d.documentElement).appendChild(st);
+      } catch (e2) {}
       w.addEventListener('error', function (e) {
         errors.push('error: ' + (e.message || e.error || 'unknown') + ' @' + (e.filename || '') + ':' + (e.lineno || ''));
       });
