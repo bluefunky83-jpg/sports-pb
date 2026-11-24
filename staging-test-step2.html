@@ -8,14 +8,14 @@
     body { font-family: monospace; background: #0f172a; color: #e2e8f0; padding: 12px; margin: 0; }
     h2 { font-size: 14px; }
     pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: #111827; padding: 10px; border-radius: 8px; }
-    #frame-wrap { width: 405px; height: 859px; border: 0; overflow: hidden; }
-    iframe { width: 405px; height: 859px; border: 0; display: block; }
+    #frame-wrap { width: 405px; height: 844px; border: 0; overflow: hidden; }
+    iframe { width: 405px; height: 844px; border: 0; display: block; }
   </style>
 </head>
 <body>
   <h2>선수 성장노트 staging 2단계 · 390×844 가로 넘침 / JS 오류 검증</h2>
   <pre id="out">실행 중...</pre>
-  <div id="frame-wrap"><iframe id="app-frame" width="405" height="859" title="staging app"></iframe></div>
+  <div id="frame-wrap"><iframe id="app-frame" width="405" height="844" title="staging app"></iframe></div>
   <script>
     const OUT = document.getElementById('out');
     const lines = [];
@@ -116,7 +116,8 @@ window.addEventListener('unhandledrejection', function (e) {
               const sel2 = doc.getElementById('form-player-event');
               say('[7] 새 선수 등록 주종목 옵션: ' + Array.from(sel2.options).map(o => o.value).join(', ') + ' / 선택값=' + sel2.value);
               overflowReport('[8] 새 선수 등록 모달');
-              try { w.closeAddEditPlayerModal(); } catch (e) {}
+              try { w.closeAddEditPlayerModal(); w.openAddEditPlayerModal('yusin'); } catch (e) {}
+              overflowReport('[8-2] 선수 프로필 수정 모달(최종 스크린샷용)');
 
               const errs = errors();
               say('[9] JavaScript 오류 ' + errs.length + '건 => ' + (errs.length === 0 ? 'PASS' : 'FAIL'));
