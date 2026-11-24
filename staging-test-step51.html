@@ -16,7 +16,7 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="frame-wrap"><iframe id="app-frame" src="staging/?v=5-1-mobile-209b352" width="405" height="844"></iframe></div>
+  <div id="frame-wrap"><iframe id="app-frame" src="about:blank" width="405" height="844"></iframe></div>
   <div id="panel">
     <h1>390×844 검수 (iframe 폭 405 = 390 + 스크롤바 15)</h1>
     <button type="button" onclick="refresh()">측정</button>
@@ -27,6 +27,8 @@
 <script>
   var frame = document.getElementById('app-frame');
   var errors = [];
+  var version = new URLSearchParams(location.search).get('v') || '1';
+  frame.src = 'staging/?v=' + encodeURIComponent(version);
 
   function attachErrorCollectors() {
     try {
