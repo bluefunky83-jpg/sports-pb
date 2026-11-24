@@ -1784,6 +1784,8 @@
     function switchPlayer(playerId) {
       currentPlayer = playerId;
       currentEvent = 'ALL_PB';
+      // 선수를 바꾸면 연간 종합노트도 새 선수의 현재 연도부터 보여 준다.
+      annualYear = null;
       // 선수 변경 시 이전 선수 필터 초기화 (유신 ➔ 별하 영향 방지)
       filterKind = 'ALL';
       filterYear = 'ALL';
@@ -2026,7 +2028,8 @@
 
         evRecs.sort((a, b) => parseFloat(a.seconds) - parseFloat(b.seconds));
         const best = evRecs[0];
-        const formatted = formatTimeDisplay(best.seconds, ev);
+        // 앱 화면과 저장 이미지의 기록 표기를 같게 맞춘다(육상 2자리·사이클 3자리, 60초 이상 분:초).
+        const formatted = formatAnnualTime(parseFloat(best.seconds), getEventDecimalPlaces(records, ev));
 
         const renewalInfo = getPbRenewalInfo(currentPlayer, ev, records);
         const badgeHtml = renewalInfo
