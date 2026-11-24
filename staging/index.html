@@ -585,27 +585,6 @@
 
       <form onsubmit="handleSavePlayer(event)" class="space-y-3.5 text-xs">
         <input type="hidden" id="form-player-id">
-        <!-- Photo Upload & Preview -->
-        <div class="flex items-center gap-3 p-3 bg-slate-950 rounded-2xl border border-slate-800">
-          <div id="player-photo-preview-box" class="w-14 h-18 rounded-xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center text-slate-500 text-xs shrink-0 overflow-hidden relative shadow-inner">
-            <span id="player-photo-empty-icon" class="text-xl">📷</span>
-            <img id="player-photo-preview-img" class="w-full h-full object-cover hidden" alt="선수 사진">
-          </div>
-          <div class="flex-1 space-y-1.5">
-            <span class="block text-xs font-semibold text-slate-300">선수 프로필 사진</span>
-            <div class="flex items-center gap-1.5">
-              <label class="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold cursor-pointer transition active:scale-95 shadow-sm">
-                사진 선택
-                <input type="file" id="form-player-photo-file" accept="image/*" onchange="handlePhotoUpload(event)" class="hidden">
-              </label>
-              <button type="button" id="btn-remove-photo" onclick="removePlayerPhoto()" class="hidden px-2 py-1 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700 text-[11px] font-medium transition">
-                삭제
-              </button>
-            </div>
-            <input type="hidden" id="form-player-photo-base64">
-          </div>
-        </div>
-
         <div>
           <label class="block font-semibold text-slate-400 mb-1">선수 이름 *</label>
           <input type="text" id="form-player-name" required placeholder="선수 이름 입력" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
@@ -1093,6 +1072,73 @@
       return merged;
     }
 
+    // 최고관리자가 저장해 둔 기록 데이터(사용자 데이터)를 읽는다.
+    // - 저장본이 없으면 null → 최초 실행으로 보고 내장 원본 84건을 사용한다.
+    // - 저장본이 있으면 선수별 빈 배열도 '직접 지운 상태'로 그대로 인정한다.
+    function readSavedSuperAdminAppData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+        const cleaned = {};
+        let recordKeyCount = 0;
+        Object.keys(parsed).forEach(pid => {
+          if (Array.isArray(parsed[pid])) {
+            cleaned[pid] = parsed[pid];
+            recordKeyCount++;
+          }
+        });
+        if (recordKeyCount === 0) return null;
+        return cleaned;
+      } catch (e) {
+        console.warn('readSavedSuperAdminAppData failed:', e);
+        return null;
+      }
+    }
+
+    // 구버전 라운드 표기 교정 — 저장본에도 같은 규칙을 적용한다(내장 원본 리터럴은 건드리지 않는다).
+    function applyLegacyRecordMigrations(data) {
+      if (!data || typeof data !== 'object') return data;
+      if (Array.isArray(data.yusin)) {
+        data.yusin.forEach(r => {
+          if (!r || typeof r !== 'object') return;
+          if (r.id === 'u_52_2026-07-04' || (r.meet && r.meet.includes('백제왕도') && r.date === '2026-07-04' && r.seconds === 53.32)) {
+            r.round = '준결승';
+          }
+          if (r.id === 'u_44_2026-05-02' || (r.meet && r.meet.includes('종별') && r.date === '2026-05-02' && (r.rank === '예선 9' || Math.abs(r.seconds - 53.82) < 0.01))) {
+            r.round = '예선';
+          }
+          if (r.id === 'u_45_2026-05-02' || (r.meet && r.meet.includes('종별') && r.date === '2026-05-02' && (r.rank === '준결 13' || Math.abs(r.seconds - 71.42) < 0.01))) {
+            r.round = '준결승';
+          }
+        });
+      }
+      if (Array.isArray(data.byeolha)) {
+        data.byeolha.forEach(r => {
+          if (r && r.date === '2026-06-04' && r.note === '1:34.847') r.note = '';
+        });
+      }
+      return data;
+    }
+
+    // 최고관리자 화면에 쓸 기록 데이터를 결정한다.
+    // 저장본이 있으면 그 데이터를 쓰고, 저장본이 없을 때만 내장 원본 84건을 처음 불러온다.
+    function resolveSuperAdminAppData() {
+      const saved = readSavedSuperAdminAppData();
+      if (!saved) {
+        return applyLegacyRecordMigrations(JSON.parse(JSON.stringify(MASTER_APP_DATA)));
+      }
+      // 마스터 선수의 기록 키가 통째로 빠진 경우만 기본 기록으로 채운다.
+      // (빈 배열은 사용자가 직접 지운 상태이므로 채우지 않는다)
+      Object.keys(MASTER_APP_DATA).forEach(pid => {
+        if (!Object.prototype.hasOwnProperty.call(saved, pid)) {
+          saved[pid] = JSON.parse(JSON.stringify(MASTER_APP_DATA[pid] || []));
+        }
+      });
+      return applyLegacyRecordMigrations(saved);
+    }
+
     function getStableAdminId(email, name) {
       const base = (email && email.includes('@')) ? email.trim().toLowerCase() : (name || 'user').trim().toLowerCase();
       return 'admin_' + base.replace(/[^a-z0-9가-힣._-]/g, '_');
@@ -1341,6 +1387,8 @@
     }
 
     // 2. Storage Functions
+    const SAVE_FAILURE_MESSAGE = '저장에 실패했습니다. 브라우저 저장 공간이 가득 찼을 수 있습니다.\n먼저 [JSON 백업 다운로드]로 데이터를 내려받아 보관한 뒤, 공간을 확보하고 다시 시도해 주세요.';
+
     function saveDataToStorage() {
       try {
         const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
@@ -1351,15 +1399,41 @@
           localStorage.setItem('STAGING_CUSTOM_PLAYERS_v2_' + stableKey, JSON.stringify(playersData));
           syncAdminToCloud(authUser);
         } else if (authUser && authUser.role === 'super_admin') {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-          localStorage.setItem(PLAYERS_KEY, JSON.stringify(playersData));
+          // 기록과 선수 정보는 함께 저장되어야 한다. 한쪽만 기록되는 상태를 막기 위해 실패 시 직전 값으로 되돌린다.
+          const prevRecords = localStorage.getItem(STORAGE_KEY);
+          const prevPlayers = localStorage.getItem(PLAYERS_KEY);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            localStorage.setItem(PLAYERS_KEY, JSON.stringify(playersData));
+          } catch (writeErr) {
+            try { if (prevRecords === null) localStorage.removeItem(STORAGE_KEY); else localStorage.setItem(STORAGE_KEY, prevRecords); } catch (e1) {}
+            try { if (prevPlayers === null) localStorage.removeItem(PLAYERS_KEY); else localStorage.setItem(PLAYERS_KEY, prevPlayers); } catch (e2) {}
+            throw writeErr;
+          }
+        } else {
+          // 로그인 정보가 없으면 기록은 어디에도 저장되지 않는다. 저장 성공으로 보고하지 않는다.
+          console.error('saveDataToStorage: no authenticated user, data was not saved');
+          return false;
         }
-        localStorage.setItem(TEAMMATES_KEY, JSON.stringify(savedTeammates));
+        try {
+          localStorage.setItem(TEAMMATES_KEY, JSON.stringify(savedTeammates));
+        } catch (tmErr) {
+          console.warn('teammates save failed:', tmErr);
+        }
         return true;
       } catch (e) {
         console.error('saveDataToStorage error:', e);
         return false;
       }
+    }
+
+    // 변경을 저장하고, 저장에 실패하면 화면 상태를 직전 값으로 되돌린다(성공한 것처럼 보이지 않게).
+    function saveChangeOrRevert(prevAppData, prevPlayersData) {
+      if (saveDataToStorage()) return true;
+      appData = prevAppData;
+      playersData = prevPlayersData;
+      alert('⚠️ ' + SAVE_FAILURE_MESSAGE);
+      return false;
     }
 
     function loadDataFromStorage() {
@@ -1369,37 +1443,8 @@
         if (!authUser || authUser.role !== 'super_admin') {
           return;
         }
-        const savedData = localStorage.getItem(STORAGE_KEY);
-        if (savedData) {
-          const parsed = JSON.parse(savedData);
-          if (parsed && parsed.yusin) appData = parsed;
-        }
-        // Ensure byeolha records exist
-        if (!appData.byeolha || appData.byeolha.length === 0) {
-          appData.byeolha = JSON.parse(JSON.stringify({"yusin": [{"id": "u_2_2024-02-20", "date": "2024-02-20", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 14.59, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_3_2024-03-08", "date": "2024-03-08", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 13.02, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_4_2024-03-21", "date": "2024-03-21", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.97, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_5_2024-08-09", "date": "2024-08-09", "meet": "제53회 추계전국중.고육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 27.48, "rank": "예선 95", "wind": "-0.6", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_6_2024-08-10", "date": "2024-08-10", "meet": "제53회 추계전국중.고육상경기대회(1학년부)", "event": "100m", "kind": "공식", "round": "예선", "seconds": 13.34, "rank": "예선 26", "wind": "0.8", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_7_2025-01-21", "date": "2025-01-21", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.14, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_8_2025-02-06", "date": "2025-02-06", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 13.31, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_9_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.24, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_10_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "200m", "kind": "비공식", "round": "1차", "seconds": 26.0, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_11_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "300m", "kind": "비공식", "round": "1차", "seconds": 43.11, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_12_2025-02-17", "date": "2025-02-17", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "1차", "seconds": 63.21, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_13_2025-04-12", "date": "2025-04-12", "meet": "제54회 춘계 전국중고육상경기대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.87, "rank": "예선 72", "wind": "-0.2", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_14_2025-04-13", "date": "2025-04-13", "meet": "제54회 춘계 전국중고육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 26.93, "rank": "예선 79", "wind": "2.1", "relay": "", "runners": [], "reaction": "", "note": "참고기록"}, {"id": "u_15_2025-05-13", "date": "2025-05-13", "meet": "전남체중고 전문실기", "event": "200m", "kind": "비공식", "round": "1차", "seconds": 25.48, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_16_2025-05-13", "date": "2025-05-13", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.56, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_17_2025-07-08", "date": "2025-07-08", "meet": "백제왕도 익산 2025 전국육상경기대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.53, "rank": "예선 37", "wind": "-0.1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_18_2025-07-08", "date": "2025-07-08", "meet": "백제왕도 익산 2025 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "예선", "seconds": 282.24, "rank": "예선 12", "wind": "", "relay": "김유신/안하람/윤찬영/박윤서", "runners": ["김유신", "안하람", "윤찬영", "박윤서"], "reaction": "", "note": ""}, {"id": "u_19_2025-07-10", "date": "2025-07-10", "meet": "백제왕도 익산 2025 전국육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 212.32999999999998, "rank": "결승 2", "wind": "", "relay": "김유신/김이랑/박도원/윤찬영", "runners": ["김유신", "김이랑", "박도원", "윤찬영"], "reaction": "", "note": ""}, {"id": "u_20_2025-07-18", "date": "2025-07-18", "meet": "회장배 제23회 전국중.고육상경기선수권대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.55, "rank": "예선 39", "wind": "0.1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_21_2025-07-19", "date": "2025-07-19", "meet": "회장배 제23회 전국중.고육상경기선수권대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 25.6, "rank": "예선 45", "wind": "-0.2", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_22_2025-08-07", "date": "2025-08-07", "meet": "제54회 추계전국중.고육상경기대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.69, "rank": "예선 50", "wind": "-1.1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_23_2025-08-08", "date": "2025-08-08", "meet": "제54회 추계전국중.고육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 25.13, "rank": "예선 58", "wind": "1", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_24_2025-09-13", "date": "2025-09-13", "meet": "제35회 전남교육감기 학년별 육상대회", "event": "100m", "kind": "공식", "round": "결승", "seconds": 12.41, "rank": "결승 3", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_25_2025-12-09", "date": "2025-12-09", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 12.06, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_26_2025-12-18", "date": "2025-12-18", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 11.08, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_27_2026-03-24", "date": "2026-03-24", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "2차", "seconds": 53.77, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_28_2026-03-24", "date": "2026-03-24", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 12.05, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_29_2026-03-26", "date": "2026-03-26", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 11.85, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_30_2026-03-31", "date": "2026-03-31", "meet": "전남 소체 선발전", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.8, "rank": "결승 1", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_31_2026-04-08", "date": "2026-04-08", "meet": "익산 보석배 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 55.45, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_32_2026-04-08", "date": "2026-04-08", "meet": "익산 보석배 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 54.56, "rank": "결승 7", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_33_2026-04-09", "date": "2026-04-09", "meet": "익산 보석배 2026 전국육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 54.97, "rank": "예선 24", "wind": "0.2", "relay": "", "runners": [], "reaction": "", "note": "신발벗겨짐"}, {"id": "u_34_2026-04-10", "date": "2026-04-10", "meet": "익산 보석배 2026 전국육상경기대회", "event": "4x100mR", "kind": "공식", "round": "결승", "seconds": 46.72, "rank": "결승 3", "wind": "", "relay": "박창서/김차윤/김유신/전희재", "runners": ["박창서", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_35_2026-04-10", "date": "2026-04-10", "meet": "익산 보석배 2026 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 233.1, "rank": "결승 1", "wind": "", "relay": "김차윤/양예림/김유신/김예주", "runners": ["김차윤", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_36_2026-04-11", "date": "2026-04-11", "meet": "익산 보석배 2026 전국육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 218.99, "rank": "결승 1", "wind": "", "relay": "전희재/김차윤/박창서/김유신", "runners": ["전희재", "김차윤", "박창서", "김유신"], "reaction": "", "note": ""}, {"id": "u_37_2026-04-19", "date": "2026-04-19", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 225.36, "rank": "결승 2", "wind": "", "relay": "김차윤/양예림/김유신/김예주", "runners": ["김차윤", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_38_2026-04-21", "date": "2026-04-21", "meet": "제55회 춘계전국중.고육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 54.24, "rank": "예선 18", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_39_2026-04-22", "date": "2026-04-22", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x100mR", "kind": "공식", "round": "예선", "seconds": 46.18, "rank": "예선 6", "wind": "", "relay": "김후/김차윤/김유신/전희재", "runners": ["김후", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_40_2026-04-22", "date": "2026-04-22", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x100mR", "kind": "공식", "round": "결승", "seconds": 45.8, "rank": "결승 6", "wind": "", "relay": "김후/김차윤/김유신/전희재", "runners": ["김후", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_41_2026-04-23", "date": "2026-04-23", "meet": "제55회 춘계전국중.고육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 218.17000000000002, "rank": "결승 3", "wind": "", "relay": "전희재/김유신/박창서/김차윤", "runners": ["전희재", "김유신", "박창서", "김차윤"], "reaction": "", "note": ""}, {"id": "u_42_2026-04-30", "date": "2026-04-30", "meet": "제55회 전국종별육상경기선수권대회", "event": "4x100mR", "kind": "공식", "round": "결승", "seconds": 46.34, "rank": "결승 6", "wind": "", "relay": "김후/김차윤/김유신/전희재", "runners": ["김후", "김차윤", "김유신", "전희재"], "reaction": "", "note": ""}, {"id": "u_43_2026-05-01", "date": "2026-05-01", "meet": "제55회 전국종별육상경기선수권대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 24.52, "rank": "예선 27", "wind": "0.8", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_44_2026-05-02", "date": "2026-05-02", "meet": "제55회 전국종별육상경기선수권대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 53.82, "rank": "예선 9", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_45_2026-05-02", "date": "2026-05-02", "meet": "제55회 전국종별육상경기선수권대회", "event": "400m", "kind": "공식", "round": "준결승", "seconds": 71.42, "rank": "준결 13", "wind": "", "relay": "", "runners": [], "reaction": "", "note": "심판오류"}, {"id": "u_46_2026-05-04", "date": "2026-05-04", "meet": "제55회 전국종별육상경기선수권대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 220.4, "rank": "결승 3", "wind": "", "relay": "전희재/김차윤/박창서/김유신", "runners": ["전희재", "김차윤", "박창서", "김유신"], "reaction": "", "note": ""}, {"id": "u_47_2026-05-23", "date": "2026-05-23", "meet": "제55회 전국소년체육대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "예선", "seconds": 234.25, "rank": "예선 3", "wind": "", "relay": "김차윤/양예림/김유신/김다은(여선중)", "runners": ["김차윤", "양예림", "김유신", "김다은(여선중)"], "reaction": "", "note": ""}, {"id": "u_48_2026-05-23", "date": "2026-05-23", "meet": "제55회 전국소년체육대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 227.35, "rank": "결승 5", "wind": "", "relay": "김차윤/양예림/김유신/김예주", "runners": ["김차윤", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_49_2026-05-24", "date": "2026-05-24", "meet": "제55회 전국소년체육대회", "event": "4x400mR", "kind": "공식", "round": "예선", "seconds": 223.64, "rank": "예선 11", "wind": "", "relay": "서예성(광양백운중)/김유신/박창서/김차윤", "runners": ["서예성(광양백운중)", "김유신", "박창서", "김차윤"], "reaction": "", "note": ""}, {"id": "u_50_2026-07-02", "date": "2026-07-02", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "2차", "seconds": 52.89, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_51_2026-07-04", "date": "2026-07-04", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 54.19, "rank": "예선 10", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_52_2026-07-04", "date": "2026-07-04", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "준결승", "seconds": 53.32, "rank": "준결 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_53_2026-07-05", "date": "2026-07-05", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.26, "rank": "결승 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_54_2026-07-06", "date": "2026-07-06", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "예선", "seconds": 238.07999999999998, "rank": "예선 2", "wind": "", "relay": "박창서/양예림/김유신/김예주", "runners": ["박창서", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_55_2026-07-06", "date": "2026-07-06", "meet": "백제왕도 익산 2026 전국육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 228.71, "rank": "결승 2", "wind": "", "relay": "박창서/양예림/김유신/김예주", "runners": ["박창서", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_56_2026-07-31", "date": "2026-07-31", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 224.35, "rank": "결승 5", "wind": "", "relay": "정유찬/양예림/김유신/김예주", "runners": ["정유찬", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_57_2026-08-01", "date": "2026-08-01", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 216.32999999999998, "rank": "결승 4", "wind": "", "relay": "문찬영/김유신/박창서/정유찬", "runners": ["문찬영", "김유신", "박창서", "정유찬"], "reaction": "", "note": ""}, {"id": "u_58_2026-08-02", "date": "2026-08-02", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 53.96, "rank": "예선 8", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_59_2026-08-02", "date": "2026-08-02", "meet": "문화체육관광부장관기 제47회 전국시.도대항육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.66, "rank": "결승 6", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_60_2026-08-06", "date": "2026-08-06", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "4x400mR(Mixed)", "kind": "공식", "round": "결승", "seconds": 223.68, "rank": "결승 2", "wind": "", "relay": "정유찬/양예림/김유신/김예주", "runners": ["정유찬", "양예림", "김유신", "김예주"], "reaction": "", "note": ""}, {"id": "u_61_2026-08-07", "date": "2026-08-07", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 24.15, "rank": "예선 18", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_62_2026-08-08", "date": "2026-08-08", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "400m", "kind": "공식", "round": "예선", "seconds": 53.14, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_63_2026-08-08", "date": "2026-08-08", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "400m", "kind": "공식", "round": "결승", "seconds": 53.54, "rank": "준결 9", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_64_2026-08-10", "date": "2026-08-10", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "4x400mR", "kind": "공식", "round": "예선", "seconds": 220.8, "rank": "예선 1", "wind": "", "relay": "전희재/김유신/문찬영/정유찬", "runners": ["전희재", "김유신", "문찬영", "정유찬"], "reaction": "", "note": ""}, {"id": "u_65_2026-08-10", "date": "2026-08-10", "meet": "제55회 추계전국중·고등학교육상경기대회", "event": "4x400mR", "kind": "공식", "round": "결승", "seconds": 215.55, "rank": "결승 2", "wind": "", "relay": "김지한/김유신/박창서/정유찬", "runners": ["김지한", "김유신", "박창서", "정유찬"], "reaction": "", "note": ""}, {"id": "u_66_2026-09-22", "date": "2026-09-22", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "1차", "seconds": 53.19, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_67_2026-09-22", "date": "2026-09-22", "meet": "전남체중고 전문실기", "event": "400m", "kind": "비공식", "round": "2차", "seconds": 54.78, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_68_2026-09-23", "date": "2026-09-23", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "2차", "seconds": 11.8, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_69_2026-10-09", "date": "2026-10-09", "meet": "전남체중고 전문실기", "event": "100m", "kind": "비공식", "round": "1차", "seconds": 11.6, "rank": "", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_70_2026-11-05", "date": "2026-11-05", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "100m", "kind": "공식", "round": "예선", "seconds": 12.15, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_71_2026-11-05", "date": "2026-11-05", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "100m", "kind": "공식", "round": "결승", "seconds": 11.89, "rank": "결승 3", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_72_2026-11-06", "date": "2026-11-06", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "200m", "kind": "공식", "round": "예선", "seconds": 25.98, "rank": "예선 5", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}, {"id": "u_73_2026-11-06", "date": "2026-11-06", "meet": "제51회 전남광주통합특별시 학생종합체육대회", "event": "200m", "kind": "공식", "round": "결승", "seconds": 24.31, "rank": "결승 3", "wind": "", "relay": "", "runners": [], "reaction": "", "note": ""}], "byeolha": [{"id": "b_2_2026-03-29", "date": "2026-03-29", "meet": "소년체전 선발전", "event": "500m독주", "kind": "공식", "round": "결승", "seconds": 48.91, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_3_2026-04-02", "date": "2026-04-02", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 41.0, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_4_2026-04-02", "date": "2026-04-02", "meet": "전남체중고", "event": "500m독주", "kind": "비공식", "round": "", "seconds": 47.34, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_5_2026-04-14", "date": "2026-04-14", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 32.33, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_6_2026-04-15", "date": "2026-04-15", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 31.23, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_7_2026-04-16", "date": "2026-04-16", "meet": "전남체중고", "event": "1Lap", "kind": "비공식", "round": "", "seconds": 32.56, "rank": "", "wind": "", "relay": "", "runners": [], "note": "로라에 힘 다 씀"}, {"id": "b_8_2026-04-18", "date": "2026-04-18", "meet": "제43회 대통령기 전국사이클대회", "event": "1Lap", "kind": "공식", "round": "결승", "seconds": 33.374, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_9_2026-04-19", "date": "2026-04-19", "meet": "제43회 대통령기 전국사이클대회", "event": "500m독주", "kind": "공식", "round": "결승", "seconds": 49.742, "rank": "", "wind": "", "relay": "", "runners": [], "note": "울었음"}, {"id": "b_10_2026-06-04", "date": "2026-06-04", "meet": "제55회 문체부장관기 전국학생사이클대회", "event": "1km추발", "kind": "공식", "round": "결승", "seconds": 94.847, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_11_2026-06-04", "date": "2026-06-04", "meet": "제55회 문체부장관기 전국학생사이클대회", "event": "1Lap", "kind": "공식", "round": "결승", "seconds": 31.151, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_12_2026-06-21", "date": "2026-06-21", "meet": "2026 KBS 양양 전국사이클선수권대회", "event": "2km단체추발", "kind": "공식", "round": "결승", "seconds": 176.2, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}, {"id": "b_13_2026-06-21", "date": "2026-06-21", "meet": "2026 KBS 양양 전국사이클선수권대회", "event": "1km추발", "kind": "공식", "round": "결승", "seconds": 96.779, "rank": "", "wind": "", "relay": "", "runners": [], "note": ""}]}.byeolha));
-        }
-
-        // Auto Data Migration for corrections in local storage
-        if (appData.yusin) {
-          appData.yusin.forEach(r => {
-            if (r.id === 'u_52_2026-07-04' || (r.meet && r.meet.includes('백제왕도') && r.date === '2026-07-04' && r.seconds === 53.32)) {
-              r.round = '준결승';
-            }
-            if (r.id === 'u_44_2026-05-02' || (r.meet && r.meet.includes('종별') && r.date === '2026-05-02' && (r.rank === '예선 9' || Math.abs(r.seconds - 53.82) < 0.01))) {
-              r.round = '예선';
-            }
-            if (r.id === 'u_45_2026-05-02' || (r.meet && r.meet.includes('종별') && r.date === '2026-05-02' && (r.rank === '준결 13' || Math.abs(r.seconds - 71.42) < 0.01))) {
-              r.round = '준결승';
-            }
-          });
-        }
-        if (appData.byeolha) {
-          appData.byeolha.forEach(r => {
-            if (r.date === '2026-06-04' && r.note === '1:34.847') {
-              r.note = '';
-            }
-          });
-        }
+        // 저장본이 있으면 사용자가 남긴 그 데이터를, 없을 때만 내장 원본 84건을 쓴다.
+        appData = resolveSuperAdminAppData();
 
         const savedP = localStorage.getItem(PLAYERS_KEY);
         if (savedP) {
@@ -2548,6 +2593,8 @@
       if (!confirm('이 기록을 삭제하시겠습니까?')) return;
       const idx = (appData[currentPlayer] || []).findIndex(r => r.id === recordId);
       if (idx !== -1) {
+        const prevAppData = JSON.parse(JSON.stringify(appData));
+        const prevPlayersData = playersData;
         appData[currentPlayer].splice(idx, 1);
         try {
           const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
@@ -2559,7 +2606,10 @@
             saveAdminTombstones(stableKey, tomb);
           }
         } catch (e) {}
-        saveDataToStorage();
+        if (!saveChangeOrRevert(prevAppData, prevPlayersData)) {
+          renderCurrentView();
+          return;
+        }
         renderCurrentView();
       }
     }
@@ -2748,6 +2798,9 @@
 
       if (!appData[currentPlayer]) appData[currentPlayer] = [];
 
+      const prevAppData = JSON.parse(JSON.stringify(appData));
+      const prevPlayersData = playersData;
+
       if (editingRecordId) {
         const idx = appData[currentPlayer].findIndex(r => r.id === editingRecordId);
         if (idx !== -1) appData[currentPlayer][idx] = newEntry;
@@ -2755,7 +2808,10 @@
         appData[currentPlayer].push(newEntry);
       }
 
-      saveDataToStorage();
+      if (!saveChangeOrRevert(prevAppData, prevPlayersData)) {
+        // 저장에 실패하면 입력화면을 닫지 않고, 저장된 것처럼 보이지 않게 한다.
+        return;
+      }
       renderCurrentView();
 
       if (keepOpen) {
@@ -2862,10 +2918,10 @@
         const sportIcon = pSport.includes('육상') ? '🏃' : (pSport.includes('사이클') ? '🚴' : '🏅');
 
         card.innerHTML = `
-          <!-- Left: Photo Box (Portrait 3:4) -->
+          <!-- Left: Sport Icon (Portrait 3:4, 사진 기능 없음) -->
           <div onclick="selectPlayerFromCard('${p.id}')" class="flex items-center gap-3.5 flex-1 cursor-pointer">
             <div class="w-12 h-16 rounded-xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center text-xl shadow-inner shrink-0 overflow-hidden relative">
-              ${p.photo ? `<img src="${p.photo}" class="w-full h-full object-cover">` : `<span>${sportIcon}</span><span class="text-[9px] text-slate-500 mt-0.5">${p.gender || ''}</span>`}
+              <span>${sportIcon}</span><span class="text-[9px] text-slate-500 mt-0.5">${p.gender || ''}</span>
             </div>
 
             <!-- Right: Info Rows (User's Hand-drawn Layout) -->
@@ -3240,7 +3296,6 @@
         nameInput.value = p.name || '';
         setFormPlayerGender(p.gender || '남');
         birthInput.value = p.birth || '';
-        setPlayerPhotoPreview(p.photo || '');
         formCurrentEvents = Array.isArray(p.events) && p.events.length > 0
           ? [...p.events]
           : getDefaultEventsForSport(p.sport || '육상');
@@ -3253,7 +3308,6 @@
         nameInput.value = '';
         setFormPlayerGender('남');
         birthInput.value = '';
-        setPlayerPhotoPreview('');
         formCurrentEvents = getDefaultEventsForSport('육상');
         resetFormAccordionForEvents();
         formOriginalMainEvent = '';
@@ -3291,7 +3345,9 @@
         cleanEvents.push({ name: evName, isTeam: isFormEventTeam(ev) });
       });
 
-      const photoBase64 = document.getElementById('form-player-photo-base64').value || '';
+      // 사진 기능은 사용하지 않는다. 기존 저장 데이터의 photo 값은 건드리지 않는다.
+      const prevAppData = JSON.parse(JSON.stringify(appData));
+      const prevPlayersData = JSON.parse(JSON.stringify(playersData));
       if (id) {
         const p = playersData.find(x => x.id === id);
         if (p) {
@@ -3300,7 +3356,6 @@
           p.birth = birth;
           p.sport = sport;
           p.mainEvent = mainEvent;
-          p.photo = photoBase64;
           p.events = cleanEvents;
           p.updatedAt = Date.now();
         }
@@ -3314,14 +3369,13 @@
           sport: sport,
           mainEvent: mainEvent,
           events: cleanEvents,
-          photo: photoBase64,
           updatedAt: Date.now()
         });
         if (!appData[newId]) appData[newId] = [];
         currentPlayer = newId;
       }
 
-      saveDataToStorage();
+      if (!saveChangeOrRevert(prevAppData, prevPlayersData)) return;
       initPlayerSelectDropdown();
       renderPlayerCards();
       closeAddEditPlayerModal();
@@ -3351,6 +3405,9 @@
         }
       } catch (e) {}
 
+      const prevAppData = JSON.parse(JSON.stringify(appData));
+      const prevPlayersData = JSON.parse(JSON.stringify(playersData));
+      const prevCurrentPlayer = currentPlayer;
       playersData = playersData.filter(x => x.id !== id);
       delete appData[id];
 
@@ -3358,7 +3415,11 @@
         currentPlayer = playersData[0].id;
       }
 
-      saveDataToStorage();
+      if (!saveChangeOrRevert(prevAppData, prevPlayersData)) {
+        currentPlayer = prevCurrentPlayer;
+        renderPlayerCards();
+        return;
+      }
       initPlayerSelectDropdown();
       renderPlayerCards();
       renderEventTabs();
@@ -3505,9 +3566,10 @@
     function syncDataForUserRole(user) {
       if (!user) return;
       if (user.role === 'super_admin') {
-        // Jihye owns all Yusin & Byeolha data (기록은 마스터 스냅샷 유지, 선수 프로필은 로컬 수정본 반영)
+        // Jihye owns all Yusin & Byeolha data (기록은 사용자 저장본 우선, 선수 프로필은 로컬 수정본 반영)
+        // 저장본이 있을 때 내장 원본 84건으로 되돌리면 기록 수정·추가·삭제가 사라지므로 resolveSuperAdminAppData가 한 곳에서 판단한다.
         playersData = mergeMasterPlayersWithSaved(MASTER_PLAYERS_DATA, readSavedSuperAdminPlayers());
-        appData = JSON.parse(JSON.stringify(MASTER_APP_DATA));
+        appData = resolveSuperAdminAppData();
         if (!currentPlayer || (currentPlayer !== 'yusin' && currentPlayer !== 'byeolha')) {
           currentPlayer = 'yusin';
         }
@@ -5288,41 +5350,6 @@
       }
     }
 
-    // --- PHOTO UPLOAD & BASE64 PREVIEW ---
-    function handlePhotoUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const b64 = evt.target.result;
-        setPlayerPhotoPreview(b64);
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function setPlayerPhotoPreview(b64) {
-      document.getElementById('form-player-photo-base64').value = b64 || '';
-      const img = document.getElementById('player-photo-preview-img');
-      const icon = document.getElementById('player-photo-empty-icon');
-      const rmBtn = document.getElementById('btn-remove-photo');
-      if (b64) {
-        img.src = b64;
-        img.classList.remove('hidden');
-        icon.classList.add('hidden');
-        rmBtn.classList.remove('hidden');
-      } else {
-        img.src = '';
-        img.classList.add('hidden');
-        icon.classList.remove('hidden');
-        rmBtn.classList.add('hidden');
-      }
-    }
-
-    function removePlayerPhoto() {
-      setPlayerPhotoPreview('');
-      document.getElementById('form-player-photo-file').value = '';
-    }
-
     // --- TEAM EVENT DETERMINATION & CHIPS ---
     function isEventTeam(eventName) {
       if (!eventName) return false;
@@ -6792,8 +6819,11 @@
           const existing = appData[p.id] || [];
           const res = parseExcelRowsForPlayer(wb, p, existing);
           if (!confirm(`📥 엑셀 가져오기 미리보기 (시트: ${res.sheetName})\n- 신규 추가 가능: ${res.parsedNew.length}건\n- 기존 중복 제외: ${res.dupCount}건\n- 형식 오류/누락 제외: ${res.errCount}건\n\n[${p.name}] 선수 기록에 가져올까요?`)) return;
+          const prevAppData = JSON.parse(JSON.stringify(appData));
+          const prevPlayersData = playersData;
           appData[p.id] = existing.concat(res.parsedNew);
-          saveDataToStorage(); syncAdminToCloud(authUser);
+          if (!saveChangeOrRevert(prevAppData, prevPlayersData)) { renderCurrentView(); return; }
+          syncAdminToCloud(authUser);
           renderEventTabs(); renderCurrentView();
           alert(`✅ 엑셀에서 ${res.parsedNew.length}건의 기록을 가져왔습니다.`);
         } catch (err) { alert('❌ 엑셀 파싱 중 오류가 발생했습니다: ' + err.message); }
