@@ -57,10 +57,20 @@
       var de = d.documentElement;
       var vw = w.innerWidth;
       var over = [];
+      function clippedByScroller(el) {
+        var p = el.parentElement;
+        while (p && p !== d.body) {
+          var ox = getComputedStyle(p).overflowX;
+          if (ox === 'auto' || ox === 'scroll' || ox === 'hidden') return true;
+          p = p.parentElement;
+        }
+        return false;
+      }
       Array.prototype.forEach.call(d.querySelectorAll('body *'), function (el) {
         var r = el.getBoundingClientRect();
         if (r.width <= 0 || r.height <= 0) return;
         if (getComputedStyle(el).position === 'fixed') return;
+        if (clippedByScroller(el)) return;
         if (r.right > vw + 1 || r.left < -1) {
           over.push((el.id ? '#' + el.id : el.tagName.toLowerCase()) + ' [' + Math.round(r.left) + '~' + Math.round(r.right) + '] ' + (el.className && String(el.className).slice(0, 40)));
         }
