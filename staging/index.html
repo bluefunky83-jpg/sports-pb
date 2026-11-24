@@ -2775,7 +2775,7 @@
 
       const gap = 8;
       const cw = (innerW - gap * 2) / 3;
-      const ch = 92;
+      const ch = 104;
       const stats = [
         { label: '출전 대회', value: meetCount, sub: '공식 대회', glyph: 'flag', color: '#93c5fd' },
         { label: '총 경기', value: gameCount, sub: '실기 포함', glyph: 'list', color: '#ffffff' },
@@ -2785,11 +2785,11 @@
         const x = PAD + i * (cw + gap);
         if (!measureOnly) {
           capRoundRect(ctx, x, y, cw, ch, 14, '#0f172a', '#1e293b');
-          capIconTile(ctx, x + cw / 2 - 11, y + 12, 22, s.glyph, s.color);
+          capIconTile(ctx, x + cw / 2 - 11, y + 11, 22, s.glyph, s.color);
         }
-        capText(ctx, s.label, x + cw / 2, y + 50, capFont(600, 10.5), '#94a3b8', { align: 'center' });
-        capText(ctx, String(s.value) + '회', x + cw / 2, y + 76, capFont(800, 21), '#f8fafc', { align: 'center' });
-        capText(ctx, s.sub, x + cw / 2, y + 87, capFont(500, 8.5), '#64748b', { align: 'center' });
+        capText(ctx, s.label, x + cw / 2, y + 48, capFont(600, 10.5), '#94a3b8', { align: 'center' });
+        capText(ctx, String(s.value) + '회', x + cw / 2, y + 78, capFont(800, 21), '#f8fafc', { align: 'center' });
+        capText(ctx, s.sub, x + cw / 2, y + 97, capFont(500, 8.5), '#64748b', { align: 'center' });
       });
       y += ch + 18;
 
