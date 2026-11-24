@@ -63,7 +63,7 @@
       var w = frame.contentWindow;
       var d = frame.contentDocument;
       var de = d.documentElement;
-      var vw = w.innerWidth;
+      var vw = de.clientWidth;
       var over = [];
       function clippedByScroller(el) {
         var p = el.parentElement;
@@ -83,7 +83,7 @@
           over.push((el.id ? '#' + el.id : el.tagName.toLowerCase()) + ' [' + Math.round(r.left) + '~' + Math.round(r.right) + '] ' + (el.className && String(el.className).slice(0, 40)));
         }
       });
-      out.push('view=' + vw + 'x' + w.innerHeight + '  scrollWidth=' + de.scrollWidth + '  clientWidth=' + de.clientWidth);
+      out.push('layout=' + vw + 'x' + de.clientHeight + '  window=' + w.innerWidth + 'x' + w.innerHeight + '  scrollWidth=' + de.scrollWidth + '  clientWidth=' + de.clientWidth);
       out.push('가로 넘침 요소: ' + over.length + '개');
       over.slice(0, 8).forEach(function (s) { out.push('  - ' + s); });
       out.push('JS 오류: ' + errors.length + '건');
