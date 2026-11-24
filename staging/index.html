@@ -287,26 +287,28 @@
       </button>
     </div>
 
-    <!-- Main View Mode: PB 기록 / 연간 종합노트 + 이미지 저장·공유 -->
-    <div class="mb-3">
-      <div class="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-slate-900 border border-slate-800">
-        <button type="button" id="btn-main-mode-pb" onclick="setMainViewMode('PB')" class="py-2 rounded-xl text-xs font-bold transition bg-blue-600 text-white shadow-lg shadow-blue-500/20">PB 기록</button>
-        <button type="button" id="btn-main-mode-annual" onclick="setMainViewMode('ANNUAL')" class="py-2 rounded-xl text-xs font-bold transition text-slate-400 hover:text-white">연간 종합노트</button>
-      </div>
-      <div class="flex items-center gap-2 mt-2">
-        <button type="button" id="btn-capture-save" onclick="saveViewImage()" class="flex-1 h-9 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1 transition active:scale-95">
-          <span>📷</span><span>이미지 저장</span>
-        </button>
-        <button type="button" id="btn-capture-share" onclick="shareViewImage()" class="flex-1 h-9 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1 transition active:scale-95">
-          <span>📤</span><span>공유</span>
-        </button>
+    <!-- Event Category Tabs (Horizontal Scroll) -->
+    <div class="relative mb-3">
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs" id="event-tabs-container">
+        <!-- Rendered dynamically -->
       </div>
     </div>
 
-    <!-- Event Category Tabs (Horizontal Scroll) -->
-    <div class="relative mb-4">
-      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs" id="event-tabs-container">
-        <!-- Rendered dynamically -->
+    <!-- View Mode & Capture: ★ 최고기록 요약을 선택했을 때만 표시 -->
+    <div id="main-mode-bar" class="mb-3">
+      <div class="flex items-center justify-between gap-2">
+        <div class="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-slate-900 border border-slate-800">
+          <button type="button" id="btn-main-mode-pb" onclick="setMainViewMode('PB')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold transition bg-blue-600 text-white shadow-sm">PB 기록</button>
+          <button type="button" id="btn-main-mode-annual" onclick="setMainViewMode('ANNUAL')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold transition text-slate-400 hover:text-white">연간 종합노트</button>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" id="btn-capture-save" onclick="saveViewImage()" class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95" title="이미지 저장" aria-label="이미지 저장">
+            <svg width="16" height="16" class="w-4 h-4" style="max-width:18px;max-height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h1.5l1.2-1.8A1 1 0 018.5 5h7a1 1 0 01.8.4L17.5 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          </button>
+          <button type="button" id="btn-capture-share" onclick="shareViewImage()" class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95" title="공유" aria-label="공유">
+            <svg width="16" height="16" class="w-4 h-4" style="max-width:18px;max-height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16V4m0 0L8 8m4-4l4 4"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4"/></svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -415,10 +417,20 @@
           </div>
         </div>
 
-        <!-- Meet Name -->
+        <!-- Meet Name + Round -->
         <div>
           <label class="block font-semibold text-slate-400 mb-1">대회명 / 경기명 *</label>
-          <input type="text" id="input-meet" required placeholder="대회명 입력" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          <div class="flex items-start gap-2">
+            <div class="w-[5.5rem] shrink-0">
+              <input type="number" id="input-meet-round" min="1" step="1" inputmode="numeric" placeholder="회차" title="대회 회차(선택)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-center text-white focus:outline-none focus:border-blue-500">
+              <div class="text-[9px] text-slate-500 mt-1 text-center">회차 (선택)</div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <input type="text" id="input-meet" required list="meet-name-options" placeholder="대회명 입력 또는 선택" onchange="onMeetNameChanged()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+              <datalist id="meet-name-options"></datalist>
+              <div class="text-[9px] text-slate-500 mt-1 leading-tight">기존 대회명 검색·선택 가능 · 회차 입력 시 ‘제53회 대회명’으로 저장</div>
+            </div>
+          </div>
         </div>
 
         <!-- Round / Stage (Smart Switched) -->
@@ -1480,6 +1492,8 @@
           const parsedT = JSON.parse(savedT);
           if (Array.isArray(parsedT) && parsedT.length > 0) savedTeammates = parsedT;
         }
+        // 공식기록 기준으로 바뀐 뒤 비공식 PB에서 생긴 갱신 배지를 한 번 정리한다.
+        reconcilePbBadgeTimestamps();
       } catch (e) {
         console.error('loadDataFromStorage error:', e);
       }
@@ -1608,11 +1622,16 @@
       return cleaned;
     }
 
-    // 기존 앱 PB 계산 규칙과 동일: 해당 종목 기록 중 seconds > 0 인 값의 최소값.
+    // 공식기록만 PB·연간 집계에 쓴다. 비공식(전문실기 등)은 개별 종목 상세·백업에만 남긴다.
+    function isOfficialRecord(r) {
+      return !!r && r.kind === '공식';
+    }
+
+    // 해당 종목의 공식 최고기록(초). 공식기록이 없으면 null — 비공식으로 대신하지 않는다.
     function getEventBestSeconds(records, eventName) {
       let best = null;
       (Array.isArray(records) ? records : []).forEach(r => {
-        if (!r || !isEventMatch(r.event, eventName)) return;
+        if (!isOfficialRecord(r) || !isEventMatch(r.event, eventName)) return;
         const sec = parseFloat(r.seconds);
         if (!Number.isFinite(sec) || sec <= 0) return;
         if (best === null || sec < best) best = sec;
@@ -1652,6 +1671,36 @@
       if (!map[playerId] || typeof map[playerId] !== 'object') map[playerId] = {};
       map[playerId][eventName] = { ts: now, best: bestSeconds };
       return writePbBadgeTimestamps(map);
+    }
+
+    // 정책 변경(공식기록 기준) 후 남은 잘못된 갱신 배지를 정리한다.
+    // 저장된 값이 지금의 공식 PB와 같은 종목만 남기고, 비공식 PB로 생긴 기록은 지운다.
+    // (정책 재산정을 새 갱신으로 만들지 않는다 — 여기서는 오직 제거만 한다.)
+    function reconcilePbBadgeTimestamps() {
+      const raw = readPbBadgeTimestamps();
+      if (!raw || Object.keys(raw).length === 0) return false;
+      const now = Date.now();
+      const cleaned = prunePbBadgeTimestamps(raw, now);
+      let changed = false;
+      Object.keys(cleaned).forEach(pid => {
+        const perPlayer = cleaned[pid];
+        if (!perPlayer || typeof perPlayer !== 'object') return;
+        Object.keys(perPlayer).forEach(evName => {
+          const entry = perPlayer[evName];
+          if (!entry || typeof entry.best !== 'number') return;
+          const officialBest = getEventBestSeconds(appData[pid] || [], evName);
+          if (officialBest === null || Math.abs(officialBest - entry.best) > 0.0005) {
+            delete perPlayer[evName];
+            changed = true;
+          }
+        });
+        if (Object.keys(perPlayer).length === 0) {
+          delete cleaned[pid];
+          changed = true;
+        }
+      });
+      if (changed) writePbBadgeTimestamps(cleaned);
+      return changed;
     }
 
     // 6. Navigation: Switch Player & Populate Dropdown
@@ -1807,8 +1856,7 @@
     function renderEventTabs() {
       const container = document.getElementById('event-tabs-container');
       if (!container) return;
-      const tabsWrap = container.parentElement;
-      if (tabsWrap) tabsWrap.classList.toggle('hidden', mainViewMode === 'ANNUAL');
+      // 종목 탭은 PB·연간 종합노트 두 화면에서 모두 유지한다(전환 버튼은 최고기록 요약에서만 노출).
       container.innerHTML = '';
 
       if (!playersData || playersData.length === 0 || !currentPlayer) {
@@ -1885,6 +1933,8 @@
 
     function selectEventTab(eventId) {
       currentEvent = eventId;
+      // 개별 종목은 기존 그래프·상세 기록 화면이므로 연간 종합노트 모드에서 빠져나온다.
+      if (eventId !== 'ALL_PB') mainViewMode = 'PB';
       renderEventTabs();
       renderCurrentView();
     }
@@ -1951,6 +2001,8 @@
     function renderPBView(container) {
       const records = appData[currentPlayer] || [];
       const events = getPlayerEvents(currentPlayer);
+      const playerObj = playersData.find(p => p.id === currentPlayer) || null;
+      const heroName = playerObj ? String(playerObj.name || '') : '';
 
       const personalEvents = [];
       const teamEvents = [];
@@ -1961,8 +2013,15 @@
         else personalEvents.push(ev);
       });
 
+      // 릴레이 엔트리에서 지금 보고 있는 선수 이름만 굵게(순서·주자 번호는 그대로).
+      const runnerNameHtml = (name) => {
+        const isHero = heroName && String(name).indexOf(heroName) === 0;
+        return `<span class="${isHero ? 'text-amber-300 font-extrabold' : 'text-slate-300'}">${name}</span>`;
+      };
+
       const buildCard = (ev, isTeam) => {
-        const evRecs = records.filter(r => isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
+        // 공식기록만 PB 후보. 비공식만 있는 종목은 비공식 대신 표시하지 않고 카드를 만들지 않는다.
+        const evRecs = records.filter(r => isOfficialRecord(r) && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
         if (evRecs.length === 0) return '';
 
         evRecs.sort((a, b) => parseFloat(a.seconds) - parseFloat(b.seconds));
@@ -1971,41 +2030,33 @@
 
         const renewalInfo = getPbRenewalInfo(currentPlayer, ev, records);
         const badgeHtml = renewalInfo
-          ? '<span class="shrink-0 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-400 text-slate-950 border border-yellow-500/60 shadow-sm">★PB갱신★</span>'
-          : (isTeam 
-            ? '<span class="shrink-0 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40">단체 최고기록</span>'
-            : '<span class="shrink-0 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">개인최고 (PB)</span>');
+          ? '<span class="shrink-0 whitespace-nowrap text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-400 text-slate-950 border border-yellow-500/60 shadow-sm">★PB갱신★</span>'
+          : `<span class="shrink-0 whitespace-nowrap text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono">${best.date || '-'}</span>`;
 
         let runnersHtml = '';
         if (isTeam) {
+          let runners = [];
           if (best.runners && best.runners.length > 0) {
-            const listStr = best.runners.map((name, i) => {
-              const isHero = name.includes('김유신') || name.includes('김별하');
-              return `<span class="${isHero ? 'text-amber-300 font-bold' : 'text-slate-300'}">${i + 1}주자 ${name}</span>`;
-            }).join(' <span class="text-slate-600">·</span> ');
-            runnersHtml = `<div class="mt-2 text-[11px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2.5 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-1">👥 주자:</span> ${listStr}</div>`;
+            runners = best.runners.slice();
           } else if (best.relay) {
-            const rList = best.relay.split('/').map(x => x.trim()).filter(Boolean);
-            if (rList.length > 0) {
-              const listStr = rList.map((name, i) => {
-                const isHero = name.includes('김유신') || name.includes('김별하');
-                return `<span class="${isHero ? 'text-amber-300 font-bold' : 'text-slate-300'}">${i + 1}주자 ${name}</span>`;
-              }).join(' <span class="text-slate-600">·</span> ');
-              runnersHtml = `<div class="mt-2 text-[11px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2.5 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-1">👥 주자:</span> ${listStr}</div>`;
-            }
+            runners = best.relay.split('/').map(x => x.trim()).filter(Boolean);
+          }
+          if (runners.length > 0) {
+            const listStr = runners.map((name, i) => `<span class="whitespace-nowrap">${i + 1}주자 ${runnerNameHtml(name)}</span>`).join(' <span class="text-slate-600">·</span> ');
+            runnersHtml = `<div class="mt-2 text-[9.5px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-0.5">👥 주자:</span> ${listStr}</div>`;
           }
         }
 
         return `
-          <div onclick="selectEventTab('${ev}')" class="p-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 transition cursor-pointer shadow-md">
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="text-xs font-bold text-slate-300">${ev}</span>
+          <div onclick="selectEventTab('${ev}')" class="p-3.5 rounded-[14px] bg-slate-900 border border-slate-800 hover:border-blue-500 transition cursor-pointer shadow-md">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="text-[13px] font-extrabold text-slate-200 truncate">${ev}</span>
               ${badgeHtml}
             </div>
-            <div class="text-2xl font-black text-white font-mono tracking-tight mb-1">${formatted}</div>
-            <div class="text-[11px] text-slate-400 flex items-center justify-between">
-              <span class="truncate mr-2">${best.meet}</span>
-              <span class="font-mono shrink-0">${best.date}</span>
+            <div class="text-[23px] font-extrabold text-white font-mono tracking-tight leading-none mb-1.5">${formatted}</div>
+            <div class="text-[11px] text-slate-400 flex items-center justify-between gap-2 leading-none">
+              <span class="truncate">${best.meet}</span>
+              <span class="font-mono text-[10px] text-slate-500 shrink-0">${best.date}</span>
             </div>
             ${runnersHtml}
           </div>
@@ -2015,16 +2066,18 @@
       const personalCards = personalEvents.map(ev => buildCard(ev, false)).filter(Boolean).join('');
       const teamCards = teamEvents.map(ev => buildCard(ev, true)).filter(Boolean).join('');
 
+      const sectionHeader = (title) => `
+        <div class="flex items-center gap-1.5 px-1">
+          <span class="w-[3px] h-3 rounded-full bg-blue-500"></span>
+          <h2 class="text-[12.5px] font-extrabold text-white">${title}</h2>
+        </div>`;
+
       let sectionsHtml = '';
       if (personalCards) {
         sectionsHtml += `
           <div class="space-y-2 mb-5">
-            <div class="flex items-center justify-between px-1">
-              <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
-                <span>🏆</span> 개인 최고기록 (Personal Best)
-              </h2>
-            </div>
-            <div class="grid grid-cols-1 gap-2.5">
+            ${sectionHeader('개인 최고기록 (Personal Best)')}
+            <div class="grid grid-cols-1 gap-2">
               ${personalCards}
             </div>
           </div>
@@ -2034,26 +2087,31 @@
       if (teamCards) {
         sectionsHtml += `
           <div class="space-y-2">
-            <div class="flex items-center justify-between px-1">
-              <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
-                <span>👥</span> 릴레이 / 단체전 최고기록 (Team Best)
-              </h2>
-            </div>
-            <div class="grid grid-cols-1 gap-2.5">
+            ${sectionHeader('릴레이 / 단체전 최고기록 (Team Best)')}
+            <div class="grid grid-cols-1 gap-2">
               ${teamCards}
             </div>
           </div>
         `;
       }
 
+      const noticeHtml = `<div class="text-[10px] text-slate-500 px-1 leading-relaxed">공식기록을 기준으로 산정하며, 비공식 기록은 반영하지 않습니다.</div>`;
+
       if (!sectionsHtml) {
-        container.innerHTML = '';
+        container.innerHTML = `
+          <div class="space-y-2">
+            ${noticeHtml}
+            <div class="py-12 px-4 text-center rounded-[14px] bg-slate-900 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+              아직 공식기록이 없습니다.<br>공식 대회 기록을 추가하면 최고기록이 표시됩니다.
+            </div>
+          </div>`;
         return;
       }
 
       container.innerHTML = `
         <div class="space-y-1">
-          <div class="text-[11px] text-slate-400 px-1 mb-2">카드를 터치하면 해당 종목 상세 그래프로 이동합니다.</div>
+          ${noticeHtml}
+          <div class="text-[10px] text-slate-500 px-1 mb-3 leading-relaxed">카드를 터치하면 해당 종목 상세 그래프로 이동합니다.</div>
           ${sectionsHtml}
         </div>
       `;
@@ -2109,6 +2167,7 @@
     function getEventTimeline(records, eventName) {
       const list = (Array.isArray(records) ? records : []).filter(r => {
         if (!r) return false;
+        if (!isOfficialRecord(r)) return false;
         if (!isEventMatch(r.event, eventName)) return false;
         const s = parseFloat(r.seconds);
         return Number.isFinite(s) && s > 0;
@@ -2116,12 +2175,12 @@
       return sortRecordsChronological(list);
     }
 
-    // '직전 연도 말까지'의 누적 PB. 해당 연도(포함 이후) 기록은 절대 섞지 않는다.
+    // '직전 연도 말까지'의 누적 공식 PB. 해당 연도(포함 이후) 기록은 절대 섞지 않는다.
     function getPbBeforeYear(records, eventName, year) {
       const cutoff = String(year) + '-01-01';
       let best = null;
       (Array.isArray(records) ? records : []).forEach(r => {
-        if (!r || !isEventMatch(r.event, eventName)) return;
+        if (!r || !isOfficialRecord(r) || !isEventMatch(r.event, eventName)) return;
         const d = String(r.date || '');
         if (!d || d >= cutoff) return;
         const s = parseFloat(r.seconds);
@@ -2131,7 +2190,7 @@
       return best;
     }
 
-    // 해당 연도 말까지 남아 있는 '최초 기록'(진행 막대의 왼쪽 기준점).
+    // 해당 연도 말까지 남아 있는 '최초 공식기록'(진행 막대의 왼쪽 기준점).
     function getFirstRecordUpToYear(records, eventName, year) {
       const limit = String(year + 1) + '-01-01';
       const timeline = getEventTimeline(records, eventName).filter(r => String(r.date || '') < limit);
@@ -2182,9 +2241,9 @@
       return count;
     }
 
-    // 총 경기 수: 그 해 저장된 기록 건수(실기 포함, 라운드별 1경기).
+    // 총 경기 수: 그 해 '공식' 기록 건수(라운드별 1경기). 비공식·전문실기는 제외.
     function getAnnualGameCount(playerId, year) {
-      return getRecordsForYear(playerId, year).length;
+      return getRecordsForYear(playerId, year).filter(isOfficialRecord).length;
     }
 
     // 종목별 표시 정밀도: 3자리 기록이 있는 종목(사이클 트랙)은 3자리, 그 외는 2자리.
@@ -2213,10 +2272,10 @@
       return v.toFixed(d) + '초';
     }
 
-    // 그 해에 뛴 종목만 카드로 만든다. 이전 PB/목표가 없으면 숫자를 만들지 않고 null로 둔다.
+    // 그 해에 공식기록이 있는 종목만 카드로 만든다. 모든 수치는 공식기록만 사용한다.
     function getAnnualEventCards(playerId, year) {
       const records = appData[playerId] || [];
-      const yearRecords = getRecordsForYear(playerId, year);
+      const yearRecords = getRecordsForYear(playerId, year).filter(isOfficialRecord);
       const cards = [];
       getPlayerEvents(playerId).forEach(ev => {
         const yearEvent = yearRecords.filter(r => r && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
@@ -2227,10 +2286,34 @@
           if (yearBest === null || s < yearBest) yearBest = s;
         });
         const prior = getPbBeforeYear(records, ev, year);
-        // PB는 더 좋은 기록일 때만 갱신되므로 '연도 말 누적 PB'는 이전 PB와 그 해 최고 중 더 좋은 값이다.
-        const current = prior === null ? yearBest : Math.min(prior, yearBest);
-        const reduction = prior === null ? null : Math.max(0, prior - current);
-        const rate = (prior === null || prior <= 0) ? null : ((prior - current) / prior) * 100;
+        const firstUpTo = getFirstRecordUpToYear(records, ev, year);
+
+        let current;
+        let compareBase = null;
+        let reduction = null;
+        let rate = null;
+        let comparison;
+
+        if (prior !== null) {
+          // 이전 연도 공식 PB가 있는 종목: 이전 PB vs 연도 말 공식 PB
+          comparison = 'prior';
+          current = Math.min(prior, yearBest);
+          compareBase = prior;
+          reduction = Math.max(0, prior - current);
+          rate = prior > 0 ? ((prior - current) / prior) * 100 : null;
+        } else if (yearEvent.length >= 2) {
+          // 신규 종목(이전 연도 공식 PB 없음) 2건 이상: 최초 공식기록 vs 올해 공식 PB
+          comparison = 'first';
+          current = yearBest;
+          compareBase = firstUpTo !== null ? firstUpTo : yearBest;
+          reduction = Math.max(0, compareBase - current);
+          rate = compareBase > 0 ? ((compareBase - current) / compareBase) * 100 : null;
+        } else {
+          // 신규 종목 공식 1건: 최초 기록으로만 표시(경신 횟수 제외)
+          comparison = 'single';
+          current = yearBest;
+        }
+
         cards.push({
           event: ev,
           isTeam: isTeamEventName(ev),
@@ -2238,7 +2321,10 @@
           yearBest: yearBest,
           prior: prior,
           current: current,
-          first: getFirstRecordUpToYear(records, ev, year),
+          first: firstUpTo,
+          compareBase: compareBase,
+          comparison: comparison,
+          officialCount: yearEvent.length,
           reduction: reduction,
           rate: rate,
           renewals: countEventRenewalsInYear(records, ev, year)
@@ -2309,27 +2395,31 @@
     function syncMainViewModeUI() {
       const pbBtn = document.getElementById('btn-main-mode-pb');
       const anBtn = document.getElementById('btn-main-mode-annual');
-      const activeCls = 'py-2 rounded-xl text-xs font-bold transition bg-blue-600 text-white shadow-lg shadow-blue-500/20';
-      const idleCls = 'py-2 rounded-xl text-xs font-bold transition text-slate-400 hover:text-white';
+      const bar = document.getElementById('main-mode-bar');
+      const activeCls = 'px-2.5 py-1 rounded-lg text-[10px] font-bold transition bg-blue-600 text-white shadow-sm';
+      const idleCls = 'px-2.5 py-1 rounded-lg text-[10px] font-bold transition text-slate-400 hover:text-white';
       if (pbBtn) pbBtn.className = mainViewMode === 'ANNUAL' ? idleCls : activeCls;
       if (anBtn) anBtn.className = mainViewMode === 'ANNUAL' ? activeCls : idleCls;
+      // 전환·저장·공유는 '★ 최고기록 요약'을 보는 동안에만 표시하고, 개별 종목 상세에서는 숨긴다.
+      if (bar) bar.classList.toggle('hidden', currentEvent !== 'ALL_PB');
     }
 
     // ============================================================
     // 8-4. 연간 종합노트 화면
     // ============================================================
     function renderAnnualSummaryHtml(meetCount, gameCount, renewalCount) {
-      const stat = (label, value, sub, accent) => `
-        <div class="rounded-2xl bg-slate-900 border border-slate-800 py-3 text-center shadow-md">
-          <div class="text-[10px] text-slate-400 font-semibold leading-tight">${label}</div>
-          <div class="text-[22px] leading-none font-black ${accent} mt-1">${value}<span class="text-[10px] font-bold text-slate-400 ml-0.5">회</span></div>
+      const stat = (label, value, sub, accent, icon) => `
+        <div class="rounded-[14px] bg-slate-900 border border-slate-800 py-2.5 text-center shadow-md">
+          <div class="w-[22px] h-[22px] mx-auto rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-[10px] leading-none">${icon}</div>
+          <div class="text-[10px] text-slate-400 font-semibold leading-tight mt-1">${label}</div>
+          <div class="text-[21px] leading-none font-extrabold ${accent} mt-1">${value}<span class="text-[9px] font-bold text-slate-400 ml-0.5">회</span></div>
           <div class="text-[9px] text-slate-500 mt-1 leading-none">${sub}</div>
         </div>`;
       return `
         <div class="grid grid-cols-3 gap-2 mb-4">
-          ${stat('출전 대회', meetCount, '공식 대회', 'text-blue-300')}
-          ${stat('총 경기', gameCount, '실기 포함', 'text-white')}
-          ${stat('PB 경신', renewalCount, '이 해 기록', 'text-amber-300')}
+          ${stat('출전 대회', meetCount, '공식 대회', 'text-blue-300', '🏁')}
+          ${stat('총 경기', gameCount, '공식 기록', 'text-white', '📋')}
+          ${stat('PB 경신', renewalCount, '이 해 기록', 'text-amber-300', '📈')}
         </div>`;
     }
 
@@ -2348,54 +2438,54 @@
       const firstText = Number.isFinite(card.first) ? formatAnnualTime(card.first, decimals) : '-';
 
       let badgeHtml = '';
-      if (card.prior === null) {
-        badgeHtml = '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">비교 불가</span>';
+      if (card.comparison === 'single') {
+        badgeHtml = '<span class="shrink-0 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-slate-800 text-blue-300 border border-slate-700">최초 기록</span>';
       } else if (card.reduction > 0) {
-        badgeHtml = `<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/40">-${card.reduction.toFixed(decimals)}초 단축</span>`;
+        badgeHtml = `<span class="shrink-0 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/40">${card.reduction.toFixed(decimals)}초 단축</span>`;
       } else {
-        badgeHtml = '<span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">경신 없음</span>';
+        badgeHtml = '<span class="shrink-0 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">경신 없음</span>';
       }
 
       const geom = getAnnualBarGeometry(card);
       const bluePct = geom ? Math.max(0, Math.min(100, geom.blue)) : 0;
       const amberPct = geom ? Math.max(0, Math.min(100 - bluePct, geom.amber)) : 0;
       const barHtml = geom
-        ? `<div class="relative h-2 rounded-full bg-slate-800 overflow-hidden my-2">
+        ? `<div class="relative h-[6px] rounded-full bg-slate-800 overflow-hidden my-2">
             <div class="absolute inset-y-0 left-0 rounded-full bg-blue-500/60" style="width:${bluePct.toFixed(2)}%"></div>
             <div class="absolute inset-y-0 rounded-full bg-amber-400" style="left:${bluePct.toFixed(2)}%;width:${amberPct.toFixed(2)}%"></div>
           </div>`
-        : '<div class="relative h-2 rounded-full bg-slate-800 overflow-hidden my-2"></div>';
+        : '<div class="relative h-[6px] rounded-full bg-slate-800 overflow-hidden my-2"></div>';
 
       const rateText = card.rate === null ? '비교 불가' : (card.rate > 0 ? '+' + card.rate.toFixed(1) + '%' : card.rate.toFixed(1) + '%');
       const rateClass = card.rate !== null && card.rate > 0 ? 'text-emerald-300' : 'text-slate-400';
-      const slowerNote = Number.isFinite(card.yearBest) && card.yearBest > card.current + 1e-9
+      const slowerNote = card.comparison === 'prior' && Number.isFinite(card.yearBest) && card.yearBest > card.current + 1e-9
         ? `<div class="text-[9px] text-slate-500 mt-1">올해 최고 ${formatAnnualTime(card.yearBest, decimals)} (PB 미경신)</div>`
         : '';
 
       return `
-        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-md">
+        <div class="p-3.5 rounded-[14px] bg-slate-900 border border-slate-800 shadow-md">
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <div class="flex items-center gap-1.5 min-w-0">
-              <span class="w-6 h-6 shrink-0 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-[11px]">${card.isTeam ? '👥' : getPlayerSportIcon(currentPlayer)}</span>
-              <span class="text-[13px] font-bold text-white truncate">${card.event}</span>
+              <span class="w-[22px] h-[22px] shrink-0 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-[10px]">${card.isTeam ? '👥' : getPlayerSportIcon(currentPlayer)}</span>
+              <span class="text-[14px] font-extrabold text-white truncate">${card.event}</span>
             </div>
             ${badgeHtml}
           </div>
           <div class="flex items-baseline gap-1.5">
-            <span class="text-[10px] text-slate-500 shrink-0">이전 PB</span>
-            <span class="text-[14px] font-bold text-slate-300 font-mono">${priorText}</span>
+            <span class="text-[9.5px] text-slate-500 shrink-0">이전 PB</span>
+            <span class="text-[13.5px] font-bold text-slate-300 font-mono">${priorText}</span>
             <span class="text-slate-600 text-[11px]">→</span>
-            <span class="text-[19px] font-black text-white font-mono leading-none">${currentText}</span>
+            <span class="text-[18px] font-extrabold text-white font-mono leading-none">${currentText}</span>
           </div>
           ${barHtml}
           <div class="grid grid-cols-3 text-[10px] leading-tight">
-            <div><div class="font-mono text-slate-300">${firstText}</div><div class="text-[9px] text-slate-500">최초 기록</div></div>
-            <div class="text-center"><div class="font-mono text-slate-300">${priorText}</div><div class="text-[9px] text-slate-500">이전 PB</div></div>
-            <div class="text-right"><div class="font-mono font-bold text-amber-300">${currentText}</div><div class="text-[9px] text-slate-500">현재 PB</div></div>
+            <div><div class="font-mono text-slate-300">${firstText}</div><div class="text-[8.5px] text-slate-500">최초 기록</div></div>
+            <div class="text-center"><div class="font-mono text-slate-300">${priorText}</div><div class="text-[8.5px] text-slate-500">이전 PB</div></div>
+            <div class="text-right"><div class="font-mono font-bold text-amber-300">${currentText}</div><div class="text-[8.5px] text-slate-500">현재 PB</div></div>
           </div>
-          <div class="flex items-center justify-between mt-2 text-[10px] gap-2">
+          <div class="flex items-center justify-between mt-2 text-[9.5px] gap-2">
             <span class="text-slate-400 shrink-0">개선율 <b class="${rateClass}">${rateText}</b></span>
-            <span class="text-slate-500 truncate">PB 경신 ${card.renewals}회 · 목표 -</span>
+            <span class="text-slate-500 truncate">PB 경신 ${card.renewals}회</span>
           </div>
           ${slowerNote}
         </div>`;
@@ -2441,12 +2531,13 @@
             </div>
             <button type="button" ${year >= bounds.max ? 'disabled' : ''} onclick="stepAnnualYear(1)" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-lg font-bold flex items-center justify-center transition active:scale-95 disabled:opacity-30 disabled:cursor-default">›</button>
           </div>
+          <div class="text-[10px] text-slate-500 px-1 mb-2 leading-relaxed">공식기록을 기준으로 산정하며, 비공식 기록은 반영하지 않습니다.</div>
           ${renderAnnualSummaryHtml(meetCount, gameCount, renewalCount)}
           ${emptyHtml}
           ${sectionHtml('개인 종목 PB 변화', personalCards)}
           ${sectionHtml('단체 종목 PB 변화', teamCards)}
-          <div class="text-[10px] text-slate-500 px-1 pt-1 leading-relaxed">
-            · 이전 PB는 직전 연도 말까지의 최고기록입니다. · 개선율은 이전 PB 대비 단축 비율입니다. · 목표 기록은 아직 등록된 값이 없어 ‘-’로 표시합니다.
+          <div class="text-[9.5px] text-slate-500 px-1 pt-1 leading-relaxed">
+            · 이전 PB는 직전 연도 말까지의 공식 최고기록입니다. · 개선율은 비교 기준 대비 단축 비율입니다.
           </div>
         </div>
       `;
@@ -2457,6 +2548,7 @@
     // ============================================================
     const CAPTURE_WIDTH = 390;
     const CAPTURE_SCALE = 2;
+    const OFFICIAL_NOTICE_TEXT = '공식기록을 기준으로 산정하며, 비공식 기록은 반영하지 않습니다.';
 
     function capFont(weight, size) {
       return weight + ' ' + size + 'px "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", system-ui, sans-serif';
@@ -2580,8 +2672,36 @@
       capGlyph(ctx, glyphKind, x, y, size, color);
     }
 
+    function capRunnerStrip(ctx, runners, heroName, x, y, maxWidth) {
+      const fontHero = capFont(800, 8.5);
+      const fontNormal = capFont(500, 8.5);
+      const sep = ' · ';
+      const sepW = capTextWidth(ctx, sep, fontNormal);
+      let cx = x;
+      for (let i = 0; i < runners.length; i++) {
+        const isHero = heroName && String(runners[i] || '').indexOf(heroName) === 0;
+        const font = isHero ? fontHero : fontNormal;
+        const label = (i + 1) + '주자 ' + runners[i];
+        const labelW = capTextWidth(ctx, label, font);
+        if (cx + labelW > x + maxWidth) {
+          let str = label;
+          while (str.length > 1 && capTextWidth(ctx, str + '…', font) > (x + maxWidth - cx)) str = str.slice(0, -1);
+          capText(ctx, str + '…', cx, y, font, isHero ? '#fcd34d' : '#94a3b8');
+          return;
+        }
+        capText(ctx, label, cx, y, font, isHero ? '#fcd34d' : '#94a3b8');
+        cx += labelW;
+        if (i < runners.length - 1) {
+          if (cx + sepW > x + maxWidth) return;
+          capText(ctx, sep, cx, y, fontNormal, '#64748b');
+          cx += sepW;
+        }
+      }
+    }
+
     function drawCapturePbCard(ctx, x, y, w, ev, records, isTeam, measureOnly) {
-      const list = (Array.isArray(records) ? records : []).filter(r => r && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
+      // PB 이미지도 공식기록만 사용한다(비공식만 있는 종목은 카드 없음).
+      const list = (Array.isArray(records) ? records : []).filter(r => r && isOfficialRecord(r) && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
       if (list.length === 0) return 0;
       let best = list[0];
       list.forEach(r => {
@@ -2612,16 +2732,12 @@
         badgeBg = '#facc15';
         badgeBorder = '#facc15';
         badgeColor = '#020617';
-      } else if (isTeam) {
-        badgeText = '단체 최고기록';
-        badgeBg = 'rgba(59,130,246,0.16)';
-        badgeBorder = 'rgba(59,130,246,0.4)';
-        badgeColor = '#93c5fd';
       } else {
-        badgeText = '개인최고 (PB)';
-        badgeBg = 'rgba(245,158,11,0.16)';
-        badgeBorder = 'rgba(245,158,11,0.4)';
-        badgeColor = '#fcd34d';
+        // 일반 배지 자리에는 실제 달성 날짜를 보여 준다(갱신 배지 때도 날짜는 아래에 남는다).
+        badgeText = best.date || '-';
+        badgeBg = '#1e293b';
+        badgeBorder = '#334155';
+        badgeColor = '#cbd5e1';
       }
       const badgeW = capTextWidth(ctx, badgeText, capFont(700, 9)) + 14;
 
@@ -2635,8 +2751,10 @@
       if (hasRunners) {
         const stripY = y + 76;
         if (!measureOnly) capRoundRect(ctx, x + 14, stripY, w - 28, 14, 5, '#020617', '#1e293b');
-        const runnerText = runners.map((n, i) => (i + 1) + '주자 ' + n).join(' · ');
-        capText(ctx, runnerText, x + 21, stripY + 10.5, capFont(500, 8.5), '#94a3b8', { maxWidth: w - 42 });
+        const playerObj = playersData.find(p => p.id === currentPlayer) || null;
+        const heroName = playerObj ? String(playerObj.name || '') : '';
+        capText(ctx, '👥', x + 20, stripY + 10.5, capFont(500, 8.5), '#93c5fd');
+        capRunnerStrip(ctx, runners, heroName, x + 31, stripY + 10.5, w - 52);
       }
       return h;
     }
@@ -2694,13 +2812,13 @@
       let badgeBg;
       let badgeBorder;
       let badgeColor;
-      if (card.prior === null) {
-        badgeText = '비교 불가';
+      if (card.comparison === 'single') {
+        badgeText = '최초 기록';
         badgeBg = '#1e293b';
         badgeBorder = '#334155';
-        badgeColor = '#94a3b8';
+        badgeColor = '#93c5fd';
       } else if (card.reduction > 0) {
-        badgeText = '-' + card.reduction.toFixed(decimals) + '초 단축';
+        badgeText = card.reduction.toFixed(decimals) + '초 단축';
         badgeBg = 'rgba(251,191,36,0.16)';
         badgeBorder = 'rgba(251,191,36,0.45)';
         badgeColor = '#fcd34d';
@@ -2748,7 +2866,7 @@
       const rateText = card.rate === null ? '비교 불가' : (card.rate > 0 ? '+' + card.rate.toFixed(1) + '%' : card.rate.toFixed(1) + '%');
       const rateW = capText(ctx, '개선율 ', x + 14, y + 118, capFont(500, 9.5), '#64748b');
       capText(ctx, rateText, x + 14 + rateW, y + 118, capFont(700, 9.5), card.rate !== null && card.rate > 0 ? '#6ee7b7' : '#94a3b8');
-      capText(ctx, 'PB 경신 ' + card.renewals + '회 · 목표 -', x + w - 14, y + 118, capFont(500, 9.5), '#64748b', { align: 'right' });
+      capText(ctx, 'PB 경신 ' + card.renewals + '회', x + w - 14, y + 118, capFont(500, 9.5), '#64748b', { align: 'right' });
 
       if (slower) {
         capText(ctx, '올해 최고 ' + formatAnnualTime(card.yearBest, decimals) + ' (PB 미경신)', x + 14, y + 132, capFont(500, 9), '#64748b');
@@ -2778,7 +2896,7 @@
       const ch = 104;
       const stats = [
         { label: '출전 대회', value: meetCount, sub: '공식 대회', glyph: 'flag', color: '#93c5fd' },
-        { label: '총 경기', value: gameCount, sub: '실기 포함', glyph: 'list', color: '#ffffff' },
+        { label: '총 경기', value: gameCount, sub: '공식 기록', glyph: 'list', color: '#ffffff' },
         { label: 'PB 경신', value: renewalCount, sub: '이 해 기록', glyph: 'arrow', color: '#fcd34d' }
       ];
       stats.forEach((s, i) => {
@@ -2828,6 +2946,8 @@
       y += 32;
       const subLine = playerName + (sportText ? ' · ' + sportText : '') + (mainEvent ? ' · ' + mainEvent : '');
       capText(ctx, subLine, PAD, y + 4, capFont(600, 12), '#94a3b8', { maxWidth: innerW });
+      y += 18;
+      capText(ctx, OFFICIAL_NOTICE_TEXT, PAD, y + 9, capFont(500, 9), '#64748b', { maxWidth: innerW });
       y += 18;
       if (!measureOnly) {
         ctx.fillStyle = '#1e293b';
@@ -3226,6 +3346,9 @@
       const countElem = document.getElementById('list-count');
       if (!container) return;
 
+      const playerObj = playersData.find(p => p.id === currentPlayer) || null;
+      const heroName = playerObj ? String(playerObj.name || '') : '';
+
       const records = (appData[currentPlayer] || []).filter(r => isEventMatch(r.event, currentEvent));
 
       let filtered = records.filter(doesRecordMatchFilters);
@@ -3377,7 +3500,7 @@
           let runnersHtml = '';
           if (r.runners && r.runners.length > 0) {
             const listStr = r.runners.map((name, i) => {
-              const isHero = name.includes('김유신') || name.includes('김별하');
+              const isHero = heroName && String(name).indexOf(heroName) === 0;
               return `<span class="${isHero ? 'text-amber-300 font-bold' : 'text-slate-300'}">${i + 1}주자 ${name}</span>`;
             }).join(' <span class="text-slate-600">·</span> ');
             runnersHtml = `<div class="mt-1.5 text-[11px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2.5 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-1">👥 주자:</span> ${listStr}</div>`;
@@ -3385,7 +3508,7 @@
             const rList = r.relay.split('/').map(x => x.trim()).filter(Boolean);
             if (rList.length > 0) {
               const listStr = rList.map((name, i) => {
-                const isHero = name.includes('김유신') || name.includes('김별하');
+                const isHero = heroName && String(name).indexOf(heroName) === 0;
                 return `<span class="${isHero ? 'text-amber-300 font-bold' : 'text-slate-300'}">${i + 1}주자 ${name}</span>`;
               }).join(' <span class="text-slate-600">·</span> ');
               runnersHtml = `<div class="mt-1.5 text-[11px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2.5 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-1">👥 주자:</span> ${listStr}</div>`;
@@ -3461,6 +3584,8 @@
     function resetFormFields() {
       document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
       document.getElementById('input-meet').value = '';
+      const elMeetRound = document.getElementById('input-meet-round');
+      if (elMeetRound) elMeetRound.value = '';
       document.getElementById('time-h').value = '';
       document.getElementById('time-m').value = '';
       document.getElementById('time-s').value = '';
@@ -3488,6 +3613,64 @@
           evSelect.value = currentEvent;
         }
       }
+      populateMeetNameOptions();
+    }
+
+    // 기록 추가·수정 모달의 대회명 후보(기존 등록 대회명 검색·선택용).
+    function populateMeetNameOptions() {
+      const listEl = document.getElementById('meet-name-options');
+      if (!listEl) return;
+      const names = [];
+      const seen = {};
+      (appData[currentPlayer] || []).forEach(r => {
+        const name = String((r && r.meet) || '').trim();
+        if (!name || seen[name]) return;
+        seen[name] = true;
+        names.push(name);
+      });
+      names.sort((a, b) => a.localeCompare(b, 'ko'));
+      listEl.innerHTML = names.map(name => `<option value="${name.replace(/"/g, '&quot;')}"></option>`).join('');
+    }
+
+    // '제53회 대회명'을 선택·입력하면 회차 칸과 대회명 칸으로 나눠 보여 준다(저장 결과는 동일).
+    function onMeetNameChanged() {
+      const meetEl = document.getElementById('input-meet');
+      const roundEl = document.getElementById('input-meet-round');
+      if (!meetEl || !roundEl) return;
+      const value = String(meetEl.value || '').trim();
+      const m = value.match(/^제\s*(\d+)\s*회\s*(.+)$/);
+      if (!m) return;
+      roundEl.value = String(parseInt(m[1], 10));
+      meetEl.value = m[2].trim();
+    }
+
+    // 저장된 대회명(회차 포함)을 회차 칸 + 대회명 칸으로 되돌려 놓는다.
+    function applyMeetToForm(meet) {
+      const meetEl = document.getElementById('input-meet');
+      const roundEl = document.getElementById('input-meet-round');
+      if (!meetEl || !roundEl) return;
+      const value = String(meet || '').trim();
+      const m = value.match(/^제\s*(\d+)\s*회\s*(.+)$/);
+      if (m) {
+        roundEl.value = String(parseInt(m[1], 10));
+        meetEl.value = m[2].trim();
+      } else {
+        roundEl.value = '';
+        meetEl.value = value;
+      }
+    }
+
+    // 회차 칸 + 대회명 칸을 최종 대회명으로 합친다. 회차가 없으면 대회명만 저장한다.
+    function composeMeetName() {
+      const meetEl = document.getElementById('input-meet');
+      const roundEl = document.getElementById('input-meet-round');
+      let base = meetEl ? String(meetEl.value || '').trim() : '';
+      const roundRaw = roundEl ? String(roundEl.value || '').trim() : '';
+      if (!roundRaw) return base;
+      const roundNo = parseInt(roundRaw, 10);
+      if (!Number.isFinite(roundNo) || roundNo <= 0) return base;
+      base = base.replace(/^제\s*\d+\s*회\s*/, '').trim();
+      return base ? ('제' + roundNo + '회 ' + base) : '';
     }
 
     function toggleLockMeet() {
@@ -3607,7 +3790,7 @@
       editingRecordId = null;
       resetFormFields();
 
-      document.getElementById('input-meet').value = meet;
+      applyMeetToForm(meet);
       if (!isMeetLocked) toggleLockMeet();
 
       setFormKind(kind || '공식');
@@ -3626,7 +3809,7 @@
 
       document.querySelector('#modal-record h3 span:last-child').textContent = '운동 기록 수정';
       document.getElementById('input-date').value = record.date || '';
-      document.getElementById('input-meet').value = record.meet || '';
+      applyMeetToForm(record.meet || '');
       setFormKind(record.kind || '공식');
       setRound(record.round || '');
 
@@ -3700,6 +3883,7 @@
           renderCurrentView();
           return;
         }
+        reconcilePbBadgeTimestamps();
         renderCurrentView();
       }
     }
@@ -3825,7 +4009,7 @@
 
     function saveRecord(keepOpen) {
       const dateVal = document.getElementById('input-date').value;
-      const meetVal = document.getElementById('input-meet').value.trim();
+      const meetVal = composeMeetName();
       const hRaw = document.getElementById('time-h').value;
       const mRaw = document.getElementById('time-m').value;
       const sRaw = document.getElementById('time-s').value;
@@ -3886,9 +4070,11 @@
         updatedAt: Date.now()
       };
 
-      // 저장 직전 상태의 해당 종목 PB와 비교해, 실제로 더 좋은 기록일 때만 갱신 시점을 남긴다.
-      // (동일·더 느린 기록, 메모/대회명만 수정, 단순 재접속으로는 배지가 시작되지 않는다)
-      const pbRenewalSeconds = detectPbRenewalSeconds(currentPlayer, targetEvent, totalSec);
+      // 저장 직전 상태의 해당 종목 공식 PB와 비교해, 실제로 더 좋은 '공식' 기록일 때만 갱신 시점을 남긴다.
+      // (동일·더 느린 기록, 비공식 기록, 메모/대회명만 수정, 단순 재접속으로는 배지가 시작되지 않는다)
+      const pbRenewalSeconds = selectedKind === '공식'
+        ? detectPbRenewalSeconds(currentPlayer, targetEvent, totalSec)
+        : null;
 
       if (!appData[currentPlayer]) appData[currentPlayer] = [];
 
@@ -3911,6 +4097,8 @@
       if (pbRenewalSeconds !== null) {
         recordPbRenewal(currentPlayer, targetEvent, pbRenewalSeconds);
       }
+      // 공식기록 기준과 맞지 않는 예전 배지(비공식 PB 등)가 남아 있으면 정리한다.
+      reconcilePbBadgeTimestamps();
 
       renderCurrentView();
 
@@ -8211,7 +8399,6 @@
                     <div>소속 뷰어 ${admViewers.length}명</div>
                   </div>
                 </div>
-                ${adm.players.length > 0 ? `<div class="flex flex-wrap gap-1 pt-1">${adm.players.map(p => `<span class="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[10px] text-slate-300">${p.name} (${p.recordsCount}건)</span>`).join('')}</div>` : ''}
               </div>
             `;
           }).join('')}
