@@ -233,7 +233,7 @@
 
 
   <!-- Main Container -->
-  <div id="app-shell" class="px-4 pt-4">
+  <div id="app-shell" class="pt-4" style="padding-left:18px;padding-right:18px">
 
     <!-- Top App Bar -->
     <header class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800/80">
@@ -2664,7 +2664,10 @@
         ].filter(s => s.cards.length > 0),
         isEmpty: cards.length === 0,
         emptyText: year + '년에는 ' + playerName + ' 선수의 기록이 없습니다.<br>좌우 화살표로 다른 연도를 확인해 주세요.',
-        footnote: '· 이전 PB는 직전 연도 말까지의 공식 최고기록입니다. · 개선율은 비교 기준 대비 단축 비율입니다.'
+        footnoteLines: [
+          '· 이전 PB는 직전 연도 말까지의 공식 최고기록입니다.',
+          '· 개선율은 비교 기준 대비 단축 비율입니다.'
+        ]
       };
     }
 
@@ -2733,7 +2736,7 @@
           <div class="body-stats">${statsHtml}</div>
           ${emptyHtml}
           ${sectionsHtml}
-          <div class="body-footnote">${bodyEsc(model.footnote)}</div>
+          <div class="body-footnote">${model.footnoteLines.map(l => `<div>${bodyEsc(l)}</div>`).join('')}</div>
         </div>`;
     }
 
@@ -3132,8 +3135,10 @@
           y += S.sectionBlockMb - S.cardGap;
         });
         y += S.footnoteMt;
-        capMid(ctx, model.footnote, x + 2, y + S.footnoteH / 2, capFont(500, S.footnoteSize), S.footnoteColor, { maxWidth: w - 4 });
-        y += S.footnoteH;
+        (model.footnoteLines || []).forEach((line, i) => {
+          capMid(ctx, line, x + 2, y + i * S.footnoteH + S.footnoteH / 2, capFont(500, S.footnoteSize), S.footnoteColor, { maxWidth: w - 4 });
+        });
+        y += S.footnoteH * (model.footnoteLines ? model.footnoteLines.length : 1);
         return y;
       }
 
