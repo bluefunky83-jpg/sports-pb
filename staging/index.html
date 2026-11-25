@@ -35,6 +35,25 @@
       user-select: none !important;
     }
   </style>
+  <script>
+    /* 화면 크기(배율): 첫 화면이 그려지기 전에 적용해 깜빡임을 막는다. 설정 모달과 같은 규칙을 쓴다. */
+    (function () {
+      var KEY = 'STAGING_ATHLETE_APP_UI_SCALE';
+      var ALLOWED = ['auto', '1.0', '1.1', '1.2', '1.3'];
+      function resolveUiScale() {
+        var v = 'auto';
+        try { v = localStorage.getItem(KEY) || 'auto'; } catch (e) { v = 'auto'; }
+        if (ALLOWED.indexOf(v) < 0) v = 'auto';
+        if (v === 'auto') return window.innerWidth >= 768 ? 1.2 : 1.0;
+        var n = parseFloat(v);
+        return (n >= 0.5 && n <= 3) ? n : 1.0;
+      }
+      function applyUiScaleEarly() { document.documentElement.style.zoom = String(resolveUiScale()); }
+      applyUiScaleEarly();
+      window.addEventListener('resize', applyUiScaleEarly);
+      window.addEventListener('orientationchange', applyUiScaleEarly);
+    })();
+  </script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen pb-24 antialiased selection:bg-blue-500 selection:text-white">
@@ -272,8 +291,8 @@
     </header>
 
     <!-- Player Dropdown & Manage Button -->
-    <div class="flex items-center gap-2 mb-4 flex-wrap justify-between">
-      <div class="relative min-w-0" id="custom-player-dropdown-wrap" style="flex:1 1 260px">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="relative flex-1 min-w-0" id="custom-player-dropdown-wrap">
         <select id="select-player" onchange="switchPlayer(this.value)" class="hidden">
           <!-- Dynamically populated -->
         </select>
@@ -286,7 +305,7 @@
         </div>
       </div>
 
-      <button type="button" id="btn-manage-players-top" onclick="openPlayerManageModal()" class="px-3.5 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 whitespace-nowrap hidden" style="flex:0 0 auto;margin-left:auto">
+      <button type="button" id="btn-manage-players-top" onclick="openPlayerManageModal()" class="px-3.5 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 whitespace-nowrap shrink-0 hidden">
         <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
         <span>선수관리</span>
       </button>
@@ -740,6 +759,22 @@
         </div>
 
         
+        <!-- 화면 크기(배율): 관리자·뷰어 공통, 이 기기에만 저장 -->
+        <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-300">🔍 화면 크기(배율)</span>
+            <span id="label-ui-scale-current" class="text-[11px] font-bold text-blue-300">자동 · 100%</span>
+          </div>
+          <div id="ui-scale-options" class="grid grid-cols-5 gap-1">
+            <button type="button" data-ui-scale="auto" onclick="setUiScale('auto')" class="px-1 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 text-[11px] font-bold transition active:scale-95">자동</button>
+            <button type="button" data-ui-scale="1.0" onclick="setUiScale('1.0')" class="px-1 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 text-[11px] font-bold transition active:scale-95">100%</button>
+            <button type="button" data-ui-scale="1.1" onclick="setUiScale('1.1')" class="px-1 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 text-[11px] font-bold transition active:scale-95">110%</button>
+            <button type="button" data-ui-scale="1.2" onclick="setUiScale('1.2')" class="px-1 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 text-[11px] font-bold transition active:scale-95">120%</button>
+            <button type="button" data-ui-scale="1.3" onclick="setUiScale('1.3')" class="px-1 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 text-[11px] font-bold transition active:scale-95">130%</button>
+          </div>
+          <p class="text-[10px] text-slate-500 leading-relaxed">자동은 휴대폰 100%, 태블릿·PC 120%입니다. 고른 배율은 이 기기에 저장되어 앱을 다시 열어도 유지됩니다.</p>
+        </div>
+
         <!-- Logout & Account Delete -->
         <div class="pt-1 flex items-center justify-between gap-2">
           <button type="button" onclick="handleLogout()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition active:scale-95">
@@ -5046,6 +5081,63 @@
     }
 
     // 12. Settings & Backup/Export Functions
+    // 화면 크기(배율) — 관리자 앱·뷰어 앱 공통. localStorage 'STAGING_ATHLETE_APP_UI_SCALE' 에 이 기기별로 저장.
+    const UI_SCALE_KEY = 'STAGING_ATHLETE_APP_UI_SCALE';
+    const UI_SCALE_VALUES = ['auto', '1.0', '1.1', '1.2', '1.3'];
+    const UI_SCALE_AUTO_WIDE = 1.2;
+    const UI_SCALE_BREAKPOINT = 768;
+
+    function getUiScaleSetting() {
+      let v = 'auto';
+      try { v = localStorage.getItem(UI_SCALE_KEY) || 'auto'; } catch (e) { v = 'auto'; }
+      return UI_SCALE_VALUES.indexOf(v) >= 0 ? v : 'auto';
+    }
+
+    function resolveUiScale(setting) {
+      const s = UI_SCALE_VALUES.indexOf(setting) >= 0 ? setting : getUiScaleSetting();
+      if (s === 'auto') return window.innerWidth >= UI_SCALE_BREAKPOINT ? UI_SCALE_AUTO_WIDE : 1.0;
+      const n = parseFloat(s);
+      return (n >= 0.5 && n <= 3) ? n : 1.0;
+    }
+
+    function applyUiScale() {
+      const scale = resolveUiScale();
+      document.documentElement.style.zoom = String(scale);
+      updateUiScaleUI(scale);
+    }
+
+    function updateUiScaleUI(scale) {
+      const wrap = document.getElementById('ui-scale-options');
+      const setting = getUiScaleSetting();
+      const cur = (typeof scale === 'number') ? scale : resolveUiScale(setting);
+      if (wrap) {
+        Array.prototype.forEach.call(wrap.querySelectorAll('[data-ui-scale]'), function (btn) {
+          const on = btn.getAttribute('data-ui-scale') === setting;
+          btn.className = 'px-1 py-2 rounded-xl border text-[11px] font-bold transition active:scale-95 ' +
+            (on ? 'bg-blue-600 text-white border-blue-500 shadow-sm' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-blue-500');
+        });
+      }
+      const label = document.getElementById('label-ui-scale-current');
+      if (label) {
+        const pct = Math.round(cur * 100);
+        label.textContent = setting === 'auto' ? ('자동 · ' + pct + '%') : (pct + '%');
+      }
+    }
+
+    function setUiScale(setting) {
+      const v = UI_SCALE_VALUES.indexOf(setting) >= 0 ? setting : 'auto';
+      try { localStorage.setItem(UI_SCALE_KEY, v); } catch (e) {}
+      applyUiScale();
+    }
+
+    // '자동'은 창 너비가 바뀌면(회전·창 크기) 다시 계산한다. 직접 고른 배율은 그대로 유지.
+    window.addEventListener('resize', function () {
+      if (getUiScaleSetting() === 'auto') applyUiScale();
+    });
+    window.addEventListener('orientationchange', function () {
+      if (getUiScaleSetting() === 'auto') applyUiScale();
+    });
+
     function openSettingsModal() {
       const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
       const authUser = authUserStr ? JSON.parse(authUserStr) : null;
@@ -5079,6 +5171,7 @@
       }
 
       document.getElementById('modal-settings').classList.remove('hidden');
+      updateUiScaleUI();
     }
 
     function closeSettingsModal() {
@@ -7725,8 +7818,8 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       history.pushState({ page: 'main' }, '');
-      loadDataFromStorage();
-      checkInitialAuthGate();
+      applyUiScale();
+      loadDataFromStorage();      checkInitialAuthGate();
       applyAuthModeUI();
       checkForUpdates();
       loadRealtimeApprovals();
