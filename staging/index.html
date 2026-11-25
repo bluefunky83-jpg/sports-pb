@@ -20,8 +20,13 @@
   <!-- Google Identity Services (One Tap & Official OAuth Sign-In) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
-    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-    * { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    /* 외부 글꼴 파일을 쓰지 않고 시스템 기본 글꼴만 사용한다. */
+    * { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, Roboto, sans-serif; box-sizing: border-box; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    /* 관리자·뷰어 앱 공통: 최대 1440 CSS px, 그 이하는 가용 너비에 자동 대응, 1440 초과는 중앙 정렬 */
+    #app-shell { width: 100%; max-width: 1440px; margin-left: auto; margin-right: auto; }
+    #btn-add-record-fixed { right: max(1.5rem, calc((100vw - 1440px) / 2 + 1.5rem)); }
+    #capture-toast, #sync-status-toast { max-width: min(90vw, 420px); }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .no-select {
@@ -228,7 +233,7 @@
 
 
   <!-- Main Container -->
-  <div class="max-w-md mx-auto px-4 pt-4">
+  <div id="app-shell" class="px-4 pt-4">
 
     <!-- Top App Bar -->
     <header class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800/80">
@@ -1999,125 +2004,321 @@
       }
     }
 
-    // 8-1. PB Overview View (Separate Personal vs Team Best)
-    function renderPBView(container) {
-      const records = appData[currentPlayer] || [];
-      const events = getPlayerEvents(currentPlayer);
-      const playerObj = playersData.find(p => p.id === currentPlayer) || null;
-      const heroName = playerObj ? String(playerObj.name || '') : '';
+    // ============================================================
+    // 8-1. 공통 본문 스펙 (앱 화면 · 저장 이미지)
+    //  - 카드·글자·간격·배지·막대·아이콘 값을 BODY_SPEC 한 곳에서 정의하고
+    //    HTML 렌더러(앱)와 Canvas 렌더러(저장 이미지)가 같은 값을 함께 쓴다.
+    //  - 외부 글꼴 파일 없이 시스템 기본 글꼴만 사용한다.
+    // ============================================================
+    const BODY_SPEC = {
+      font: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif',
+      pageBg: '#020617',
+      cardBg: '#0f172a',
+      cardBorder: '#1e293b',
+      cardRadius: 14,
+      cardGap: 8,
+      cardMinWidth: 300,
+      noticeSize: 9.5, noticeColor: '#64748b', noticeMb: 8, noticeH: 13,
+      sectionTitleH: 14, sectionTitleSize: 12.5, sectionTitleWeight: 800, sectionTitleColor: '#e2e8f0',
+      sectionBarW: 3, sectionBarH: 12, sectionBarColor: '#3b82f6', sectionTitleGap: 6, sectionTitleMb: 8, sectionBlockMb: 10,
+      iconTile: 22, iconTileRadius: 7, iconTileBg: 'rgba(59,130,246,0.14)', iconTileBorder: 'rgba(59,130,246,0.35)', iconGlyph: 14, iconColor: '#bfdbfe',
+      pbPadX: 14, pbPadTop: 14, pbPadBottom: 14,
+      pbHeadH: 18, pbTimeH: 28, pbTimeMt: 2, pbMetaH: 15, pbHeadGap: 6,
+      pbTitleSize: 13, pbTitleWeight: 800, pbTitleColor: '#e2e8f0',
+      pbTimeSize: 23, pbTimeWeight: 800, pbTimeColor: '#ffffff',
+      pbMeetSize: 11, pbMeetWeight: 500, pbMeetColor: '#94a3b8',
+      pbDateSize: 10, pbDateWeight: 500, pbDateColor: '#64748b',
+      badgeSize: 9, badgeWeight: 700, badgePadX: 6, badgeH: 16, badgeRadius: 8, badgeGap: 4,
+      renewalBg: '#facc15', renewalBorder: '#facc15', renewalColor: '#020617',
+      dateBadgeBg: '#1e293b', dateBadgeBorder: '#334155', dateBadgeColor: '#cbd5e1',
+      stripMt: 6, stripH: 14, stripRadius: 5, stripPadX: 6, stripFontSize: 8.5, stripFontWeight: 500,
+      stripBg: '#020617', stripBorder: '#1e293b', runnerColor: '#94a3b8', heroColor: '#fcd34d', sepColor: '#64748b',
+      annualPadTop: 13, annualPadBottom: 13, annualHeadH: 22, annualHeadGap: 8, annualHeadGapX: 8,
+      annualCompareH: 20, annualBarMt: 6, annualBarH: 6, annualBarRadius: 3,
+      annualMetaMt: 10, annualMetaH: 22, annualFooterMt: 8, annualFooterH: 14, annualSlowerMt: 4, annualSlowerH: 12,
+      annualEventSize: 14, annualEventWeight: 800, annualEventColor: '#ffffff',
+      annualBadgeSize: 9.5, annualBadgeH: 17, annualBadgePadX: 6,
+      annualLabelSize: 9.5, annualLabelColor: '#64748b', annualLabelWeight: 600,
+      annualPriorSize: 13.5, annualPriorWeight: 700, annualPriorColor: '#cbd5e1',
+      annualArrowSize: 11, annualArrowColor: '#475569',
+      annualCurrentSize: 18, annualCurrentWeight: 800, annualCurrentColor: '#ffffff',
+      barBg: '#1e293b', barBlue: 'rgba(59,130,246,0.65)', barAmber: '#fbbf24',
+      metaValueSize: 10, metaValueWeight: 600, metaValueColor: '#cbd5e1', metaValueH: 12,
+      metaLabelSize: 8.5, metaLabelColor: '#64748b', metaLabelH: 10,
+      rateSize: 9.5, rateColorUp: '#6ee7b7', rateColorFlat: '#94a3b8',
+      slowerSize: 9, slowerColor: '#64748b',
+      statH: 104, statPadTop: 11, statLabelMt: 6, statLabelH: 14, statLabelSize: 10.5, statLabelColor: '#94a3b8', statLabelWeight: 600,
+      statValueMt: 4, statValueH: 22, statValueSize: 21, statValueWeight: 800, statValueColor: '#f8fafc', statUnitSize: 9,
+      statSubMt: 4, statSubH: 12, statSubSize: 8.5, statSubColor: '#64748b',
+      footnoteSize: 9.5, footnoteColor: '#64748b', footnoteMt: 2, footnoteH: 14, emptyFontColor: '#64748b',
+      emptyPadY: 44, emptyFontSize: 11,
+      badgeSingleBg: '#1e293b', badgeSingleBorder: '#334155', badgeSingleColor: '#93c5fd',
+      badgeReduceBg: 'rgba(251,191,36,0.16)', badgeReduceBorder: 'rgba(251,191,36,0.45)', badgeReduceColor: '#fcd34d',
+      badgeFlatBg: '#1e293b', badgeFlatBorder: '#334155', badgeFlatColor: '#94a3b8'
+    };
 
-      const personalEvents = [];
-      const teamEvents = [];
+    // 종목·통계 아이콘은 앱(SVG)과 저장 이미지(Canvas)가 같은 도형 정의를 쓴다.
+    const BODY_ICONS = {
+      running: [
+        { t: 'c', cx: 15.4, cy: 4.9, r: 2.0, fill: true },
+        { t: 'p', pts: [[14.2, 8.7], [11.8, 13.0]] },
+        { t: 'p', pts: [[14.7, 10.0], [18.2, 8.4]] },
+        { t: 'p', pts: [[13.9, 10.4], [10.2, 9.2]] },
+        { t: 'p', pts: [[11.8, 13.0], [8.2, 17.4]] },
+        { t: 'p', pts: [[11.8, 13.0], [15.4, 17.0]] }
+      ],
+      cycling: [
+        { t: 'c', cx: 6.6, cy: 16.4, r: 3.5 },
+        { t: 'c', cx: 17.4, cy: 16.4, r: 3.5 },
+        { t: 'p', pts: [[6.6, 16.4], [10.6, 10.6], [15.2, 10.6], [17.4, 16.4]] },
+        { t: 'p', pts: [[10.6, 10.6], [12.9, 16.4]] },
+        { t: 'p', pts: [[15.2, 10.6], [16.7, 8.8]] },
+        { t: 'p', pts: [[9.2, 8.8], [11.6, 8.8]] }
+      ],
+      team: [
+        { t: 'c', cx: 7.4, cy: 9.2, r: 1.8, fill: true },
+        { t: 'c', cx: 16.6, cy: 9.2, r: 1.8, fill: true },
+        { t: 'c', cx: 12.0, cy: 7.4, r: 2.0, fill: true },
+        { t: 'a', cx: 7.4, cy: 17.0, r: 2.6, from: Math.PI, to: Math.PI * 2 },
+        { t: 'a', cx: 16.6, cy: 17.0, r: 2.6, from: Math.PI, to: Math.PI * 2 },
+        { t: 'a', cx: 12.0, cy: 16.2, r: 3.2, from: Math.PI, to: Math.PI * 2 }
+      ],
+      flag: [
+        { t: 'p', pts: [[7, 20.4], [7, 5.0]] },
+        { t: 'poly', pts: [[7, 5.6], [17.2, 8.3], [7, 11.0]], fill: true }
+      ],
+      list: [
+        { t: 'c', cx: 6.6, cy: 7.4, r: 0.9, fill: true },
+        { t: 'p', pts: [[9.4, 7.4], [18, 7.4]] },
+        { t: 'c', cx: 6.6, cy: 12, r: 0.9, fill: true },
+        { t: 'p', pts: [[9.4, 12], [18, 12]] },
+        { t: 'c', cx: 6.6, cy: 16.6, r: 0.9, fill: true },
+        { t: 'p', pts: [[9.4, 16.6], [15.6, 16.6]] }
+      ],
+      arrow: [
+        { t: 'p', pts: [[5, 17.2], [9.6, 12.4], [13.0, 15.8], [18.6, 8.8]] },
+        { t: 'p', pts: [[15.0, 8.8], [18.6, 8.8], [18.6, 12.4]] }
+      ]
+    };
+    const BODY_ICON_STROKE = 1.9;
 
-      events.forEach(ev => {
-        const isTeam = ev.includes('mR') || ev.includes('릴레이') || ev.includes('단체');
-        if (isTeam) teamEvents.push(ev);
-        else personalEvents.push(ev);
-      });
+    function bodyIconNameForPlayer(playerId, isTeam) {
+      if (isTeam) return 'team';
+      const p = playersData.find(x => x.id === playerId);
+      const sport = p ? String(p.sport || '') : '';
+      if (sport.indexOf('사이클') >= 0) return 'cycling';
+      if (sport.indexOf('육상') >= 0) return 'running';
+      return 'running';
+    }
 
-      // 릴레이 엔트리에서 지금 보고 있는 선수 이름만 굵게(순서·주자 번호는 그대로).
-      const runnerNameHtml = (name) => {
-        const isHero = heroName && String(name).indexOf(heroName) === 0;
-        return `<span class="${isHero ? 'text-amber-300 font-extrabold' : 'text-slate-300'}">${name}</span>`;
-      };
-
-      const buildCard = (ev, isTeam) => {
-        // 공식기록만 PB 후보. 비공식만 있는 종목은 비공식 대신 표시하지 않고 카드를 만들지 않는다.
-        const evRecs = records.filter(r => isOfficialRecord(r) && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
-        if (evRecs.length === 0) return '';
-
-        evRecs.sort((a, b) => parseFloat(a.seconds) - parseFloat(b.seconds));
-        const best = evRecs[0];
-        // 앱 화면과 저장 이미지의 기록 표기를 같게 맞춘다(육상 2자리·사이클 3자리, 60초 이상 분:초).
-        const formatted = formatAnnualTime(parseFloat(best.seconds), getEventDecimalPlaces(records, ev));
-
-        const renewalInfo = getPbRenewalInfo(currentPlayer, ev, records);
-        const badgeHtml = renewalInfo
-          ? '<span class="shrink-0 whitespace-nowrap text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-400 text-slate-950 border border-yellow-500/60 shadow-sm">★PB갱신★</span>'
-          : `<span class="shrink-0 whitespace-nowrap text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono">${best.date || '-'}</span>`;
-
-        let runnersHtml = '';
-        if (isTeam) {
-          let runners = [];
-          if (best.runners && best.runners.length > 0) {
-            runners = best.runners.slice();
-          } else if (best.relay) {
-            runners = best.relay.split('/').map(x => x.trim()).filter(Boolean);
-          }
-          if (runners.length > 0) {
-            const listStr = runners.map((name, i) => `<span class="whitespace-nowrap">${i + 1}주자 ${runnerNameHtml(name)}</span>`).join(' <span class="text-slate-600">·</span> ');
-            runnersHtml = `<div class="mt-2 text-[9.5px] text-slate-400 flex items-center flex-wrap gap-1 bg-slate-950/70 rounded-lg px-2 py-1 border border-slate-800"><span class="text-blue-400 font-semibold mr-0.5">👥 주자:</span> ${listStr}</div>`;
-          }
+    function bodyIconSvg(name, size) {
+      const parts = BODY_ICONS[name] || BODY_ICONS.running;
+      const els = parts.map(p => {
+        if (p.t === 'c') {
+          return p.fill
+            ? `<circle cx="${p.cx}" cy="${p.cy}" r="${p.r}" fill="currentColor"/>`
+            : `<circle cx="${p.cx}" cy="${p.cy}" r="${p.r}" fill="none" stroke="currentColor" stroke-width="${BODY_ICON_STROKE}"/>`;
         }
+        if (p.t === 'p') {
+          return `<polyline points="${p.pts.map(q => q[0] + ',' + q[1]).join(' ')}" fill="none" stroke="currentColor" stroke-width="${BODY_ICON_STROKE}" stroke-linecap="round" stroke-linejoin="round"/>`;
+        }
+        if (p.t === 'poly') {
+          return `<polygon points="${p.pts.map(q => q[0] + ',' + q[1]).join(' ')}" fill="currentColor" stroke="none"/>`;
+        }
+        if (p.t === 'a') {
+          const x1 = p.cx + p.r * Math.cos(p.from), y1 = p.cy + p.r * Math.sin(p.from);
+          const x2 = p.cx + p.r * Math.cos(p.to), y2 = p.cy + p.r * Math.sin(p.to);
+          return `<path d="M${x1} ${y1} A${p.r} ${p.r} 0 0 1 ${x2} ${y2}" fill="none" stroke="currentColor" stroke-width="${BODY_ICON_STROKE}" stroke-linecap="round"/>`;
+        }
+        return '';
+      }).join('');
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">${els}</svg>`;
+    }
 
-        return `
-          <div onclick="selectEventTab('${ev}')" class="p-3.5 rounded-[14px] bg-slate-900 border border-slate-800 hover:border-blue-500 transition cursor-pointer shadow-md">
-            <div class="flex items-center justify-between gap-2 mb-1">
-              <span class="text-[13px] font-extrabold text-slate-200 truncate">${ev}</span>
-              ${badgeHtml}
-            </div>
-            <div class="text-[23px] font-extrabold text-white font-mono tracking-tight leading-none mb-1.5">${formatted}</div>
-            <div class="text-[11px] text-slate-400 flex items-center justify-between gap-2 leading-none">
-              <span class="truncate">${best.meet}</span>
-              <span class="font-mono text-[10px] text-slate-500 shrink-0">${best.date}</span>
-            </div>
-            ${runnersHtml}
-          </div>
-        `;
-      };
+    function drawBodyIcon(ctx, name, x, y, size, color) {
+      const parts = BODY_ICONS[name] || BODY_ICONS.running;
+      const k = size / 24;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(k, k);
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = BODY_ICON_STROKE;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      parts.forEach(p => {
+        if (p.t === 'c') {
+          ctx.beginPath();
+          ctx.arc(p.cx, p.cy, p.r, 0, Math.PI * 2);
+          if (p.fill) ctx.fill(); else ctx.stroke();
+        } else if (p.t === 'p') {
+          ctx.beginPath();
+          p.pts.forEach((q, i) => { if (i === 0) ctx.moveTo(q[0], q[1]); else ctx.lineTo(q[0], q[1]); });
+          ctx.stroke();
+        } else if (p.t === 'poly') {
+          ctx.beginPath();
+          p.pts.forEach((q, i) => { if (i === 0) ctx.moveTo(q[0], q[1]); else ctx.lineTo(q[0], q[1]); });
+          ctx.closePath();
+          ctx.fill();
+        } else if (p.t === 'a') {
+          ctx.beginPath();
+          ctx.arc(p.cx, p.cy, p.r, p.from, p.to);
+          ctx.stroke();
+        }
+      });
+      ctx.restore();
+    }
 
-      const personalCards = personalEvents.map(ev => buildCard(ev, false)).filter(Boolean).join('');
-      const teamCards = teamEvents.map(ev => buildCard(ev, true)).filter(Boolean).join('');
-
-      const sectionHeader = (title) => `
-        <div class="flex items-center gap-1.5 px-1">
-          <span class="w-[3px] h-3 rounded-full bg-blue-500"></span>
-          <h2 class="text-[12.5px] font-extrabold text-white">${title}</h2>
-        </div>`;
-
-      let sectionsHtml = '';
-      if (personalCards) {
-        sectionsHtml += `
-          <div class="space-y-2 mb-5">
-            ${sectionHeader('개인 최고기록 (Personal Best)')}
-            <div class="grid grid-cols-1 gap-2">
-              ${personalCards}
-            </div>
-          </div>
-        `;
-      }
-
-      if (teamCards) {
-        sectionsHtml += `
-          <div class="space-y-2">
-            ${sectionHeader('릴레이 / 단체전 최고기록 (Team Best)')}
-            <div class="grid grid-cols-1 gap-2">
-              ${teamCards}
-            </div>
-          </div>
-        `;
-      }
-
-      const noticeHtml = `<div class="text-[10px] text-slate-500 px-1 leading-relaxed">공식기록을 기준으로 산정하며, 비공식 기록은 반영하지 않습니다.</div>`;
-
-      if (!sectionsHtml) {
-        container.innerHTML = `
-          <div class="space-y-2">
-            ${noticeHtml}
-            <div class="py-12 px-4 text-center rounded-[14px] bg-slate-900 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
-              아직 공식기록이 없습니다.<br>공식 대회 기록을 추가하면 최고기록이 표시됩니다.
-            </div>
-          </div>`;
-        return;
-      }
-
-      container.innerHTML = `
-        <div class="space-y-1">
-          ${noticeHtml}
-          <div class="text-[10px] text-slate-500 px-1 mb-3 leading-relaxed">카드를 터치하면 해당 종목 상세 그래프로 이동합니다.</div>
-          ${sectionsHtml}
-        </div>
+    function installBodyStyles() {
+      if (document.getElementById('body-shared-style')) return;
+      const S = BODY_SPEC;
+      const css = `
+        .body-root { font-family: ${S.font}; color: #e2e8f0; }
+        .body-notice { font-size: ${S.noticeSize}px; color: ${S.noticeColor}; line-height: 1.4; padding: 0 2px; margin: 0 0 ${S.noticeMb}px; }
+        .body-section { margin: 0 0 ${S.sectionBlockMb}px; }
+        .body-sec-title { display: flex; align-items: center; gap: ${S.sectionTitleGap}px; height: ${S.sectionTitleH}px; font-size: ${S.sectionTitleSize}px; font-weight: ${S.sectionTitleWeight}; color: ${S.sectionTitleColor}; margin: 0 0 ${S.sectionTitleMb}px; padding-left: 2px; line-height: ${S.sectionTitleH}px; }
+        .body-sec-bar { width: ${S.sectionBarW}px; height: ${S.sectionBarH}px; border-radius: 2px; background: ${S.sectionBarColor}; flex: 0 0 auto; }
+        .body-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(${S.cardMinWidth}px, 1fr)); gap: ${S.cardGap}px; }
+        .body-card { background: ${S.cardBg}; border: 1px solid ${S.cardBorder}; border-radius: ${S.cardRadius}px; box-sizing: border-box; }
+        .body-icon { width: ${S.iconTile}px; height: ${S.iconTile}px; border-radius: ${S.iconTileRadius}px; background: ${S.iconTileBg}; border: 1px solid ${S.iconTileBorder}; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: ${S.iconColor}; box-sizing: border-box; }
+        .body-icon svg { display: block; }
+        .pb-card { padding: ${S.pbPadTop}px ${S.pbPadX}px ${S.pbPadBottom}px; cursor: pointer; }
+        .pb-head { display: flex; align-items: center; gap: ${S.pbHeadGap}px; height: ${S.pbHeadH}px; }
+        .pb-title { font-size: ${S.pbTitleSize}px; font-weight: ${S.pbTitleWeight}; color: ${S.pbTitleColor}; line-height: ${S.pbHeadH}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; min-width: 0; }
+        .pb-badges { display: flex; align-items: center; gap: ${S.badgeGap}px; flex: 0 0 auto; }
+        .pb-badge { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: ${S.badgeH}px; padding: 0 ${S.badgePadX}px; border-radius: ${S.badgeRadius}px; border: 1px solid; font-size: ${S.badgeSize}px; font-weight: ${S.badgeWeight}; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .badge-renewal { background: ${S.renewalBg}; border-color: ${S.renewalBorder}; color: ${S.renewalColor}; }
+        .badge-date { background: ${S.dateBadgeBg}; border-color: ${S.dateBadgeBorder}; color: ${S.dateBadgeColor}; }
+        .pb-time { height: ${S.pbTimeH}px; line-height: ${S.pbTimeH}px; margin-top: ${S.pbTimeMt}px; font-size: ${S.pbTimeSize}px; font-weight: ${S.pbTimeWeight}; color: ${S.pbTimeColor}; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+        .pb-meta { height: ${S.pbMetaH}px; line-height: ${S.pbMetaH}px; font-size: ${S.pbMeetSize}px; font-weight: ${S.pbMeetWeight}; color: ${S.pbMeetColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pb-strip { margin-top: ${S.stripMt}px; height: ${S.stripH}px; box-sizing: border-box; border: 1px solid ${S.stripBorder}; background: ${S.stripBg}; border-radius: ${S.stripRadius}px; display: flex; align-items: center; gap: 3px; padding: 0 ${S.stripPadX}px; font-size: ${S.stripFontSize}px; font-weight: ${S.stripFontWeight}; color: ${S.runnerColor}; white-space: nowrap; overflow: hidden; }
+        .pb-strip .hero { color: ${S.heroColor}; font-weight: 800; }
+        .pb-strip .sep { color: ${S.sepColor}; }
+        .pb-strip .who { display: inline-flex; align-items: center; gap: 2px; }
+        .an-card { padding: ${S.annualPadTop}px ${S.pbPadX}px ${S.annualPadBottom}px; }
+        .an-head { display: flex; align-items: center; gap: ${S.annualHeadGapX}px; height: ${S.annualHeadH}px; margin-bottom: ${S.annualHeadGap}px; }
+        .an-title { flex: 1 1 auto; min-width: 0; font-size: ${S.annualEventSize}px; font-weight: ${S.annualEventWeight}; color: ${S.annualEventColor}; line-height: ${S.annualHeadH}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .an-badge { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: ${S.annualBadgeH}px; padding: 0 ${S.annualBadgePadX}px; border-radius: 999px; border: 1px solid; font-size: ${S.annualBadgeSize}px; font-weight: 700; white-space: nowrap; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+        .badge-single { background: ${S.badgeSingleBg}; border-color: ${S.badgeSingleBorder}; color: ${S.badgeSingleColor}; }
+        .badge-reduce { background: ${S.badgeReduceBg}; border-color: ${S.badgeReduceBorder}; color: ${S.badgeReduceColor}; }
+        .badge-flat { background: ${S.badgeFlatBg}; border-color: ${S.badgeFlatBorder}; color: ${S.badgeFlatColor}; }
+        .an-compare { display: flex; align-items: center; gap: 8px; height: ${S.annualCompareH}px; line-height: ${S.annualCompareH}px; }
+        .an-label { font-size: ${S.annualLabelSize}px; font-weight: ${S.annualLabelWeight}; color: ${S.annualLabelColor}; flex: 0 0 auto; }
+        .an-prior { font-size: ${S.annualPriorSize}px; font-weight: ${S.annualPriorWeight}; color: ${S.annualPriorColor}; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+        .an-arrow { font-size: ${S.annualArrowSize}px; color: ${S.annualArrowColor}; flex: 0 0 auto; }
+        .an-current { font-size: ${S.annualCurrentSize}px; font-weight: ${S.annualCurrentWeight}; color: ${S.annualCurrentColor}; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+        .an-bar { position: relative; height: ${S.annualBarH}px; margin-top: ${S.annualBarMt}px; border-radius: ${S.annualBarRadius}px; background: ${S.barBg}; overflow: hidden; }
+        .an-bar-blue { position: absolute; left: 0; top: 0; bottom: 0; background: ${S.barBlue}; }
+        .an-bar-amber { position: absolute; top: 0; bottom: 0; background: ${S.barAmber}; }
+        .an-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; height: ${S.annualMetaH}px; margin-top: ${S.annualMetaMt}px; }
+        .an-meta-value { height: ${S.metaValueH}px; line-height: ${S.metaValueH}px; font-size: ${S.metaValueSize}px; font-weight: ${S.metaValueWeight}; color: ${S.metaValueColor}; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .an-meta-label { height: ${S.metaLabelH}px; line-height: ${S.metaLabelH}px; font-size: ${S.metaLabelSize}px; color: ${S.metaLabelColor}; white-space: nowrap; }
+        .an-meta-mid { text-align: center; }
+        .an-meta-right { text-align: right; }
+        .an-meta-right .an-meta-value { color: ${S.barAmber}; font-weight: 700; }
+        .an-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: ${S.annualFooterH}px; margin-top: ${S.annualFooterMt}px; font-size: ${S.rateSize}px; color: ${S.annualLabelColor}; line-height: ${S.annualFooterH}px; }
+        .an-footer .rate-up { color: ${S.rateColorUp}; font-weight: 700; }
+        .an-footer .rate-flat { color: ${S.rateColorFlat}; font-weight: 700; }
+        .an-slower { margin-top: ${S.annualSlowerMt}px; height: ${S.annualSlowerH}px; line-height: ${S.annualSlowerH}px; font-size: ${S.slowerSize}px; color: ${S.slowerColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .body-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: ${S.cardGap}px; margin-bottom: 14px; }
+        .body-stat { height: ${S.statH}px; padding-top: ${S.statPadTop}px; text-align: center; box-sizing: border-box; }
+        .body-stat .body-icon { margin: 0 auto; }
+        .body-stat-label { margin-top: ${S.statLabelMt}px; height: ${S.statLabelH}px; line-height: ${S.statLabelH}px; font-size: ${S.statLabelSize}px; font-weight: ${S.statLabelWeight}; color: ${S.statLabelColor}; white-space: nowrap; }
+        .body-stat-value { margin-top: ${S.statValueMt}px; height: ${S.statValueH}px; line-height: ${S.statValueH}px; font-size: ${S.statValueSize}px; font-weight: ${S.statValueWeight}; color: ${S.statValueColor}; font-variant-numeric: tabular-nums; }
+        .body-stat-unit { font-size: ${S.statUnitSize}px; font-weight: 700; color: ${S.statLabelColor}; margin-left: 1px; }
+        .body-stat-sub { margin-top: ${S.statSubMt}px; height: ${S.statSubH}px; line-height: ${S.statSubH}px; font-size: ${S.statSubSize}px; color: ${S.statSubColor}; white-space: nowrap; }
+        .body-footnote { font-size: ${S.footnoteSize}px; color: ${S.footnoteColor}; line-height: 1.5; padding: 0 2px; margin-top: ${S.footnoteMt}px; }
+        .body-empty { padding: ${S.emptyPadY}px 16px; text-align: center; font-size: ${S.emptyFontSize}px; color: #94a3b8; line-height: 1.6; }
       `;
+      const style = document.createElement('style');
+      style.id = 'body-shared-style';
+      style.textContent = css;
+      document.head.appendChild(style);
+    }
+    installBodyStyles();
+
+    function bodyEsc(v) {
+      return String(v === null || v === undefined ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    // ---------- PB 본문 모델 ----------
+    function buildPbBodyModel(playerId) {
+      const records = appData[playerId] || [];
+      const player = playersData.find(p => p.id === playerId) || null;
+      const heroName = player ? String(player.name || '') : '';
+      const personal = [];
+      const team = [];
+      getPlayerEvents(playerId).forEach(ev => {
+        // 공식기록만 PB 후보. 비공식만 있는 종목은 카드를 만들지 않는다.
+        const recs = records.filter(r => isOfficialRecord(r) && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
+        if (recs.length === 0) return;
+        let best = recs[0];
+        recs.forEach(r => { if (parseFloat(r.seconds) < parseFloat(best.seconds)) best = r; });
+        const isTeam = isTeamEventName(ev);
+        let runners = [];
+        if (isTeam) {
+          if (Array.isArray(best.runners) && best.runners.length > 0) runners = best.runners.slice();
+          else if (best.relay) runners = String(best.relay).split('/').map(s => s.trim()).filter(Boolean);
+        }
+        const card = {
+          event: ev,
+          isTeam: isTeam,
+          icon: bodyIconNameForPlayer(playerId, isTeam),
+          timeText: formatAnnualTime(parseFloat(best.seconds), getEventDecimalPlaces(records, ev)),
+          meet: best.meet || '',
+          date: best.date || '',
+          renewal: !!getPbRenewalInfo(playerId, ev, records),
+          runners: runners,
+          heroName: heroName
+        };
+        (isTeam ? team : personal).push(card);
+      });
+      return {
+        notice: OFFICIAL_NOTICE_TEXT,
+        sections: [
+          { title: '개인 최고기록 (Personal Best)', cards: personal },
+          { title: '릴레이 / 단체전 최고기록 (Team Best)', cards: team }
+        ].filter(s => s.cards.length > 0),
+        emptyText: '아직 공식기록이 없습니다.<br>공식 대회 기록을 추가하면 최고기록이 표시됩니다.'
+      };
+    }
+
+    function pbCardHtml(card) {
+      const S = BODY_SPEC;
+      const runnersHtml = card.runners.length > 0
+        ? `<div class="pb-strip"><span>👥 주자:</span>${card.runners.map((name, i) => {
+            const hero = card.heroName && String(name).indexOf(card.heroName) === 0;
+            const sep = i < card.runners.length - 1 ? '<span class="sep">·</span>' : '';
+            return `<span class="who"><span class="${hero ? 'hero' : ''}">${(i + 1)}주자 ${bodyEsc(name)}</span>${sep}</span>`;
+          }).join('')}</div>`
+        : '';
+      const badges = `${card.renewal ? '<span class="pb-badge badge-renewal">★PB갱신★</span>' : ''}<span class="pb-badge badge-date">${bodyEsc(card.date || '-')}</span>`;
+      return `
+        <div class="body-card pb-card" role="button" tabindex="0" onclick="selectEventTab('${bodyEsc(card.event).replace(/'/g, "\\'")}')">
+          <div class="pb-head">
+            <span class="pb-title">${bodyEsc(card.event)}</span>
+            <span class="pb-badges">${badges}</span>
+          </div>
+          <div class="pb-time">${card.timeText}</div>
+          <div class="pb-meta">${bodyEsc(card.meet)}</div>
+          ${runnersHtml}
+        </div>`;
+    }
+
+    function pbBodyHtml(model) {
+      if (!model.sections.length) {
+        return `<div class="body-root"><div class="body-notice">${bodyEsc(model.notice)}</div><div class="body-card body-empty">${model.emptyText}</div></div>`;
+      }
+      const sectionsHtml = model.sections.map(sec => `
+        <div class="body-section">
+          <div class="body-sec-title"><span class="body-sec-bar"></span>${bodyEsc(sec.title)}</div>
+          <div class="body-grid">${sec.cards.map(pbCardHtml).join('')}</div>
+        </div>`).join('');
+      return `<div class="body-root"><div class="body-notice">${bodyEsc(model.notice)}</div>${sectionsHtml}</div>`;
+    }
+
+    function renderPBView(container) {
+      container.innerHTML = pbBodyHtml(buildPbBodyModel(currentPlayer));
     }
 
     // ============================================================
@@ -2410,119 +2611,139 @@
     // ============================================================
     // 8-4. 연간 종합노트 화면
     // ============================================================
-    function renderAnnualSummaryHtml(meetCount, gameCount, renewalCount) {
-      const stat = (label, value, sub, accent, icon) => `
-        <div class="rounded-[14px] bg-slate-900 border border-slate-800 py-2.5 text-center shadow-md">
-          <div class="w-[22px] h-[22px] mx-auto rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-[10px] leading-none">${icon}</div>
-          <div class="text-[10px] text-slate-400 font-semibold leading-tight mt-1">${label}</div>
-          <div class="text-[21px] leading-none font-extrabold ${accent} mt-1">${value}<span class="text-[9px] font-bold text-slate-400 ml-0.5">회</span></div>
-          <div class="text-[9px] text-slate-500 mt-1 leading-none">${sub}</div>
-        </div>`;
-      return `
-        <div class="grid grid-cols-3 gap-2 mb-4">
-          ${stat('출전 대회', meetCount, '공식 대회', 'text-blue-300', '🏁')}
-          ${stat('총 경기', gameCount, '공식 기록', 'text-white', '📋')}
-          ${stat('PB 경신', renewalCount, '이 해 기록', 'text-amber-300', '📈')}
-        </div>`;
+    // ---------- 연간 종합노트 본문 모델 ----------
+    function buildAnnualBodyModel(playerId, year) {
+      const cards = getAnnualEventCards(playerId, year);
+      const player = playersData.find(p => p.id === playerId) || null;
+      const playerName = player ? (player.name || '선수') : '선수';
+
+      const toCard = (card) => {
+        const d = card.decimals;
+        const priorText = Number.isFinite(card.prior) ? formatAnnualTime(card.prior, d) : '-';
+        const currentText = formatAnnualTime(card.current, d);
+        const firstText = Number.isFinite(card.first) ? formatAnnualTime(card.first, d) : '-';
+        let badge;
+        if (card.comparison === 'single') badge = { text: '최초 기록', cls: 'badge-single' };
+        else if (card.reduction > 0) badge = { text: card.reduction.toFixed(d) + '초 단축', cls: 'badge-reduce' };
+        else badge = { text: '경신 없음', cls: 'badge-flat' };
+        const geom = getAnnualBarGeometry(card);
+        const rateText = card.rate === null ? '비교 불가' : (card.rate > 0 ? '+' + card.rate.toFixed(1) + '%' : card.rate.toFixed(1) + '%');
+        const slowerText = card.comparison === 'prior' && Number.isFinite(card.yearBest) && card.yearBest > card.current + 1e-9
+          ? '올해 최고 ' + formatAnnualTime(card.yearBest, d) + ' (PB 미경신)'
+          : null;
+        return {
+          event: card.event,
+          isTeam: card.isTeam,
+          icon: bodyIconNameForPlayer(playerId, card.isTeam),
+          priorText: priorText,
+          currentText: currentText,
+          firstText: firstText,
+          badge: badge,
+          geom: geom,
+          rateText: rateText,
+          rateUp: card.rate !== null && card.rate > 0,
+          renewals: card.renewals,
+          slowerText: slowerText
+        };
+      };
+
+      const personal = cards.filter(c => !c.isTeam).map(toCard);
+      const team = cards.filter(c => c.isTeam).map(toCard);
+      return {
+        year: year,
+        playerName: playerName,
+        notice: OFFICIAL_NOTICE_TEXT,
+        stats: [
+          { label: '출전 대회', value: getAnnualMeetCount(playerId, year), sub: '공식 대회', icon: 'flag' },
+          { label: '총 경기', value: getAnnualGameCount(playerId, year), sub: '공식 기록', icon: 'list' },
+          { label: 'PB 경신', value: countPbRenewalsInYear(playerId, year), sub: '이 해 기록', icon: 'arrow' }
+        ],
+        sections: [
+          { title: '개인 종목 PB 변화', cards: personal },
+          { title: '단체 종목 PB 변화', cards: team }
+        ].filter(s => s.cards.length > 0),
+        isEmpty: cards.length === 0,
+        emptyText: year + '년에는 ' + playerName + ' 선수의 기록이 없습니다.<br>좌우 화살표로 다른 연도를 확인해 주세요.',
+        footnote: '· 이전 PB는 직전 연도 말까지의 공식 최고기록입니다. · 개선율은 비교 기준 대비 단축 비율입니다.'
+      };
     }
 
-    function getPlayerSportIcon(playerId) {
-      const p = playersData.find(x => x.id === playerId);
-      const sport = p ? String(p.sport || '') : '';
-      if (sport.indexOf('사이클') >= 0) return '🚴';
-      if (sport.indexOf('육상') >= 0) return '🏃';
-      return '🏅';
-    }
-
-    function renderAnnualEventCardHtml(card) {
-      const decimals = card.decimals;
-      const priorText = Number.isFinite(card.prior) ? formatAnnualTime(card.prior, decimals) : '-';
-      const currentText = formatAnnualTime(card.current, decimals);
-      const firstText = Number.isFinite(card.first) ? formatAnnualTime(card.first, decimals) : '-';
-
-      let badgeHtml = '';
-      if (card.comparison === 'single') {
-        badgeHtml = '<span class="shrink-0 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-slate-800 text-blue-300 border border-slate-700">최초 기록</span>';
-      } else if (card.reduction > 0) {
-        badgeHtml = `<span class="shrink-0 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/40">${card.reduction.toFixed(decimals)}초 단축</span>`;
-      } else {
-        badgeHtml = '<span class="shrink-0 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">경신 없음</span>';
-      }
-
-      const geom = getAnnualBarGeometry(card);
+    function annualCardHtml(card) {
+      const S = BODY_SPEC;
+      const geom = card.geom;
       const bluePct = geom ? Math.max(0, Math.min(100, geom.blue)) : 0;
       const amberPct = geom ? Math.max(0, Math.min(100 - bluePct, geom.amber)) : 0;
-      const barHtml = geom
-        ? `<div class="relative h-[6px] rounded-full bg-slate-800 overflow-hidden my-2">
-            <div class="absolute inset-y-0 left-0 rounded-full bg-blue-500/60" style="width:${bluePct.toFixed(2)}%"></div>
-            <div class="absolute inset-y-0 rounded-full bg-amber-400" style="left:${bluePct.toFixed(2)}%;width:${amberPct.toFixed(2)}%"></div>
-          </div>`
-        : '<div class="relative h-[6px] rounded-full bg-slate-800 overflow-hidden my-2"></div>';
-
-      const rateText = card.rate === null ? '비교 불가' : (card.rate > 0 ? '+' + card.rate.toFixed(1) + '%' : card.rate.toFixed(1) + '%');
-      const rateClass = card.rate !== null && card.rate > 0 ? 'text-emerald-300' : 'text-slate-400';
-      const slowerNote = card.comparison === 'prior' && Number.isFinite(card.yearBest) && card.yearBest > card.current + 1e-9
-        ? `<div class="text-[9px] text-slate-500 mt-1">올해 최고 ${formatAnnualTime(card.yearBest, decimals)} (PB 미경신)</div>`
+      const barInner = geom
+        ? `<span class="an-bar-blue" style="width:${bluePct.toFixed(2)}%"></span><span class="an-bar-amber" style="left:${bluePct.toFixed(2)}%;width:${amberPct.toFixed(2)}%"></span>`
         : '';
-
       return `
-        <div class="p-3.5 rounded-[14px] bg-slate-900 border border-slate-800 shadow-md">
-          <div class="flex items-center justify-between gap-2 mb-1.5">
-            <div class="flex items-center gap-1.5 min-w-0">
-              <span class="w-[22px] h-[22px] shrink-0 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-[10px]">${card.isTeam ? '👥' : getPlayerSportIcon(currentPlayer)}</span>
-              <span class="text-[14px] font-extrabold text-white truncate">${card.event}</span>
+        <div class="body-card an-card">
+          <div class="an-head">
+            <span class="body-icon">${bodyIconSvg(card.icon, S.iconGlyph)}</span>
+            <span class="an-title">${bodyEsc(card.event)}</span>
+            <span class="an-badge ${card.badge.cls}">${bodyEsc(card.badge.text)}</span>
+          </div>
+          <div class="an-compare">
+            <span class="an-label">이전 PB</span>
+            <span class="an-prior">${card.priorText}</span>
+            <span class="an-arrow">→</span>
+            <span class="an-current">${card.currentText}</span>
+          </div>
+          <div class="an-bar">${barInner}</div>
+          <div class="an-meta">
+            <div>
+              <div class="an-meta-value">${card.firstText}</div>
+              <div class="an-meta-label">최초 기록</div>
             </div>
-            ${badgeHtml}
+            <div class="an-meta-mid">
+              <div class="an-meta-value">${card.priorText}</div>
+              <div class="an-meta-label">이전 PB</div>
+            </div>
+            <div class="an-meta-right">
+              <div class="an-meta-value">${card.currentText}</div>
+              <div class="an-meta-label">현재 PB</div>
+            </div>
           </div>
-          <div class="flex items-baseline gap-1.5">
-            <span class="text-[9.5px] text-slate-500 shrink-0">이전 PB</span>
-            <span class="text-[13.5px] font-bold text-slate-300 font-mono">${priorText}</span>
-            <span class="text-slate-600 text-[11px]">→</span>
-            <span class="text-[18px] font-extrabold text-white font-mono leading-none">${currentText}</span>
+          <div class="an-footer">
+            <span>개선율 <b class="${card.rateUp ? 'rate-up' : 'rate-flat'}">${card.rateText}</b></span>
+            <span>PB 경신 ${card.renewals}회</span>
           </div>
-          ${barHtml}
-          <div class="grid grid-cols-3 text-[10px] leading-tight">
-            <div><div class="font-mono text-slate-300">${firstText}</div><div class="text-[8.5px] text-slate-500">최초 기록</div></div>
-            <div class="text-center"><div class="font-mono text-slate-300">${priorText}</div><div class="text-[8.5px] text-slate-500">이전 PB</div></div>
-            <div class="text-right"><div class="font-mono font-bold text-amber-300">${currentText}</div><div class="text-[8.5px] text-slate-500">현재 PB</div></div>
-          </div>
-          <div class="flex items-center justify-between mt-2 text-[9.5px] gap-2">
-            <span class="text-slate-400 shrink-0">개선율 <b class="${rateClass}">${rateText}</b></span>
-            <span class="text-slate-500 truncate">PB 경신 ${card.renewals}회</span>
-          </div>
-          ${slowerNote}
+          ${card.slowerText ? `<div class="an-slower">${bodyEsc(card.slowerText)}</div>` : ''}
+        </div>`;
+    }
+
+    function annualBodyHtml(model) {
+      const S = BODY_SPEC;
+      const statsHtml = model.stats.map(s => `
+        <div class="body-card body-stat">
+          <span class="body-icon">${bodyIconSvg(s.icon, S.iconGlyph)}</span>
+          <div class="body-stat-label">${bodyEsc(s.label)}</div>
+          <div class="body-stat-value">${s.value}<span class="body-stat-unit">회</span></div>
+          <div class="body-stat-sub">${bodyEsc(s.sub)}</div>
+        </div>`).join('');
+      const sectionsHtml = model.sections.map(sec => `
+        <div class="body-section">
+          <div class="body-sec-title"><span class="body-sec-bar"></span>${bodyEsc(sec.title)}</div>
+          <div class="body-grid">${sec.cards.map(annualCardHtml).join('')}</div>
+        </div>`).join('');
+      const emptyHtml = model.isEmpty ? `<div class="body-card body-empty">${model.emptyText}</div>` : '';
+      return `
+        <div class="body-root">
+          <div class="body-notice">${bodyEsc(model.notice)}</div>
+          <div class="body-stats">${statsHtml}</div>
+          ${emptyHtml}
+          ${sectionsHtml}
+          <div class="body-footnote">${bodyEsc(model.footnote)}</div>
         </div>`;
     }
 
     function renderAnnualNoteView(container) {
-      const player = playersData.find(p => p.id === currentPlayer) || null;
       const year = getAnnualSelectedYear(currentPlayer);
       const bounds = getAnnualYearBounds(currentPlayer);
-      const cards = getAnnualEventCards(currentPlayer, year);
-      const meetCount = getAnnualMeetCount(currentPlayer, year);
-      const gameCount = getAnnualGameCount(currentPlayer, year);
-      const renewalCount = countPbRenewalsInYear(currentPlayer, year);
-      const personalCards = cards.filter(c => !c.isTeam);
-      const teamCards = cards.filter(c => c.isTeam);
+      const player = playersData.find(p => p.id === currentPlayer) || null;
       const playerName = player ? (player.name || '선수') : '선수';
       const sportText = player ? (player.sport || '') : '';
-
-      const sectionHtml = (title, list) => {
-        if (list.length === 0) return '';
-        return `
-          <div class="space-y-2 mb-4">
-            <h2 class="text-xs font-bold text-white px-1 flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>${title}
-            </h2>
-            <div class="space-y-2.5">${list.map(renderAnnualEventCardHtml).join('')}</div>
-          </div>`;
-      };
-
-      const emptyHtml = cards.length === 0
-        ? `<div class="py-12 px-4 text-center rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-400 leading-relaxed">
-             ${year}년에는 ${playerName} 선수의 기록이 없습니다.<br>좌우 화살표로 다른 연도를 확인해 주세요.
-           </div>`
-        : '';
+      const model = buildAnnualBodyModel(currentPlayer, year);
 
       container.innerHTML = `
         <div class="space-y-1">
@@ -2530,18 +2751,11 @@
             <button type="button" ${year <= bounds.min ? 'disabled' : ''} onclick="stepAnnualYear(-1)" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-lg font-bold flex items-center justify-center transition active:scale-95 disabled:opacity-30 disabled:cursor-default">‹</button>
             <div class="text-center min-w-0">
               <div class="text-base font-extrabold text-white leading-tight">${year}년</div>
-              <div class="text-[10px] text-slate-500 truncate">${playerName} · ${sportText}</div>
+              <div class="text-[10px] text-slate-500 truncate">${bodyEsc(playerName)} · ${bodyEsc(sportText)}</div>
             </div>
             <button type="button" ${year >= bounds.max ? 'disabled' : ''} onclick="stepAnnualYear(1)" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-lg font-bold flex items-center justify-center transition active:scale-95 disabled:opacity-30 disabled:cursor-default">›</button>
           </div>
-          <div class="text-[10px] text-slate-500 px-1 mb-2 leading-relaxed">공식기록을 기준으로 산정하며, 비공식 기록은 반영하지 않습니다.</div>
-          ${renderAnnualSummaryHtml(meetCount, gameCount, renewalCount)}
-          ${emptyHtml}
-          ${sectionHtml('개인 종목 PB 변화', personalCards)}
-          ${sectionHtml('단체 종목 PB 변화', teamCards)}
-          <div class="text-[9.5px] text-slate-500 px-1 pt-1 leading-relaxed">
-            · 이전 PB는 직전 연도 말까지의 공식 최고기록입니다. · 개선율은 비교 기준 대비 단축 비율입니다.
-          </div>
+          ${annualBodyHtml(model)}
         </div>
       `;
     }
@@ -2550,11 +2764,11 @@
     // 8-5. 이미지 저장·공유 (Canvas 직접 그리기, 외부 라이브러리 없음)
     // ============================================================
     const CAPTURE_WIDTH = 390;
-    const CAPTURE_SCALE = 2;
+    const CAPTURE_SCALE = 3;
     const OFFICIAL_NOTICE_TEXT = '공식기록을 기준으로 산정하며, 비공식 기록은 반영하지 않습니다.';
 
     function capFont(weight, size) {
-      return weight + ' ' + size + 'px "Pretendard", -apple-system, BlinkMacSystemFont, "Malgun Gothic", system-ui, sans-serif';
+      return weight + ' ' + size + 'px ' + BODY_SPEC.font;
     }
 
     function capRoundRect(ctx, x, y, w, h, r, fill, stroke) {
@@ -2702,229 +2916,242 @@
       }
     }
 
-    function drawCapturePbCard(ctx, x, y, w, ev, records, isTeam, measureOnly) {
-      // PB 이미지도 공식기록만 사용한다(비공식만 있는 종목은 카드 없음).
-      const list = (Array.isArray(records) ? records : []).filter(r => r && isOfficialRecord(r) && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
-      if (list.length === 0) return 0;
-      let best = list[0];
-      list.forEach(r => {
-        if (parseFloat(r.seconds) < parseFloat(best.seconds)) best = r;
-      });
-      const decimals = getEventDecimalPlaces(records, ev);
-      const timeText = formatAnnualTime(parseFloat(best.seconds), decimals);
-      let runners = [];
-      if (Array.isArray(best.runners) && best.runners.length > 0) {
-        runners = best.runners.slice();
-      } else if (best.relay) {
-        runners = String(best.relay).split('/').map(s => s.trim()).filter(Boolean);
+    // ---------- 공통 본문 Canvas 렌더러 (앱 HTML과 같은 BODY_SPEC 사용) ----------
+    function capMid(ctx, text, x, yCenter, font, color, opts) {
+      const o = opts || {};
+      ctx.save();
+      ctx.font = font;
+      ctx.fillStyle = color;
+      ctx.textAlign = o.align || 'left';
+      ctx.textBaseline = 'middle';
+      let str = String(text === null || text === undefined ? '' : text);
+      let width = ctx.measureText(str).width;
+      if (o.maxWidth && width > o.maxWidth) {
+        while (str.length > 1 && ctx.measureText(str + '…').width > o.maxWidth) str = str.slice(0, -1);
+        str = str + '…';
+        width = ctx.measureText(str).width;
       }
-      const hasRunners = isTeam && runners.length > 0;
-      const h = hasRunners ? 96 : 76;
+      ctx.fillText(str, x, yCenter);
+      ctx.restore();
+      return width;
+    }
 
+    function capPill(ctx, text, rightX, yCenter, h, padX, bg, border, color, font) {
+      const w = capTextWidth(ctx, text, font) + padX * 2;
+      capRoundRect(ctx, rightX - w, yCenter - h / 2, w, h, h / 2, bg, border);
+      capMid(ctx, text, rightX - padX, yCenter, font, color, { align: 'right' });
+      return w;
+    }
+
+    function capIconTileBody(ctx, x, y, size, iconName, color) {
+      const S = BODY_SPEC;
+      capRoundRect(ctx, x, y, size, size, S.iconTileRadius, S.iconTileBg, S.iconTileBorder);
+      const g = S.iconGlyph;
+      drawBodyIcon(ctx, iconName, x + (size - g) / 2, y + (size - g) / 2, g, color);
+    }
+
+    function capNotice(ctx, text, x, y, w) {
+      const S = BODY_SPEC;
+      capMid(ctx, text, x + 2, y + S.noticeH / 2, capFont(S.noticeSize, 500), S.noticeColor, { maxWidth: w - 4 });
+      return y + S.noticeH + S.noticeMb;
+    }
+
+    function capSectionHead(ctx, title, x, y) {
+      const S = BODY_SPEC;
+      ctx.save();
+      ctx.fillStyle = S.sectionBarColor;
+      ctx.fillRect(x + 2, y + (S.sectionTitleH - S.sectionBarH) / 2, S.sectionBarW, S.sectionBarH);
+      ctx.restore();
+      capMid(ctx, title, x + 2 + S.sectionBarW + S.sectionTitleGap, y + S.sectionTitleH / 2, capFont(S.sectionTitleSize, S.sectionTitleWeight), S.sectionTitleColor);
+      return y + S.sectionTitleH + S.sectionTitleMb;
+    }
+
+    function capPbCard(ctx, card, x, y, w, measureOnly) {
+      const S = BODY_SPEC;
+      const hasStrip = card.runners && card.runners.length > 0;
+      const h = S.pbPadTop + S.pbHeadH + S.pbTimeMt + S.pbTimeH + S.pbMetaH
+        + (hasStrip ? S.stripMt + S.stripH : 0) + S.pbPadBottom;
+      if (!measureOnly) capRoundRect(ctx, x, y, w, h, S.cardRadius, S.cardBg, S.cardBorder);
+
+      const padX = S.pbPadX;
+      const headCenterY = y + S.pbPadTop + S.pbHeadH / 2;
+      const badgeFont = capFont(S.badgeSize, S.badgeWeight);
+
+      let rightX = x + w - padX;
       if (!measureOnly) {
-        capRoundRect(ctx, x, y, w, h, 14, '#0f172a', '#1e293b');
+        capPill(ctx, card.date || '-', rightX, headCenterY, S.badgeH, S.badgePadX, S.dateBadgeBg, S.dateBadgeBorder, S.dateBadgeColor, badgeFont);
+      }
+      let dateW = capTextWidth(ctx, card.date || '-', badgeFont) + S.badgePadX * 2;
+      rightX -= dateW + S.badgeGap;
+      if (card.renewal) {
+        const t = '★PB갱신★';
+        const rw = capTextWidth(ctx, t, badgeFont) + S.badgePadX * 2;
+        if (!measureOnly) capPill(ctx, t, rightX, headCenterY, S.badgeH, S.badgePadX, S.renewalBg, S.renewalBorder, S.renewalColor, badgeFont);
+        rightX -= rw + S.badgeGap;
       }
 
-      const renewal = getPbRenewalInfo(currentPlayer, ev, records);
-      let badgeText;
-      let badgeBg;
-      let badgeBorder;
-      let badgeColor;
-      if (renewal) {
-        badgeText = '★PB갱신★';
-        badgeBg = '#facc15';
-        badgeBorder = '#facc15';
-        badgeColor = '#020617';
-      } else {
-        // 일반 배지 자리에는 실제 달성 날짜를 보여 준다(갱신 배지 때도 날짜는 아래에 남는다).
-        badgeText = best.date || '-';
-        badgeBg = '#1e293b';
-        badgeBorder = '#334155';
-        badgeColor = '#cbd5e1';
-      }
-      const badgeW = capTextWidth(ctx, badgeText, capFont(700, 9)) + 14;
+      capMid(ctx, card.event, x + padX, headCenterY, capFont(S.pbTitleSize, S.pbTitleWeight), S.pbTitleColor, { maxWidth: rightX - (x + padX) });
 
-      capText(ctx, ev, x + 14, y + 24, capFont(800, 13), '#e2e8f0', { maxWidth: w - 28 - badgeW - 8 });
-      if (!measureOnly) capBadge(ctx, badgeText, x + w - 14, y + 12, badgeBg, badgeBorder, badgeColor, capFont(700, 9));
-      capText(ctx, timeText, x + 14, y + 52, capFont(800, 23), '#ffffff');
-      const dateW = capTextWidth(ctx, best.date || '', capFont(500, 10));
-      capText(ctx, best.meet || '', x + 14, y + (hasRunners ? 70 : 67), capFont(500, 11), '#94a3b8', { maxWidth: w - 28 - dateW - 8 });
-      capText(ctx, best.date || '', x + w - 14, y + (hasRunners ? 70 : 67), capFont(500, 10), '#64748b', { align: 'right' });
+      const timeCenterY = y + S.pbPadTop + S.pbHeadH + S.pbTimeMt + S.pbTimeH / 2;
+      capMid(ctx, card.timeText, x + padX, timeCenterY, capFont(S.pbTimeSize, S.pbTimeWeight), S.pbTimeColor);
 
-      if (hasRunners) {
-        const stripY = y + 76;
-        if (!measureOnly) capRoundRect(ctx, x + 14, stripY, w - 28, 14, 5, '#020617', '#1e293b');
-        const playerObj = playersData.find(p => p.id === currentPlayer) || null;
-        const heroName = playerObj ? String(playerObj.name || '') : '';
-        capText(ctx, '👥', x + 20, stripY + 10.5, capFont(500, 8.5), '#93c5fd');
-        capRunnerStrip(ctx, runners, heroName, x + 31, stripY + 10.5, w - 52);
+      const metaCenterY = y + S.pbPadTop + S.pbHeadH + S.pbTimeMt + S.pbTimeH + S.pbMetaH / 2;
+      capMid(ctx, card.meet, x + padX, metaCenterY, capFont(S.pbMeetSize, S.pbMeetWeight), S.pbMeetColor, { maxWidth: w - padX * 2 });
+
+      if (hasStrip) {
+        const sy = y + S.pbPadTop + S.pbHeadH + S.pbTimeMt + S.pbTimeH + S.pbMetaH + S.stripMt;
+        if (!measureOnly) capRoundRect(ctx, x + padX, sy, w - padX * 2, S.stripH, S.stripRadius, S.stripBg, S.stripBorder);
+        const midY = sy + S.stripH / 2;
+        const f = capFont(S.stripFontSize, S.stripFontWeight);
+        let cx = x + padX + S.stripPadX;
+        const limit = x + w - padX - S.stripPadX;
+        cx += capMid(ctx, '👥 주자:', cx, midY, f, S.runnerColor, { maxWidth: limit - cx }) + 3;
+        card.runners.forEach((name, i) => {
+          const hero = card.heroName && String(name).indexOf(card.heroName) === 0;
+          const label = (i + 1) + '주자 ' + name;
+          cx += capMid(ctx, label, cx, midY, capFont(S.stripFontSize, hero ? 800 : S.stripFontWeight), hero ? S.heroColor : S.runnerColor, { maxWidth: limit - cx }) + 3;
+          if (i < card.runners.length - 1) {
+            cx += capMid(ctx, '·', cx, midY, f, S.sepColor) + 3;
+          }
+        });
       }
       return h;
     }
 
-    function drawCaptureSectionHeader(ctx, y, PAD, title, measureOnly) {
+    function capAnnualCard(ctx, card, x, y, w, measureOnly) {
+      const S = BODY_SPEC;
+      const h = S.annualPadTop + S.annualHeadH + S.annualHeadGap + S.annualCompareH
+        + S.annualBarMt + S.annualBarH + S.annualMetaMt + S.annualMetaH
+        + S.annualFooterMt + S.annualFooterH
+        + (card.slowerText ? S.annualSlowerMt + S.annualSlowerH : 0) + S.annualPadBottom;
+      if (!measureOnly) capRoundRect(ctx, x, y, w, h, S.cardRadius, S.cardBg, S.cardBorder);
+
+      const padX = S.pbPadX;
+      const headTop = y + S.annualPadTop;
+      const headCenterY = headTop + S.annualHeadH / 2;
+      if (!measureOnly) capIconTileBody(ctx, x + padX, headTop, S.annualHeadH, card.icon, S.iconColor);
+
+      const badgeFont = capFont(S.annualBadgeSize, 700);
+      const rightX = x + w - padX;
       if (!measureOnly) {
-        ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(PAD, y + 1, 3, 12);
+        capPill(ctx, card.badge.text, rightX, headCenterY, S.annualBadgeH, S.annualBadgePadX, card.badge.cls === 'badge-reduce' ? S.badgeReduceBg : (card.badge.cls === 'badge-single' ? S.badgeSingleBg : S.badgeFlatBg), card.badge.cls === 'badge-reduce' ? S.badgeReduceBorder : (card.badge.cls === 'badge-single' ? S.badgeSingleBorder : S.badgeFlatBorder), card.badge.cls === 'badge-reduce' ? S.badgeReduceColor : (card.badge.cls === 'badge-single' ? S.badgeSingleColor : S.badgeFlatColor), badgeFont);
       }
-      capText(ctx, title, PAD + 9, y + 12, capFont(800, 12.5), '#e2e8f0');
-      return y + 22;
-    }
-
-    function drawCapturePb(ctx, y, PAD, innerW, measureOnly) {
-      const records = appData[currentPlayer] || [];
-      const personal = [];
-      const team = [];
-      getPlayerEvents(currentPlayer).forEach(ev => {
-        if (getEventBestSeconds(records, ev) === null) return;
-        (isTeamEventName(ev) ? team : personal).push(ev);
-      });
-
-      if (personal.length > 0) {
-        y = drawCaptureSectionHeader(ctx, y, PAD, '개인 최고기록 (Personal Best)', measureOnly);
-        personal.forEach(ev => {
-          const h = drawCapturePbCard(ctx, PAD, y, innerW, ev, records, false, measureOnly);
-          y += h + 8;
-        });
-        y += 6;
-      }
-      if (team.length > 0) {
-        y = drawCaptureSectionHeader(ctx, y, PAD, '릴레이 / 단체전 최고기록 (Team Best)', measureOnly);
-        team.forEach(ev => {
-          const h = drawCapturePbCard(ctx, PAD, y, innerW, ev, records, true, measureOnly);
-          y += h + 8;
-        });
-        y += 6;
-      }
-      return y;
-    }
-
-    function drawCaptureAnnualCard(ctx, x, y, w, card, measureOnly) {
-      const decimals = card.decimals;
-      const priorText = Number.isFinite(card.prior) ? formatAnnualTime(card.prior, decimals) : '-';
-      const currentText = formatAnnualTime(card.current, decimals);
-      const firstText = Number.isFinite(card.first) ? formatAnnualTime(card.first, decimals) : '-';
-      const slower = Number.isFinite(card.yearBest) && card.yearBest > card.current + 1e-9;
-      const h = slower ? 150 : 138;
-
-      if (!measureOnly) capRoundRect(ctx, x, y, w, h, 14, '#0f172a', '#1e293b');
-      if (!measureOnly) capIconTile(ctx, x + 14, y + 13, 22, card.isTeam ? 'group' : 'arrow', card.isTeam ? '#93c5fd' : '#bfdbfe');
-
-      // 배지
-      let badgeText;
-      let badgeBg;
-      let badgeBorder;
-      let badgeColor;
-      if (card.comparison === 'single') {
-        badgeText = '최초 기록';
-        badgeBg = '#1e293b';
-        badgeBorder = '#334155';
-        badgeColor = '#93c5fd';
-      } else if (card.reduction > 0) {
-        badgeText = card.reduction.toFixed(decimals) + '초 단축';
-        badgeBg = 'rgba(251,191,36,0.16)';
-        badgeBorder = 'rgba(251,191,36,0.45)';
-        badgeColor = '#fcd34d';
-      } else {
-        badgeText = '경신 없음';
-        badgeBg = '#1e293b';
-        badgeBorder = '#334155';
-        badgeColor = '#94a3b8';
-      }
-      const badgeW = capTextWidth(ctx, badgeText, capFont(700, 9.5)) + 14;
-      capText(ctx, card.event, x + 44, y + 29, capFont(800, 14), '#ffffff', { maxWidth: w - 58 - badgeW - 8 });
-      if (!measureOnly) capBadge(ctx, badgeText, x + w - 14, y + 12, badgeBg, badgeBorder, badgeColor, capFont(700, 9.5));
+      const badgeW = capTextWidth(ctx, card.badge.text, badgeFont) + S.annualBadgePadX * 2;
+      const titleX = x + padX + S.annualHeadH + S.annualHeadGapX;
+      capMid(ctx, card.event, titleX, headCenterY, capFont(S.annualEventSize, S.annualEventWeight), S.annualEventColor, { maxWidth: rightX - badgeW - 8 - titleX });
 
       // 이전 PB → 현재 PB
-      capText(ctx, '이전 PB', x + 14, y + 54, capFont(600, 9.5), '#64748b');
-      const priorW = capText(ctx, priorText, x + 52, y + 54, capFont(700, 13.5), '#cbd5e1');
-      const arrowX = x + 52 + priorW + 8;
-      capText(ctx, '→', arrowX, y + 54, capFont(500, 11), '#475569');
-      capText(ctx, currentText, arrowX + 18, y + 55, capFont(800, 18), '#ffffff');
+      const compareCenterY = headTop + S.annualHeadH + S.annualHeadGap + S.annualCompareH / 2;
+      let cx = x + padX;
+      cx += capMid(ctx, '이전 PB', cx, compareCenterY, capFont(S.annualLabelSize, S.annualLabelWeight), S.annualLabelColor) + 8;
+      cx += capMid(ctx, card.priorText, cx, compareCenterY, capFont(S.annualPriorSize, S.annualPriorWeight), S.annualPriorColor) + 8;
+      cx += capMid(ctx, '→', cx, compareCenterY, capFont(S.annualArrowSize, 500), S.annualArrowColor) + 8;
+      capMid(ctx, card.currentText, cx, compareCenterY, capFont(S.annualCurrentSize, S.annualCurrentWeight), S.annualCurrentColor);
 
-      // 진행 막대 (파랑 = 누적 성장, 노랑 = 이 해 단축분)
-      const barX = x + 14;
-      const barW = w - 28;
-      const barY = y + 66;
-      const geom = getAnnualBarGeometry(card);
+      // 성장 진행 막대
+      const barX = x + padX;
+      const barW = w - padX * 2;
+      const barY = headTop + S.annualHeadH + S.annualHeadGap + S.annualCompareH + S.annualBarMt;
       if (!measureOnly) {
-        capRoundRect(ctx, barX, barY, barW, 6, 3, '#1e293b', null);
-        if (geom) {
-          const blueW = Math.max(0, Math.min(barW, barW * geom.blue / 100));
-          const amberW = Math.max(0, Math.min(barW - blueW, barW * geom.amber / 100));
-          if (blueW > 0.5) capRoundRect(ctx, barX, barY, blueW, 6, 3, 'rgba(59,130,246,0.65)', null);
-          if (amberW > 0.5) capRoundRect(ctx, barX + blueW, barY, amberW, 6, 3, '#fbbf24', null);
+        capRoundRect(ctx, barX, barY, barW, S.annualBarH, S.annualBarRadius, S.barBg, null);
+        if (card.geom) {
+          const blueW = Math.max(0, Math.min(barW, barW * Math.max(0, Math.min(100, card.geom.blue)) / 100));
+          const amberW = Math.max(0, Math.min(barW - blueW, barW * Math.max(0, Math.min(100, card.geom.amber)) / 100));
+          if (blueW > 0.5) capRoundRect(ctx, barX, barY, blueW, S.annualBarH, S.annualBarRadius, S.barBlue, null);
+          if (amberW > 0.5) capRoundRect(ctx, barX + blueW, barY, amberW, S.annualBarH, S.annualBarRadius, S.barAmber, null);
         }
       }
 
-      // 기준점 3개: 최초 기록 / 이전 PB / 현재 PB
-      capText(ctx, firstText, barX, y + 88, capFont(600, 10), '#cbd5e1');
-      capText(ctx, '최초 기록', barX, y + 99, capFont(500, 8.5), '#64748b');
-      capText(ctx, priorText, x + w / 2, y + 88, capFont(600, 10), '#cbd5e1', { align: 'center' });
-      capText(ctx, '이전 PB', x + w / 2, y + 99, capFont(500, 8.5), '#64748b', { align: 'center' });
-      capText(ctx, currentText, x + w - 14, y + 88, capFont(700, 10), '#fcd34d', { align: 'right' });
-      capText(ctx, '현재 PB', x + w - 14, y + 99, capFont(500, 8.5), '#64748b', { align: 'right' });
+      // 최초 기록 / 이전 PB / 현재 PB
+      const metaTop = barY + S.annualBarH + S.annualMetaMt;
+      const vMid = metaTop + S.metaValueH / 2;
+      const lMid = metaTop + S.metaValueH + S.metaLabelH / 2;
+      const colW = (w - padX * 2) / 3;
+      capMid(ctx, card.firstText, x + padX, vMid, capFont(S.metaValueSize, S.metaValueWeight), S.metaValueColor);
+      capMid(ctx, '최초 기록', x + padX, lMid, capFont(S.metaLabelSize, 500), S.metaLabelColor);
+      capMid(ctx, card.priorText, x + padX + colW * 1.5, vMid, capFont(S.metaValueSize, S.metaValueWeight), S.metaValueColor, { align: 'center' });
+      capMid(ctx, '이전 PB', x + padX + colW * 1.5, lMid, capFont(S.metaLabelSize, 500), S.metaLabelColor, { align: 'center' });
+      capMid(ctx, card.currentText, x + w - padX, vMid, capFont(S.metaValueSize, 700), S.barAmber, { align: 'right' });
+      capMid(ctx, '현재 PB', x + w - padX, lMid, capFont(S.metaLabelSize, 500), S.metaLabelColor, { align: 'right' });
 
-      // 개선율 · PB 경신 횟수 · 목표
-      const rateText = card.rate === null ? '비교 불가' : (card.rate > 0 ? '+' + card.rate.toFixed(1) + '%' : card.rate.toFixed(1) + '%');
-      const rateW = capText(ctx, '개선율 ', x + 14, y + 118, capFont(500, 9.5), '#64748b');
-      capText(ctx, rateText, x + 14 + rateW, y + 118, capFont(700, 9.5), card.rate !== null && card.rate > 0 ? '#6ee7b7' : '#94a3b8');
-      capText(ctx, 'PB 경신 ' + card.renewals + '회', x + w - 14, y + 118, capFont(500, 9.5), '#64748b', { align: 'right' });
+      // 개선율 · PB 경신 횟수
+      const footMid = metaTop + S.annualMetaH + S.annualFooterMt + S.annualFooterH / 2;
+      const rateFont = capFont(S.rateSize, 500);
+      const rateW = capMid(ctx, '개선율 ', x + padX, footMid, rateFont, S.annualLabelColor);
+      capMid(ctx, card.rateText, x + padX + rateW, footMid, capFont(S.rateSize, 700), card.rateUp ? S.rateColorUp : S.rateColorFlat);
+      capMid(ctx, 'PB 경신 ' + card.renewals + '회', x + w - padX, footMid, rateFont, S.annualLabelColor, { align: 'right' });
 
-      if (slower) {
-        capText(ctx, '올해 최고 ' + formatAnnualTime(card.yearBest, decimals) + ' (PB 미경신)', x + 14, y + 132, capFont(500, 9), '#64748b');
+      if (card.slowerText) {
+        const sMid = metaTop + S.annualMetaH + S.annualFooterMt + S.annualFooterH + S.annualSlowerMt + S.annualSlowerH / 2;
+        capMid(ctx, card.slowerText, x + padX, sMid, capFont(S.slowerSize, 500), S.slowerColor, { maxWidth: w - padX * 2 });
       }
       return h;
     }
 
-    function drawCaptureAnnualSection(ctx, y, PAD, innerW, title, cards, measureOnly) {
-      if (cards.length === 0) return y;
-      y = drawCaptureSectionHeader(ctx, y, PAD, title, measureOnly);
-      cards.forEach(card => {
-        const h = drawCaptureAnnualCard(ctx, PAD, y, innerW, card, measureOnly);
-        y += h + 8;
+    function capStatCards(ctx, stats, x, y, innerW, measureOnly) {
+      const S = BODY_SPEC;
+      const gap = S.cardGap;
+      const cw = (innerW - gap * 2) / 3;
+      stats.forEach((s, i) => {
+        const cx0 = x + i * (cw + gap);
+        if (!measureOnly) {
+          capRoundRect(ctx, cx0, y, cw, S.statH, S.cardRadius, S.cardBg, S.cardBorder);
+          capIconTileBody(ctx, cx0 + cw / 2 - S.iconTile / 2, y + S.statPadTop, S.iconTile, s.icon, S.iconColor);
+        }
+        const labelMid = y + S.statPadTop + S.iconTile + S.statLabelMt + S.statLabelH / 2;
+        capMid(ctx, s.label, cx0 + cw / 2, labelMid, capFont(S.statLabelSize, S.statLabelWeight), S.statLabelColor, { align: 'center' });
+        const valueMid = labelMid + S.statLabelH / 2 + S.statValueMt + S.statValueH / 2;
+        capMid(ctx, String(s.value) + '회', cx0 + cw / 2, valueMid, capFont(S.statValueSize, S.statValueWeight), S.statValueColor, { align: 'center' });
+        const subMid = valueMid + S.statValueH / 2 + S.statSubMt + S.statSubH / 2;
+        capMid(ctx, s.sub, cx0 + cw / 2, subMid, capFont(S.statSubSize, 500), S.statSubColor, { align: 'center' });
       });
-      return y + 6;
+      return S.statH;
     }
 
-    function drawCaptureAnnual(ctx, y, PAD, innerW, measureOnly) {
-      const year = getAnnualSelectedYear(currentPlayer);
-      const cards = getAnnualEventCards(currentPlayer, year);
-      const meetCount = getAnnualMeetCount(currentPlayer, year);
-      const gameCount = getAnnualGameCount(currentPlayer, year);
-      const renewalCount = countPbRenewalsInYear(currentPlayer, year);
+    function capBody(ctx, model, kind, y, x, w, measureOnly) {
+      const S = BODY_SPEC;
+      y = capNotice(ctx, model.notice, x, y, w);
 
-      const gap = 8;
-      const cw = (innerW - gap * 2) / 3;
-      const ch = 104;
-      const stats = [
-        { label: '출전 대회', value: meetCount, sub: '공식 대회', glyph: 'flag', color: '#93c5fd' },
-        { label: '총 경기', value: gameCount, sub: '공식 기록', glyph: 'list', color: '#ffffff' },
-        { label: 'PB 경신', value: renewalCount, sub: '이 해 기록', glyph: 'arrow', color: '#fcd34d' }
-      ];
-      stats.forEach((s, i) => {
-        const x = PAD + i * (cw + gap);
-        if (!measureOnly) {
-          capRoundRect(ctx, x, y, cw, ch, 14, '#0f172a', '#1e293b');
-          capIconTile(ctx, x + cw / 2 - 11, y + 11, 22, s.glyph, s.color);
+      if (kind === 'ANNUAL') {
+        capStatCards(ctx, model.stats, x, y, w, measureOnly);
+        y += S.statH + 14;
+
+        if (model.isEmpty) {
+          if (!measureOnly) capRoundRect(ctx, x, y, w, 88, S.cardRadius, S.cardBg, S.cardBorder);
+          capMid(ctx, model.year + '년에는 ' + model.playerName + ' 선수의 기록이 없습니다.', x + w / 2, y + 38, capFont(S.emptyFontSize, 700), '#94a3b8', { align: 'center', maxWidth: w - 24 });
+          capMid(ctx, '좌우 화살표로 다른 연도를 확인해 주세요.', x + w / 2, y + 58, capFont(S.emptyFontSize - 1, 500), S.emptyFontColor || '#64748b', { align: 'center' });
+          y += 88 + 10;
         }
-        capText(ctx, s.label, x + cw / 2, y + 48, capFont(600, 10.5), '#94a3b8', { align: 'center' });
-        capText(ctx, String(s.value) + '회', x + cw / 2, y + 78, capFont(800, 21), '#f8fafc', { align: 'center' });
-        capText(ctx, s.sub, x + cw / 2, y + 97, capFont(500, 8.5), '#64748b', { align: 'center' });
-      });
-      y += ch + 18;
 
-      const personal = cards.filter(c => !c.isTeam);
-      const team = cards.filter(c => c.isTeam);
-      y = drawCaptureAnnualSection(ctx, y, PAD, innerW, '개인 종목 PB 변화', personal, measureOnly);
-      y = drawCaptureAnnualSection(ctx, y, PAD, innerW, '단체 종목 PB 변화', team, measureOnly);
-
-      if (cards.length === 0) {
-        if (!measureOnly) capRoundRect(ctx, PAD, y, innerW, 88, 14, '#0f172a', '#1e293b');
-        capText(ctx, year + '년에는 기록이 없습니다.', CAPTURE_WIDTH / 2, y + 38, capFont(700, 12), '#94a3b8', { align: 'center' });
-        capText(ctx, '좌우 화살표로 다른 연도를 확인해 주세요.', CAPTURE_WIDTH / 2, y + 58, capFont(500, 10), '#64748b', { align: 'center' });
-        y += 88;
+        model.sections.forEach(sec => {
+          y = capSectionHead(ctx, sec.title, x, y);
+          sec.cards.forEach(card => {
+            const h = capAnnualCard(ctx, card, x, y, w, measureOnly);
+            y += h + S.cardGap;
+          });
+          y += S.sectionBlockMb - S.cardGap;
+        });
+        y += S.footnoteMt;
+        capMid(ctx, model.footnote, x + 2, y + S.footnoteH / 2, capFont(S.footnoteSize, 500), S.footnoteColor, { maxWidth: w - 4 });
+        y += S.footnoteH;
+        return y;
       }
+
+      if (model.sections.length === 0) {
+        if (!measureOnly) capRoundRect(ctx, x, y, w, 88, S.cardRadius, S.cardBg, S.cardBorder);
+        capMid(ctx, '아직 공식기록이 없습니다.', x + w / 2, y + 38, capFont(S.emptyFontSize, 700), '#94a3b8', { align: 'center' });
+        capMid(ctx, '공식 대회 기록을 추가하면 최고기록이 표시됩니다.', x + w / 2, y + 58, capFont(S.emptyFontSize - 1, 500), S.emptyFontColor || '#64748b', { align: 'center' });
+        return y + 88;
+      }
+
+      model.sections.forEach(sec => {
+        y = capSectionHead(ctx, sec.title, x, y);
+        sec.cards.forEach(card => {
+          const h = capPbCard(ctx, card, x, y, w, measureOnly);
+          y += h + S.cardGap;
+        });
+        y += S.sectionBlockMb - S.cardGap;
+      });
       return y;
     }
 
@@ -2950,8 +3177,6 @@
       const subLine = playerName + (sportText ? ' · ' + sportText : '') + (mainEvent ? ' · ' + mainEvent : '');
       capText(ctx, subLine, PAD, y + 4, capFont(600, 12), '#94a3b8', { maxWidth: innerW });
       y += 18;
-      capText(ctx, OFFICIAL_NOTICE_TEXT, PAD, y + 9, capFont(500, 9), '#64748b', { maxWidth: innerW });
-      y += 18;
       if (!measureOnly) {
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(PAD, y, innerW, 1);
@@ -2959,9 +3184,11 @@
       y += 20;
 
       if (mode === 'ANNUAL') {
-        y = drawCaptureAnnual(ctx, y, PAD, innerW, measureOnly);
+        const annualModel = buildAnnualBodyModel(currentPlayer, getAnnualSelectedYear(currentPlayer));
+        y = capBody(ctx, annualModel, 'ANNUAL', y, PAD, innerW, measureOnly);
       } else {
-        y = drawCapturePb(ctx, y, PAD, innerW, measureOnly);
+        const pbModel = buildPbBodyModel(currentPlayer);
+        y = capBody(ctx, pbModel, 'PB', y, PAD, innerW, measureOnly);
       }
 
       y += 2;
