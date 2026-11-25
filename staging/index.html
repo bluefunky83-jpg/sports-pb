@@ -3560,6 +3560,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          onResize: function () { syncChartHitTestScale(); },
           layout: { padding: { top: 25, right: 10, left: 5, bottom: 5 } },
           plugins: {
             legend: { display: false },
@@ -3609,6 +3610,7 @@
           }
         }
       });
+      syncChartHitTestScale();
     }
 
     // 8-4. Render Meet Grouped List
@@ -5104,6 +5106,15 @@
       const scale = resolveUiScale();
       document.documentElement.style.zoom = String(scale);
       updateUiScaleUI(scale);
+      syncChartHitTestScale();
+    }
+
+    // CSS zoom 상태에서 Chart.js는 마우스 좌표를 배율만큼 크게 읽어 툴팁·클릭이 어긋난다.
+    // Chart.js가 좌표를 나눌 때 쓰는 currentDevicePixelRatio에 배율을 곱해 두면 원래 위치로 돌아온다.
+    function syncChartHitTestScale() {
+      if (!chartInstance) return;
+      const dpr = window.devicePixelRatio || 1;
+      try { chartInstance.currentDevicePixelRatio = dpr * resolveUiScale(); } catch (e) {}
     }
 
     function updateUiScaleUI(scale) {
