@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex,nofollow">
+<title>staging 배율 검수용 프레임</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0b1220; color: #94a3b8; font: 12px/1.4 -apple-system, "Malgun Gothic", sans-serif; }
+  #bar { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; background: #111827; border-bottom: 1px solid #1f2937; }
+  #bar b { color: #e2e8f0; }
+  #bar button { font: inherit; padding: 3px 8px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #cbd5e1; cursor: pointer; }
+  #frame-wrap { display: inline-block; background: #020617; }
+  iframe { display: block; border: 0; }
+  #log { padding: 4px 10px; font-family: ui-monospace, monospace; font-size: 11px; color: #7dd3fc; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <b id="size-label">390 × 844</b>
+  <button type="button" onclick="reloadFrame()">앱 새로고침(F5)</button>
+  <span id="err-count">JS 오류 0</span>
+</div>
+<div id="frame-wrap"><iframe id="appFrame" src="./index.html"></iframe></div>
+<div id="log"></div>
+<script>
+  var params = new URLSearchParams(location.search);
+  var w = parseInt(params.get('w') || '390', 10);
+  var h = parseInt(params.get('h') || '844', 10);
+  var frame = document.getElementById('appFrame');
+  frame.style.width = w + 'px';
+  frame.style.height = h + 'px';
+  document.getElementById('size-label').textContent = w + ' × ' + h;
+  window.__errors = [];
+
+  function recordError(msg) {
+    window.__errors.push(String(msg));
+    document.getElementById('err-count').textContent = 'JS 오류 ' + window.__errors.length;
+    document.getElementById('log').textContent = window.__errors.slice(-3).join(' | ').slice(0, 300);
+  }
+
+  frame.addEventListener('load', function () {
+    try {
+      var cw = frame.contentWindow;
+      cw.addEventListener('error', function (e) {
+        recordError((e.message || 'error') + ' @' + (e.filename || '') + ':' + (e.lineno || ''));
+      });
+      cw.addEventListener('unhandledrejection', function (e) {
+        recordError('unhandledrejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+      });
+    } catch (e) {
+      recordError('frame access: ' + e.message);
+    }
+  });
+
+  function reloadFrame() {
+    frame.contentWindow.location.reload();
+  }
+  window.__reloadFrame = reloadFrame;
+  window.__measure = function () {
+    var cw = frame.contentWindow, doc = cw.document, de = doc.documentElement;
+    var shell = doc.getElementById('app-shell');
+    var row = doc.getElementById('btn-manage-players-top');
+    var rowRect = row ? row.getBoundingClientRect() : null;
+    var drop = doc.getElementById('custom-player-dropdown-wrap');
+    var dropRect = drop ? drop.getBoundingClientRect() : null;
+    return {
+      innerWidth: cw.innerWidth,
+      innerHeight: cw.innerHeight,
+      zoom: cw.getComputedStyle(de).zoom,
+      inlineZoom: de.style.zoom,
+      docScrollWidth: de.scrollWidth,
+      docClientWidth: de.clientWidth,
+      bodyScrollWidth: doc.body.scrollWidth,
+      overflowX: de.scrollWidth - de.clientWidth,
+      shellWidth: shell ? Math.round(shell.getBoundingClientRect().width) : null,
+      manageBtn: rowRect ? { left: Math.round(rowRect.left), right: Math.round(rowRect.right), top: Math.round(rowRect.top), w: Math.round(rowRect.width) } : null,
+      dropdown: dropRect ? { left: Math.round(dropRect.left), right: Math.round(dropRect.right), top: Math.round(dropRect.top), w: Math.round(dropRect.width) } : null,
+      sameRow: (rowRect && dropRect) ? Math.abs(rowRect.top - dropRect.top) < 6 : null,
+      errors: window.__errors.slice()
+    };
+  };
+  window.__appDoc = function () { return frame.contentWindow.document; };
+  window.__appWin = function () { return frame.contentWindow; };
+</script>
+</body>
+</html>
