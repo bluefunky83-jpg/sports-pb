@@ -2952,7 +2952,7 @@
 
     function capNotice(ctx, text, x, y, w) {
       const S = BODY_SPEC;
-      capMid(ctx, text, x + 2, y + S.noticeH / 2, capFont(S.noticeSize, 500), S.noticeColor, { maxWidth: w - 4 });
+      capMid(ctx, text, x + 2, y + S.noticeH / 2, capFont(500, S.noticeSize), S.noticeColor, { maxWidth: w - 4 });
       return y + S.noticeH + S.noticeMb;
     }
 
@@ -2962,7 +2962,7 @@
       ctx.fillStyle = S.sectionBarColor;
       ctx.fillRect(x + 2, y + (S.sectionTitleH - S.sectionBarH) / 2, S.sectionBarW, S.sectionBarH);
       ctx.restore();
-      capMid(ctx, title, x + 2 + S.sectionBarW + S.sectionTitleGap, y + S.sectionTitleH / 2, capFont(S.sectionTitleSize, S.sectionTitleWeight), S.sectionTitleColor);
+      capMid(ctx, title, x + 2 + S.sectionBarW + S.sectionTitleGap, y + S.sectionTitleH / 2, capFont(S.sectionTitleWeight, S.sectionTitleSize), S.sectionTitleColor);
       return y + S.sectionTitleH + S.sectionTitleMb;
     }
 
@@ -2975,7 +2975,7 @@
 
       const padX = S.pbPadX;
       const headCenterY = y + S.pbPadTop + S.pbHeadH / 2;
-      const badgeFont = capFont(S.badgeSize, S.badgeWeight);
+      const badgeFont = capFont(S.badgeWeight, S.badgeSize);
 
       let rightX = x + w - padX;
       if (!measureOnly) {
@@ -2990,26 +2990,26 @@
         rightX -= rw + S.badgeGap;
       }
 
-      capMid(ctx, card.event, x + padX, headCenterY, capFont(S.pbTitleSize, S.pbTitleWeight), S.pbTitleColor, { maxWidth: rightX - (x + padX) });
+      capMid(ctx, card.event, x + padX, headCenterY, capFont(S.pbTitleWeight, S.pbTitleSize), S.pbTitleColor, { maxWidth: rightX - (x + padX) });
 
       const timeCenterY = y + S.pbPadTop + S.pbHeadH + S.pbTimeMt + S.pbTimeH / 2;
-      capMid(ctx, card.timeText, x + padX, timeCenterY, capFont(S.pbTimeSize, S.pbTimeWeight), S.pbTimeColor);
+      capMid(ctx, card.timeText, x + padX, timeCenterY, capFont(S.pbTimeWeight, S.pbTimeSize), S.pbTimeColor);
 
       const metaCenterY = y + S.pbPadTop + S.pbHeadH + S.pbTimeMt + S.pbTimeH + S.pbMetaH / 2;
-      capMid(ctx, card.meet, x + padX, metaCenterY, capFont(S.pbMeetSize, S.pbMeetWeight), S.pbMeetColor, { maxWidth: w - padX * 2 });
+      capMid(ctx, card.meet, x + padX, metaCenterY, capFont(S.pbMeetWeight, S.pbMeetSize), S.pbMeetColor, { maxWidth: w - padX * 2 });
 
       if (hasStrip) {
         const sy = y + S.pbPadTop + S.pbHeadH + S.pbTimeMt + S.pbTimeH + S.pbMetaH + S.stripMt;
         if (!measureOnly) capRoundRect(ctx, x + padX, sy, w - padX * 2, S.stripH, S.stripRadius, S.stripBg, S.stripBorder);
         const midY = sy + S.stripH / 2;
-        const f = capFont(S.stripFontSize, S.stripFontWeight);
+        const f = capFont(S.stripFontWeight, S.stripFontSize);
         let cx = x + padX + S.stripPadX;
         const limit = x + w - padX - S.stripPadX;
         cx += capMid(ctx, '👥 주자:', cx, midY, f, S.runnerColor, { maxWidth: limit - cx }) + 3;
         card.runners.forEach((name, i) => {
           const hero = card.heroName && String(name).indexOf(card.heroName) === 0;
           const label = (i + 1) + '주자 ' + name;
-          cx += capMid(ctx, label, cx, midY, capFont(S.stripFontSize, hero ? 800 : S.stripFontWeight), hero ? S.heroColor : S.runnerColor, { maxWidth: limit - cx }) + 3;
+          cx += capMid(ctx, label, cx, midY, capFont(hero ? 800 : S.stripFontWeight, S.stripFontSize), hero ? S.heroColor : S.runnerColor, { maxWidth: limit - cx }) + 3;
           if (i < card.runners.length - 1) {
             cx += capMid(ctx, '·', cx, midY, f, S.sepColor) + 3;
           }
@@ -3031,22 +3031,22 @@
       const headCenterY = headTop + S.annualHeadH / 2;
       if (!measureOnly) capIconTileBody(ctx, x + padX, headTop, S.annualHeadH, card.icon, S.iconColor);
 
-      const badgeFont = capFont(S.annualBadgeSize, 700);
+      const badgeFont = capFont(700, S.annualBadgeSize);
       const rightX = x + w - padX;
       if (!measureOnly) {
         capPill(ctx, card.badge.text, rightX, headCenterY, S.annualBadgeH, S.annualBadgePadX, card.badge.cls === 'badge-reduce' ? S.badgeReduceBg : (card.badge.cls === 'badge-single' ? S.badgeSingleBg : S.badgeFlatBg), card.badge.cls === 'badge-reduce' ? S.badgeReduceBorder : (card.badge.cls === 'badge-single' ? S.badgeSingleBorder : S.badgeFlatBorder), card.badge.cls === 'badge-reduce' ? S.badgeReduceColor : (card.badge.cls === 'badge-single' ? S.badgeSingleColor : S.badgeFlatColor), badgeFont);
       }
       const badgeW = capTextWidth(ctx, card.badge.text, badgeFont) + S.annualBadgePadX * 2;
       const titleX = x + padX + S.annualHeadH + S.annualHeadGapX;
-      capMid(ctx, card.event, titleX, headCenterY, capFont(S.annualEventSize, S.annualEventWeight), S.annualEventColor, { maxWidth: rightX - badgeW - 8 - titleX });
+      capMid(ctx, card.event, titleX, headCenterY, capFont(S.annualEventWeight, S.annualEventSize), S.annualEventColor, { maxWidth: rightX - badgeW - 8 - titleX });
 
       // 이전 PB → 현재 PB
       const compareCenterY = headTop + S.annualHeadH + S.annualHeadGap + S.annualCompareH / 2;
       let cx = x + padX;
-      cx += capMid(ctx, '이전 PB', cx, compareCenterY, capFont(S.annualLabelSize, S.annualLabelWeight), S.annualLabelColor) + 8;
-      cx += capMid(ctx, card.priorText, cx, compareCenterY, capFont(S.annualPriorSize, S.annualPriorWeight), S.annualPriorColor) + 8;
-      cx += capMid(ctx, '→', cx, compareCenterY, capFont(S.annualArrowSize, 500), S.annualArrowColor) + 8;
-      capMid(ctx, card.currentText, cx, compareCenterY, capFont(S.annualCurrentSize, S.annualCurrentWeight), S.annualCurrentColor);
+      cx += capMid(ctx, '이전 PB', cx, compareCenterY, capFont(S.annualLabelWeight, S.annualLabelSize), S.annualLabelColor) + 8;
+      cx += capMid(ctx, card.priorText, cx, compareCenterY, capFont(S.annualPriorWeight, S.annualPriorSize), S.annualPriorColor) + 8;
+      cx += capMid(ctx, '→', cx, compareCenterY, capFont(500, S.annualArrowSize), S.annualArrowColor) + 8;
+      capMid(ctx, card.currentText, cx, compareCenterY, capFont(S.annualCurrentWeight, S.annualCurrentSize), S.annualCurrentColor);
 
       // 성장 진행 막대
       const barX = x + padX;
@@ -3067,23 +3067,23 @@
       const vMid = metaTop + S.metaValueH / 2;
       const lMid = metaTop + S.metaValueH + S.metaLabelH / 2;
       const colW = (w - padX * 2) / 3;
-      capMid(ctx, card.firstText, x + padX, vMid, capFont(S.metaValueSize, S.metaValueWeight), S.metaValueColor);
-      capMid(ctx, '최초 기록', x + padX, lMid, capFont(S.metaLabelSize, 500), S.metaLabelColor);
-      capMid(ctx, card.priorText, x + padX + colW * 1.5, vMid, capFont(S.metaValueSize, S.metaValueWeight), S.metaValueColor, { align: 'center' });
-      capMid(ctx, '이전 PB', x + padX + colW * 1.5, lMid, capFont(S.metaLabelSize, 500), S.metaLabelColor, { align: 'center' });
-      capMid(ctx, card.currentText, x + w - padX, vMid, capFont(S.metaValueSize, 700), S.barAmber, { align: 'right' });
-      capMid(ctx, '현재 PB', x + w - padX, lMid, capFont(S.metaLabelSize, 500), S.metaLabelColor, { align: 'right' });
+      capMid(ctx, card.firstText, x + padX, vMid, capFont(S.metaValueWeight, S.metaValueSize), S.metaValueColor);
+      capMid(ctx, '최초 기록', x + padX, lMid, capFont(500, S.metaLabelSize), S.metaLabelColor);
+      capMid(ctx, card.priorText, x + padX + colW * 1.5, vMid, capFont(S.metaValueWeight, S.metaValueSize), S.metaValueColor, { align: 'center' });
+      capMid(ctx, '이전 PB', x + padX + colW * 1.5, lMid, capFont(500, S.metaLabelSize), S.metaLabelColor, { align: 'center' });
+      capMid(ctx, card.currentText, x + w - padX, vMid, capFont(700, S.metaValueSize), S.barAmber, { align: 'right' });
+      capMid(ctx, '현재 PB', x + w - padX, lMid, capFont(500, S.metaLabelSize), S.metaLabelColor, { align: 'right' });
 
       // 개선율 · PB 경신 횟수
       const footMid = metaTop + S.annualMetaH + S.annualFooterMt + S.annualFooterH / 2;
-      const rateFont = capFont(S.rateSize, 500);
+      const rateFont = capFont(500, S.rateSize);
       const rateW = capMid(ctx, '개선율 ', x + padX, footMid, rateFont, S.annualLabelColor);
-      capMid(ctx, card.rateText, x + padX + rateW, footMid, capFont(S.rateSize, 700), card.rateUp ? S.rateColorUp : S.rateColorFlat);
+      capMid(ctx, card.rateText, x + padX + rateW, footMid, capFont(700, S.rateSize), card.rateUp ? S.rateColorUp : S.rateColorFlat);
       capMid(ctx, 'PB 경신 ' + card.renewals + '회', x + w - padX, footMid, rateFont, S.annualLabelColor, { align: 'right' });
 
       if (card.slowerText) {
         const sMid = metaTop + S.annualMetaH + S.annualFooterMt + S.annualFooterH + S.annualSlowerMt + S.annualSlowerH / 2;
-        capMid(ctx, card.slowerText, x + padX, sMid, capFont(S.slowerSize, 500), S.slowerColor, { maxWidth: w - padX * 2 });
+        capMid(ctx, card.slowerText, x + padX, sMid, capFont(500, S.slowerSize), S.slowerColor, { maxWidth: w - padX * 2 });
       }
       return h;
     }
@@ -3099,11 +3099,11 @@
           capIconTileBody(ctx, cx0 + cw / 2 - S.iconTile / 2, y + S.statPadTop, S.iconTile, s.icon, S.iconColor);
         }
         const labelMid = y + S.statPadTop + S.iconTile + S.statLabelMt + S.statLabelH / 2;
-        capMid(ctx, s.label, cx0 + cw / 2, labelMid, capFont(S.statLabelSize, S.statLabelWeight), S.statLabelColor, { align: 'center' });
+        capMid(ctx, s.label, cx0 + cw / 2, labelMid, capFont(S.statLabelWeight, S.statLabelSize), S.statLabelColor, { align: 'center' });
         const valueMid = labelMid + S.statLabelH / 2 + S.statValueMt + S.statValueH / 2;
-        capMid(ctx, String(s.value) + '회', cx0 + cw / 2, valueMid, capFont(S.statValueSize, S.statValueWeight), S.statValueColor, { align: 'center' });
+        capMid(ctx, String(s.value) + '회', cx0 + cw / 2, valueMid, capFont(S.statValueWeight, S.statValueSize), S.statValueColor, { align: 'center' });
         const subMid = valueMid + S.statValueH / 2 + S.statSubMt + S.statSubH / 2;
-        capMid(ctx, s.sub, cx0 + cw / 2, subMid, capFont(S.statSubSize, 500), S.statSubColor, { align: 'center' });
+        capMid(ctx, s.sub, cx0 + cw / 2, subMid, capFont(500, S.statSubSize), S.statSubColor, { align: 'center' });
       });
       return S.statH;
     }
@@ -3118,8 +3118,8 @@
 
         if (model.isEmpty) {
           if (!measureOnly) capRoundRect(ctx, x, y, w, 88, S.cardRadius, S.cardBg, S.cardBorder);
-          capMid(ctx, model.year + '년에는 ' + model.playerName + ' 선수의 기록이 없습니다.', x + w / 2, y + 38, capFont(S.emptyFontSize, 700), '#94a3b8', { align: 'center', maxWidth: w - 24 });
-          capMid(ctx, '좌우 화살표로 다른 연도를 확인해 주세요.', x + w / 2, y + 58, capFont(S.emptyFontSize - 1, 500), S.emptyFontColor || '#64748b', { align: 'center' });
+          capMid(ctx, model.year + '년에는 ' + model.playerName + ' 선수의 기록이 없습니다.', x + w / 2, y + 38, capFont(700, S.emptyFontSize), '#94a3b8', { align: 'center', maxWidth: w - 24 });
+          capMid(ctx, '좌우 화살표로 다른 연도를 확인해 주세요.', x + w / 2, y + 58, capFont(500, S.emptyFontSize - 1), S.emptyFontColor || '#64748b', { align: 'center' });
           y += 88 + 10;
         }
 
@@ -3132,15 +3132,15 @@
           y += S.sectionBlockMb - S.cardGap;
         });
         y += S.footnoteMt;
-        capMid(ctx, model.footnote, x + 2, y + S.footnoteH / 2, capFont(S.footnoteSize, 500), S.footnoteColor, { maxWidth: w - 4 });
+        capMid(ctx, model.footnote, x + 2, y + S.footnoteH / 2, capFont(500, S.footnoteSize), S.footnoteColor, { maxWidth: w - 4 });
         y += S.footnoteH;
         return y;
       }
 
       if (model.sections.length === 0) {
         if (!measureOnly) capRoundRect(ctx, x, y, w, 88, S.cardRadius, S.cardBg, S.cardBorder);
-        capMid(ctx, '아직 공식기록이 없습니다.', x + w / 2, y + 38, capFont(S.emptyFontSize, 700), '#94a3b8', { align: 'center' });
-        capMid(ctx, '공식 대회 기록을 추가하면 최고기록이 표시됩니다.', x + w / 2, y + 58, capFont(S.emptyFontSize - 1, 500), S.emptyFontColor || '#64748b', { align: 'center' });
+        capMid(ctx, '아직 공식기록이 없습니다.', x + w / 2, y + 38, capFont(700, S.emptyFontSize), '#94a3b8', { align: 'center' });
+        capMid(ctx, '공식 대회 기록을 추가하면 최고기록이 표시됩니다.', x + w / 2, y + 58, capFont(500, S.emptyFontSize - 1), S.emptyFontColor || '#64748b', { align: 'center' });
         return y + 88;
       }
 
