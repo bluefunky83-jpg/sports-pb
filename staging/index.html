@@ -3215,8 +3215,9 @@
       const measured = drawCaptureScene(mctx, mode, true);
       const height = Math.max(240, Math.ceil(measured));
 
+      // 본문이 아주 길어도 해상도를 한 번에 1배로 떨어뜨리지 않고 단계적으로 낮춘다.
       let scale = CAPTURE_SCALE;
-      if (height * scale > 16000) scale = 1;
+      while (scale > 1 && height * scale > 16000) scale -= 1;
 
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(CAPTURE_WIDTH * scale);
