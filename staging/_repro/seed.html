@@ -1,0 +1,16 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>운영코드 재현 시드</title></head>
+<body style="font-family:system-ui;padding:24px;background:#0f172a;color:#e2e8f0">
+<h3>운영용 배포본 코드 재현용 임시 페이지 (검수 후 삭제)</h3>
+<p style="font-size:13px;color:#94a3b8">이 페이지는 staging 경로에 올린 운영용 코드 복사본에만 쓰는 시드입니다. 저장 키는 운영용과 같은 이름(ATHLETE_*)이지만 이 브라우저의 staging 출처 저장소에만 기록됩니다.</p>
+<p><button onclick="seedAuthOnly()" style="padding:8px 14px">1) 최고관리자 로그인 상태 주입(데이터 없음)</button></p>
+<p><button onclick="location.href='index.html'" style="padding:8px 14px">2) 재현용 앱 열기</button></p>
+<pre id="out" style="font-size:12px;color:#6ee7b7;white-space:pre-wrap"></pre>
+<script>
+function seedAuthOnly(){
+  ['ATHLETE_GROWTH_APP_DATA_V3','ATHLETE_GROWTH_PLAYERS_V3','ATHLETE_GROWTH_TEAMMATES_V3','ATHLETE_APP_AUTH_USER'].forEach(k=>localStorage.removeItem(k));
+  const user={id:'admin_jihye',name:'지혜 님 (최고관리자)',email:'bluefunky83@gmail.com',role:'super_admin',approved:true,allowedPlayers:['yusin','byeolha']};
+  localStorage.setItem('ATHLETE_APP_AUTH_USER',JSON.stringify(user));
+  document.getElementById('out').textContent='auth seeded.\nkeys: '+Object.keys(localStorage).join(', ');
+}
+</script></body></html>
