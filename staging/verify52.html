@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>5-2 검수용 임시 화면 (반응형·오류 점검)</title>
+<style>
+  body{margin:0;background:#111827;color:#e5e7eb;font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic",system-ui,sans-serif}
+  #bar{display:flex;gap:6px;align-items:center;padding:8px 10px;background:#1f2937;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+  #bar button{background:#374151;color:#e5e7eb;border:1px solid #4b5563;border-radius:8px;padding:5px 9px;font-size:12px;cursor:pointer}
+  #bar button.on{background:#2563eb;border-color:#3b82f6;color:#fff}
+  #out{padding:8px 10px;font-size:12px;white-space:pre-wrap;color:#a7f3d0;background:#0b1220;border-bottom:1px solid #1f2937}
+  #stage{padding:10px;display:flex;justify-content:center}
+  #frameWrap{background:#020617;box-shadow:0 0 0 1px #374151}
+  iframe{border:0;display:block}
+  #err{color:#fda4af}
+</style></head>
+<body>
+<div id="bar">
+  <strong style="font-size:12px">너비</strong>
+  <button data-w="390" class="on">390</button>
+  <button data-w="430">430</button>
+  <button data-w="768">768</button>
+  <button data-w="1024">1024</button>
+  <button data-w="1280">1280</button>
+  <button data-w="1440">1440</button>
+  <button data-w="1600">1600</button>
+  <button data-w="1920">1920</button>
+  <span style="width:12px"></span>
+  <button id="check">가로 넘침·오류 검사</button>
+  <button id="reset">앱 새로고침</button>
+</div>
+<div id="out">점검 대기</div>
+<div id="stage"><div id="frameWrap"><iframe id="app" src="./index.html?verify=1" width="390" height="844"></iframe></div></div>
+<script>
+  var app = document.getElementById('app');
+  var out = document.getElementById('out');
+  var errors = [];
+  function bindErrors() {
+    try {
+      var w = app.contentWindow;
+      w.addEventListener('error', function (e) {
+        errors.push((e.message || 'error') + ' @' + (e.filename || '').split('/').pop() + ':' + (e.lineno || 0));
+        render();
+      });
+      w.addEventListener('unhandledrejection', function (e) {
+        errors.push('unhandledrejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+        render();
+      });
+    } catch (e) { errors.push('error bind failed: ' + e.message); }
+  }
+  function render(extra) {
+    out.innerHTML = (extra ? extra + '\n' : '') + (errors.length ? '<span id="err">JS 오류 ' + errors.length + '건\n' + errors.join('\n') + '</span>' : 'JS 오류 0건');
+  }
+  app.addEventListener('load', function () { errors = []; bindErrors(); render(); });
+  document.querySelectorAll('#bar button[data-w]').forEach(function (b) {
+    b.onclick = function () {
+      document.querySelectorAll('#bar button[data-w]').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      var w = parseInt(b.getAttribute('data-w'), 10);
+      app.style.width = w + 'px';
+      app.style.height = (w <= 430 ? 844 : 1000) + 'px';
+      document.getElementById('frameWrap').style.width = w + 'px';
+    };
+  });
+  document.getElementById('reset').onclick = function () { app.src = './index.html?verify=' + Date.now(); };
+  document.getElementById('check').onclick = function () {
+    try {
+      var d = app.contentDocument;
+      var w = app.contentWindow;
+      var de = d.documentElement;
+      var cw = de.clientWidth;
+      var over = [];
+      d.querySelectorAll('body *').forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) return;
+        if (r.right > cw + 1 || r.left < -1) {
+          var cs = w.getComputedStyle(el);
+          if (cs.position === 'fixed') return;
+          over.push(el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').slice(0, 2).join('.') : '') + ' [' + Math.round(r.left) + '~' + Math.round(r.right) + ']');
+        }
+      });
+      render('before: 뷰포트 ' + cw + 'px · 문서 scrollWidth ' + de.scrollWidth + ' · 가로 넘침 요소 ' + over.length + '건');
+      out.innerHTML += '\n' + over.slice(0, 12).join('\n');
+    } catch (e) { render('검사 실패: ' + e.message); }
+  };
+</script>
+</body></html>
