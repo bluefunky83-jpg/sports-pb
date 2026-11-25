@@ -4488,14 +4488,14 @@
             <!-- Right: Info Rows (User's Hand-drawn Layout) -->
             <div class="space-y-1 min-w-0">
               <!-- Row 1: Name + [Gender] -->
-              <div class="flex items-center gap-1.5 min-w-0">
-                <span class="text-sm font-bold text-white truncate">${p.name || ''}</span>
+              <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
+                <span class="text-sm font-bold text-white max-w-full truncate">${p.name || ''}</span>
                 <span class="px-1.5 py-0.5 rounded border ${genderBadgeClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${p.gender || ''}</span>
                 ${isCurrent ? '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold shrink-0 whitespace-nowrap">선택됨</span>' : ''}
               </div>
 
               <!-- Row 2: Birth + [Grade] -->
-              <div class="flex items-center gap-1.5 text-xs text-slate-400 font-mono min-w-0">
+              <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-400 font-mono min-w-0">
                 <span class="whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
                 <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold font-sans shrink-0 whitespace-nowrap">${gradeBadge}</span>
               </div>
