@@ -8769,7 +8769,10 @@
           return;
         }
 
-        const lines = effective.map(p => (p.isNew ? p.profile.name + ' (신규 등록)' : p.player.name + ' 선수') + '의 기록 ' + p.records.length + '건을 추가합니다.');
+        const lines = effective.map(p => {
+          const label = p.isNew ? p.profile.name + ' (신규 등록)' : p.player.name + ' 선수';
+          return (p.isNew && p.records.length === 0) ? (label + '의 프로필을 등록합니다.') : (label + '의 기록 ' + p.records.length + '건을 추가합니다.');
+        });
         if (dupCount > 0) lines.push('이미 있는 기록 ' + dupCount + '건은 중복으로 보아 넣지 않습니다.');
         if (problems.length > 0) lines.push('건너뛴 선수: ' + problems.join(' / '));
         lines.push('기존 선수 정보와 기록은 수정하거나 삭제하지 않습니다.');
@@ -9249,7 +9252,7 @@
             });
           } else {
             // 기존 양식: 현재 관리자 소유 선수 중에서만 대상 선택창(최초 미선택).
-            const target = await askLegacyImportTarget(playersData || []);
+            const target = await askLegacyImportTarget(playersData || [], legacySheets.map(x => x.sheetName));
             if (!target) return; // 취소 → 데이터 무변경
             const item = legacySheets.find(x => x.sheetName === target.sheetName) || legacySheets[0];
             const rows = XLSX.utils.sheet_to_json(item.ws, { defval: '', range: item.headerRow });
@@ -9271,7 +9274,8 @@
           const lines = [];
           plans.forEach(p => {
             const label = p.isNew ? (p.profile.name + ' (신규 등록)') : (p.player.name + ' 선수');
-            lines.push(label + '의 기록 ' + p.records.length + '건을 추가합니다.');
+            if (p.isNew && p.records.length === 0) lines.push(label + '의 프로필을 등록합니다.');
+            else lines.push(label + '의 기록 ' + p.records.length + '건을 추가합니다.');
           });
           if (dupCount > 0) lines.push('이미 있는 기록 ' + dupCount + '건은 중복으로 보아 넣지 않습니다.');
           if (errCount > 0) lines.push('형식이 맞지 않는 행 ' + errCount + '건은 넣지 않습니다.');
@@ -10123,51 +10127,6 @@
       }
     };
 
-
-    // [임시 검수용] 배포 검수 중 만든 테스트 흔적을 앱의 저장 경로로만 정리한다. 검수 종료 후 이 블록은 제거한다.
-    (function () {
-      if (new URLSearchParams(location.search).get('__cleanup') !== '1') return;
-      document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-          try {
-            const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
-            const authUser = authUserStr ? JSON.parse(authUserStr) : null;
-            if (!authUser) { alert('cleanup: 로그인 필요'); return; }
-            const notes = [];
-            if (authUser.role === 'super_admin') {
-              const removedEvents = [];
-              (playersData || []).forEach(p => {
-                if (!Array.isArray(p.events)) return;
-                const next = p.events.filter(ev => {
-                  const name = typeof ev === 'object' ? ev.name : ev;
-                  if (name === '800m') { removedEvents.push(p.name + ':800m'); return false; }
-                  return true;
-                });
-                if (next.length !== p.events.length) p.events = next;
-              });
-              const keep = playersData.filter(p => !(p.name === '박테스트'));
-              if (keep.length !== playersData.length) {
-                playersData = keep;
-                Object.keys(appData).forEach(pid => { if (!playersData.some(p => p.id === pid)) delete appData[pid]; });
-                notes.push('박테스트 제거');
-              }
-              if (removedEvents.length) notes.push('종목 제거 ' + removedEvents.join(','));
-              saveDataToStorage();
-            } else if (authUser.role === 'admin') {
-              let removed = 0;
-              Object.keys(appData).forEach(pid => {
-                const before = appData[pid].length;
-                appData[pid] = appData[pid].filter(r => !(String(r.meet || '') === '가을 테스트대회' && r.note === '기존양식' && Math.abs(Number(r.seconds) - 11.99) < 0.001));
-                removed += before - appData[pid].length;
-              });
-              if (removed) { notes.push('테스트 기록 ' + removed + '건 제거'); saveDataToStorage(); }
-            }
-            alert('cleanup: ' + (notes.length ? notes.join(' / ') : '정리할 항목 없음'));
-            window.location.replace(location.pathname + '?v=cleanup-done');
-          } catch (err) { alert('cleanup error: ' + err.message); }
-        }, 800);
-      });
-    })();
 
     function resetStagingTestDataManual() {
       if (!confirm('검수용 staging 로컬 데이터를 초기 시드 상태(코치 A 2건, 코치 B 1건, 뷰어 1명)로 재설정할까요?\n(운영 앱 데이터에는 영향을 주지 않습니다.)')) return;
