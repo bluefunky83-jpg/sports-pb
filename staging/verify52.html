@@ -57,7 +57,14 @@
       var w = parseInt(b.getAttribute('data-w'), 10);
       app.style.width = w + 'px';
       app.style.height = (w <= 430 ? 1400 : 1200) + 'px';
-      document.getElementById('frameWrap').style.width = w + 'px';
+      var wrap = document.getElementById('frameWrap');
+      wrap.style.width = w + 'px';
+      // 992px 뷰포트보다 넓은 화면은 전체 배치를 볼 수 있도록 축소해서 보여준다(검사는 실제 CSS px로 수행).
+      var k = w > 900 ? (900 / w) : 1;
+      app.style.transformOrigin = 'top left';
+      app.style.transform = 'scale(' + k + ')';
+      wrap.style.width = Math.round(w * k) + 'px';
+      wrap.style.height = Math.round((w <= 430 ? 1400 : 1200) * k) + 'px';
     };
   });
   document.getElementById('reset').onclick = function () { app.src = './index.html?verify=' + Date.now(); };
