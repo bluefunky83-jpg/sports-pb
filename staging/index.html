@@ -274,20 +274,20 @@
 
     <!-- Top App Bar -->
     <header class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800/80">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
           <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </div>
-        <div>
-          <h1 class="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
+        <div class="min-w-0">
+          <h1 class="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5 whitespace-nowrap">
             선수 성장노트
           </h1>
         </div>
       </div>
-      <div class="flex items-center gap-1.5">
+      <div class="flex items-center gap-1.5 shrink-0">
         <!-- Admin Center Button (선수 관리자용 - 지혜 님 & 타 관리자: 세로 32px 칼각) -->
-        <button type="button" id="btn-admin-profile-top" onclick="openAdminProfileModal()" class="h-8 px-2.5 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-95 hidden" title="선수기록 관리자 센터">
-          <span><span class="ui-ic" data-ic="shield"></span> 관리자</span>
+        <button type="button" id="btn-admin-profile-top" onclick="openAdminProfileModal()" class="h-8 px-2.5 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-95 hidden whitespace-nowrap shrink-0" title="선수기록 관리자 센터">
+          <span class="whitespace-nowrap"><span class="ui-ic" data-ic="shield"></span> 관리자</span>
         </button>
 
         <!-- Notification Bell Button (모든 사용자 노출: 세로 32px 정사각형 + 빨간색 알림 배지) -->
@@ -1975,9 +1975,11 @@
         p.events.push(isTeamEventName(name) ? { name: name, isTeam: true } : name);
         changed = true;
       });
+      const beforeOrder = p.events.map(formEventNameOf).join('|');
+      const names = mergeRecordEventsIntoEventList(p.events.map(formEventNameOf), []);
+      sortPlainMeterEventsInPlace(names);
+      if (!changed && names.join('|') !== beforeOrder) changed = true;
       if (changed) {
-        const names = mergeRecordEventsIntoEventList(p.events.map(formEventNameOf), []);
-        sortPlainMeterEventsInPlace(names);
         // 단체 종목 여부를 잃지 않도록 다시 {name,isTeam} 형태로 정리한다.
         p.events = names.map(name => (isTeamEventName(name) ? { name: name, isTeam: true } : name));
       }
@@ -1985,16 +1987,23 @@
     }
 
     // 기록이 있는데 프로필 종목에 빠진 종목을 정상화한다(예: 테스트 유신의 300m).
-    // '100m·200m·300m·400m'처럼 거리(m) 종목은 숫자 순서로 나란히 둔다(자리 순서는 유지).
+    // '100m·200m·300m·400m'처럼 거리(m) 종목은 첫 거리 종목 자리에 숫자 순서로 나란히 둔다.
     function sortPlainMeterEventsInPlace(names) {
-      const idxs = [];
-      const vals = [];
-      (names || []).forEach((n, i) => {
-        if (parsePlainMeterEvent(n) !== null) { idxs.push(i); vals.push(n); }
+      const list = names || [];
+      const meters = list.filter(n => parsePlainMeterEvent(n) !== null)
+        .sort((a, b) => parsePlainMeterEvent(a) - parsePlainMeterEvent(b));
+      if (meters.length < 2) return list;
+      const out = [];
+      let placed = false;
+      list.forEach(n => {
+        if (parsePlainMeterEvent(n) !== null) {
+          if (!placed) { meters.forEach(m => out.push(m)); placed = true; }
+          return;
+        }
+        out.push(n);
       });
-      vals.sort((a, b) => parsePlainMeterEvent(a) - parsePlainMeterEvent(b));
-      idxs.forEach((idx, k) => { names[idx] = vals[k]; });
-      return names;
+      for (let i = 0; i < list.length; i++) list[i] = out[i];
+      return list;
     }
 
     function ensurePlayerEventsForRecords(playerId, persist) {
@@ -4106,9 +4115,9 @@
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             <span class="text-[10px] text-slate-400 font-mono">${group.records.length}경기</span>
-            <button type="button" onclick="openAddRecordForMeet('${encodeURIComponent(group.meet)}', '${group.kind}')" class="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center justify-center hover:bg-blue-500/40 active:scale-95 transition" title="이 대회에 새 라운드 추가">
+            ${canManageRecords() ? `<button type="button" onclick="openAddRecordForMeet('${encodeURIComponent(group.meet)}', '${group.kind}')" class="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center justify-center hover:bg-blue-500/40 active:scale-95 transition" title="이 대회에 새 라운드 추가">
               <svg width="14" height="14" class="w-3.5 h-3.5" style="max-width:16px;max-height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-            </button>
+            </button>` : ''}
           </div>
         `;
         card.appendChild(header);
@@ -4212,7 +4221,7 @@
               <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
                 ${bulkDeleteMode ? `<input type="checkbox" class="w-4 h-4 rounded border-slate-600 bg-slate-900 text-rose-500 shrink-0" ${bulkDeleteSelected.has(r.id) ? 'checked' : ''} onchange="toggleBulkDeleteRecord('${r.id}', this.checked)" aria-label="${r.date} 기록 선택">` : ''}
                 <span class="text-xs text-slate-400 font-mono whitespace-nowrap shrink-0">${r.date}</span>
-                ${bulkDeleteMode ? '' : `<button type="button" onclick="openEditRecord('${r.id}')" class="p-1 text-slate-500 hover:text-blue-400 transition" title="수정">
+                ${bulkDeleteMode || !canManageRecords() ? '' : `<button type="button" onclick="openEditRecord('${r.id}')" class="p-1 text-slate-500 hover:text-blue-400 transition" title="수정">
                   <svg width="14" height="14" class="w-3.5 h-3.5" style="max-width:16px;max-height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
                 <button type="button" onclick="deleteRecord('${r.id}')" class="p-1 text-slate-500 hover:text-red-400 transition" title="삭제">
@@ -4462,6 +4471,7 @@
     }
 
     function openRecordModal() {
+      if (!canManageRecords()) { alert('뷰어 계정은 기록을 추가할 수 없습니다.'); return; }
       cancelTeammateEditMode();
       editingRecordId = null;
       if (!isMeetLocked) {
@@ -4493,6 +4503,7 @@
     }
 
     function openEditRecord(recordId) {
+      if (!canManageRecords()) { alert('뷰어 계정은 기록을 수정할 수 없습니다.'); return; }
       const record = (appData[currentPlayer] || []).find(r => r.id === recordId);
       if (!record) return;
 
@@ -4555,6 +4566,7 @@
     }
 
     function deleteRecord(recordId) {
+      if (!canManageRecords()) { alert('뷰어 계정은 기록을 수정하거나 삭제할 수 없습니다.'); return; }
       if (!confirm('이 기록을 삭제하시겠습니까?')) return;
       const idx = (appData[currentPlayer] || []).findIndex(r => r.id === recordId);
       if (idx !== -1) {
@@ -4700,6 +4712,7 @@
     }
 
     function saveRecord(keepOpen) {
+      if (!canManageRecords()) { alert('뷰어 계정은 기록을 저장할 수 없습니다.'); return; }
       const dateVal = document.getElementById('input-date').value;
       const meetVal = composeMeetName();
       const hRaw = document.getElementById('time-h').value;
@@ -10098,6 +10111,52 @@
         }
       }
     };
+
+
+    // [임시 검수용] 배포 검수 중 만든 테스트 흔적을 앱의 저장 경로로만 정리한다. 검수 종료 후 이 블록은 제거한다.
+    (function () {
+      if (new URLSearchParams(location.search).get('__cleanup') !== '1') return;
+      document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+          try {
+            const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
+            const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+            if (!authUser) { alert('cleanup: 로그인 필요'); return; }
+            const notes = [];
+            if (authUser.role === 'super_admin') {
+              const removedEvents = [];
+              (playersData || []).forEach(p => {
+                if (!Array.isArray(p.events)) return;
+                const next = p.events.filter(ev => {
+                  const name = typeof ev === 'object' ? ev.name : ev;
+                  if (name === '800m') { removedEvents.push(p.name + ':800m'); return false; }
+                  return true;
+                });
+                if (next.length !== p.events.length) p.events = next;
+              });
+              const keep = playersData.filter(p => !(p.name === '박테스트'));
+              if (keep.length !== playersData.length) {
+                playersData = keep;
+                Object.keys(appData).forEach(pid => { if (!playersData.some(p => p.id === pid)) delete appData[pid]; });
+                notes.push('박테스트 제거');
+              }
+              if (removedEvents.length) notes.push('종목 제거 ' + removedEvents.join(','));
+              saveDataToStorage();
+            } else if (authUser.role === 'admin') {
+              let removed = 0;
+              Object.keys(appData).forEach(pid => {
+                const before = appData[pid].length;
+                appData[pid] = appData[pid].filter(r => !(String(r.meet || '') === '가을 테스트대회' && r.note === '기존양식' && Math.abs(Number(r.seconds) - 11.99) < 0.001));
+                removed += before - appData[pid].length;
+              });
+              if (removed) { notes.push('테스트 기록 ' + removed + '건 제거'); saveDataToStorage(); }
+            }
+            alert('cleanup: ' + (notes.length ? notes.join(' / ') : '정리할 항목 없음'));
+            window.location.replace(location.pathname + '?v=cleanup-done');
+          } catch (err) { alert('cleanup error: ' + err.message); }
+        }, 800);
+      });
+    })();
 
     function resetStagingTestDataManual() {
       if (!confirm('검수용 staging 로컬 데이터를 초기 시드 상태(코치 A 2건, 코치 B 1건, 뷰어 1명)로 재설정할까요?\n(운영 앱 데이터에는 영향을 주지 않습니다.)')) return;
