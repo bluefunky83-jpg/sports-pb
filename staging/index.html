@@ -5375,7 +5375,11 @@
           sport: sport,
           mainEvent: mainEvent,
           events: cleanEvents,
-          disabledEvents: [],
+          // 새 선수 등록 화면은 기본 종목이 선택된 상태로 열린다. 그중 사용자가 뺀 종목은
+          // '명시적으로 선택 해제'로 기록해 두고, 가져오기에서 임의로 다시 켜지 않는다.
+          disabledEvents: getDefaultEventsForSport(sport)
+            .map(getFormEventName)
+            .filter(n => n && !cleanEvents.some(ev => getFormEventName(ev) === n)),
           updatedAt: Date.now()
         });
         if (!appData[newId]) appData[newId] = [];
