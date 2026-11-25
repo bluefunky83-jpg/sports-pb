@@ -2213,7 +2213,7 @@
         .body-section { margin: 0 0 ${S.sectionBlockMb}px; }
         .body-sec-title { display: flex; align-items: center; gap: ${S.sectionTitleGap}px; height: ${S.sectionTitleH}px; font-size: ${S.sectionTitleSize}px; font-weight: ${S.sectionTitleWeight}; color: ${S.sectionTitleColor}; margin: 0 0 ${S.sectionTitleMb}px; padding-left: 2px; line-height: ${S.sectionTitleH}px; }
         .body-sec-bar { width: ${S.sectionBarW}px; height: ${S.sectionBarH}px; border-radius: 2px; background: ${S.sectionBarColor}; flex: 0 0 auto; }
-        .body-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(${S.cardMinWidth}px, 1fr)); gap: ${S.cardGap}px; }
+        .body-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(${S.cardMinWidth}px, 100%), 1fr)); gap: ${S.cardGap}px; }
         .body-card { background: ${S.cardBg}; border: 1px solid ${S.cardBorder}; border-radius: ${S.cardRadius}px; box-sizing: border-box; }
         .body-icon { width: ${S.iconTile}px; height: ${S.iconTile}px; border-radius: ${S.iconTileRadius}px; background: ${S.iconTileBg}; border: 1px solid ${S.iconTileBorder}; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: ${S.iconColor}; box-sizing: border-box; }
         .body-icon svg { display: block; }
@@ -3429,7 +3429,7 @@
             </select>
           </div>
           <div class="flex items-center gap-1.5">
-            <input type="text" id="search-meet" value="${searchMeet.replace(/"/g, '&quot;')}" oninput="updateFilters('search')" placeholder="대회명 검색..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+            <input type="text" id="search-meet" value="${searchMeet.replace(/"/g, '&quot;')}" oninput="updateFilters('search')" placeholder="대회명 검색..." class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
             <button type="button" onclick="resetAllFilters()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-bold whitespace-nowrap transition active:scale-95">초기화</button>
           </div>
         </div>
