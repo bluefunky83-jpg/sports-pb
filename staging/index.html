@@ -8723,10 +8723,6 @@
 
         // 파일에 적힌 관리자 ID·선수 ID는 현재 관리자의 소유권을 바꾸지 못한다.
         // 다른 관리자 자료가 들어 있어도 이 계정의 소유 트리에 별도 선수로만 등록된다.
-        let tomb = { deletedPlayers: {}, deletedRecords: {} };
-        if (authUser.role === 'admin') {
-          tomb = getAdminTombstones(getStableAdminId(authUser.email, authUser.name));
-        }
 
         const plans = [];
         const problems = [];
@@ -8745,13 +8741,11 @@
             problems.push(name + ' 선수: 성별·생년월일·종목 정보가 없어 신규 등록할 수 없습니다.');
             return;
           }
-          if (!player && tomb.deletedPlayers && tomb.deletedPlayers[fp.id]) return;
           const existing = player ? (appData[player.id] || []) : [];
           const fileRecs = v.appData[fp.id] || v.appData[fp.name] || [];
           const newRecs = [];
           (Array.isArray(fileRecs) ? fileRecs : []).forEach(r => {
             if (!r || (!r.event && !r.date)) return;
-            if (r.id && tomb.deletedRecords && tomb.deletedRecords[r.id]) return;
             const hit = existing.concat(newRecs).some(x =>
               String(x.date || '') === String(r.date || '') &&
               String(x.meet || '') === String(r.meet || '') &&
@@ -9143,6 +9137,23 @@
         });
         syncPlayerEventsWithRecords(p, appData[p.id]);
       });
+
+      // 사용자가 직접 고른 복원은 삭제 이력보다 우선한다(다음 동기화에서 곧바로 다시 지워지지 않게 정리).
+      try {
+        const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
+        const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+        if (authUser && authUser.role === 'admin') {
+          const stableKey = getStableAdminId(authUser.email, authUser.name);
+          const tomb = getAdminTombstones(stableKey);
+          plans.forEach(plan => {
+            if (plan.player && tomb.deletedPlayers) delete tomb.deletedPlayers[plan.player.id];
+            if (plan.player && plan.player.id) delete tomb.deletedPlayers[plan.player.id];
+            plan.records.forEach(rec => { if (tomb.deletedRecords) delete tomb.deletedRecords[rec.id]; });
+          });
+          playersData.forEach(p => { if (tomb.deletedPlayers) delete tomb.deletedPlayers[p.id]; });
+          saveAdminTombstones(stableKey, tomb);
+        }
+      } catch (e) {}
 
       if (!saveDataToStorage()) {
         appData = prevAppData;
