@@ -4480,28 +4480,28 @@
 
         card.innerHTML = `
           <!-- Left: Sport Icon (Portrait 3:4, 사진 기능 없음) -->
-          <div onclick="selectPlayerFromCard('${p.id}')" class="flex items-center gap-3.5 flex-1 cursor-pointer">
+          <div onclick="selectPlayerFromCard('${p.id}')" class="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer">
             <div class="w-12 h-16 rounded-xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center text-xl shadow-inner shrink-0 overflow-hidden relative">
               <span>${sportIcon}</span><span class="text-[9px] text-slate-500 mt-0.5">${p.gender || ''}</span>
             </div>
 
             <!-- Right: Info Rows (User's Hand-drawn Layout) -->
-            <div class="space-y-1">
+            <div class="space-y-1 min-w-0">
               <!-- Row 1: Name + [Gender] -->
-              <div class="flex items-center gap-1.5">
-                <span class="text-sm font-bold text-white">${p.name || ''}</span>
-                <span class="px-1.5 py-0.5 rounded border ${genderBadgeClass} text-[10px] font-bold leading-none">${p.gender || ''}</span>
-                ${isCurrent ? '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold">선택됨</span>' : ''}
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="text-sm font-bold text-white truncate">${p.name || ''}</span>
+                <span class="px-1.5 py-0.5 rounded border ${genderBadgeClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${p.gender || ''}</span>
+                ${isCurrent ? '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold shrink-0 whitespace-nowrap">선택됨</span>' : ''}
               </div>
 
               <!-- Row 2: Birth + [Grade] -->
-              <div class="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-                <span>${(p.birth || '').replace(/-/g, '.')}</span>
-                <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold font-sans">${gradeBadge}</span>
+              <div class="flex items-center gap-1.5 text-xs text-slate-400 font-mono min-w-0">
+                <span class="whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
+                <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold font-sans shrink-0 whitespace-nowrap">${gradeBadge}</span>
               </div>
 
               <!-- Row 3: Event -->
-              <div class="text-xs text-blue-400 font-medium">
+              <div class="text-xs text-blue-400 font-medium truncate">
                 ${p.sport || '운동'} · ${p.mainEvent || '종목 미지정'}
               </div>
             </div>
