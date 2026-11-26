@@ -4830,6 +4830,10 @@
 
     function openRecordModal() {
       if (!canManageRecords()) { alert('뷰어 계정은 기록을 추가할 수 없습니다.'); return; }
+      if (!currentPlayer || !playersData.some(p => p.id === currentPlayer)) {
+        alert('먼저 선수를 등록해 주세요.');
+        return;
+      }
       cancelTeammateEditMode();
       closeMeetAutocomplete();
       editingRecordId = null;
