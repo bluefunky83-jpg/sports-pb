@@ -35,6 +35,17 @@
       user-select: none !important;
     }
     /* 앱 공통 단색 라인 아이콘: 모든 화면에서 같은 크기·선 굵기·정렬을 쓴다. */
+    /* 보조 설명·안내 문구는 얇지 않게 Medium(500) 이상으로 유지한다(제목·기록 숫자의 위계는 그대로). */
+    body { font-weight: 500; }
+    body .font-normal { font-weight: 500 !important; }
+    /* 역할 배지: 아이콘과 명칭을 한 줄에 수직 중앙 정렬하고 상하 높이를 줄인다. */
+    .role-badge { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; line-height: 1.15; }
+    .role-badge > .ui-ic { align-self: center; }
+    /* 대회명 자동완성 목록: 입력란 바로 아래, 앱 남색 테마. 목록 내부에서만 스크롤한다. */
+    .meet-ac-list { position: absolute; left: 0; right: 36px; top: 100%; margin-top: 6px; max-height: 220px; overflow-y: auto; background: #0b1220; border: 1px solid #334155; border-radius: 14px; box-shadow: 0 18px 40px rgba(2,6,23,0.7); z-index: 60; padding: 4px; }
+    .meet-ac-item { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 10px; color: #cbd5e1; font-size: 11px; line-height: 1.4; font-weight: 500; word-break: break-word; }
+    .meet-ac-item:hover, .meet-ac-item:active { background: rgba(37,99,235,0.28); color: #ffffff; }
+    .meet-ac-empty { padding: 10px; text-align: center; font-size: 10px; color: #64748b; font-weight: 500; }
     .ui-ic { display: inline-flex; align-items: center; justify-content: center; width: 1em; height: 1em; flex: 0 0 auto; line-height: 1; vertical-align: -0.14em; }
     .ui-ic svg { width: 100%; height: 100%; display: block; }
     /* 안내 문구: 원형 느낌표 아이콘 + 본문 시작 위치 정렬(둘째 줄부터 아이콘 아래로 들어가지 않음) */
@@ -344,6 +355,10 @@
           <button type="button" id="btn-main-mode-annual" onclick="setMainViewMode('ANNUAL')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold transition text-slate-400 hover:text-white">연간 종합노트</button>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" id="btn-pb-event-select" onclick="openEventSelectModal()" class="relative w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95" title="표시할 종목 선택" aria-label="표시할 종목 선택">
+            <span class="ui-ic" data-ic="listChecks" data-size="16"></span>
+            <span id="pb-event-filter-dot" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-blue-400 border border-slate-900"></span>
+          </button>
           <button type="button" id="btn-capture-save" onclick="saveViewImage()" class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white flex items-center justify-center transition active:scale-95" title="이미지 저장" aria-label="이미지 저장">
             <svg width="16" height="16" class="w-4 h-4" style="max-width:18px;max-height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h1.5l1.2-1.8A1 1 0 018.5 5h7a1 1 0 01.8.4L17.5 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3.5"/></svg>
           </button>
@@ -409,6 +424,122 @@
     </div>
   </div>
 
+  <!-- 선수 삭제 확인창 -->
+  <div id="modal-player-delete" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+      <h3 class="text-base font-bold text-white flex items-center gap-2">
+        <span class="text-rose-400 shrink-0"><span class="ui-ic" data-ic="alertTri"></span></span>
+        <span>선수 삭제 확인</span>
+      </h3>
+      <div id="player-delete-body" class="text-xs text-slate-300 leading-relaxed space-y-1"></div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="resolvePlayerDeleteConfirm(false)" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">취소</button>
+        <button type="button" onclick="resolvePlayerDeleteConfirm(true)" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition active:scale-95">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 개별 선수 양도 (관리자 계정 유지) -->
+  <div id="modal-player-transfer" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm max-h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span class="text-blue-400 shrink-0"><span class="ui-ic" data-ic="transfer"></span></span>
+          <span>선수 양도</span>
+        </h3>
+        <button type="button" onclick="closePlayerTransferModal()" class="text-slate-400 hover:text-white p-1" aria-label="닫기">
+          <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
+        <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+          <div class="text-[10px] text-slate-400">양도할 선수</div>
+          <div id="transfer-player-label" class="font-bold text-white mt-0.5">-</div>
+          <div id="transfer-player-records" class="text-[10px] text-slate-500 mt-0.5"></div>
+        </div>
+        <div class="space-y-1">
+          <label class="block font-semibold text-slate-300">받을 관리자 검색</label>
+          <div class="flex gap-2">
+            <input type="text" id="transfer-search-input" placeholder="관리자 이름 또는 이메일" onkeydown="if(event.key==='Enter'){event.preventDefault();searchPlayerTransferAdmin();}" class="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500">
+            <button type="button" onclick="searchPlayerTransferAdmin()" class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shrink-0">조회</button>
+          </div>
+        </div>
+        <div id="transfer-search-result" class="space-y-2"></div>
+        <p class="text-[10px] text-slate-500 leading-relaxed">
+          상대 관리자가 수락해야 실제 소유권이 옮겨집니다. 수락 전에는 이 관리자의 소유로 그대로 남습니다.
+          선수 프로필, 경기 기록, PB, 연결된 뷰어 열람 권한이 함께 이전됩니다.
+        </p>
+      </div>
+      <div class="p-4 border-t border-slate-800 flex gap-2">
+        <button type="button" onclick="closePlayerTransferModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">취소</button>
+        <button type="button" id="btn-request-transfer" onclick="requestPlayerTransfer()" disabled class="flex-1 py-2.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700">양도 요청</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 최고관리자 공지 작성 및 관리 -->
+  <div id="modal-notice-admin" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md max-h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span class="text-purple-300 shrink-0"><span class="ui-ic" data-ic="megaphone"></span></span>
+          <span>공지 작성 및 관리</span>
+        </h3>
+        <button type="button" onclick="closeNoticeAdminModal()" class="text-slate-400 hover:text-white p-1" aria-label="닫기">
+          <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
+        <div class="space-y-2 p-3 rounded-2xl bg-slate-950 border border-slate-800">
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1">제목</label>
+            <input type="text" id="notice-title-input" maxlength="80" placeholder="공지 제목" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1">내용</label>
+            <textarea id="notice-body-input" rows="5" placeholder="공지 내용을 입력하세요." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 resize-y"></textarea>
+          </div>
+          <button type="button" onclick="submitNotice()" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition active:scale-95">발송 전 확인</button>
+          <p class="text-[10px] text-slate-500 leading-relaxed">관리자·뷰어 구분 없이 모든 회원에게 같은 내용으로 공개됩니다. 발송 전 확인창에서 한 번 더 확인합니다.</p>
+        </div>
+        <div class="flex items-center justify-between px-1">
+          <span class="text-[11px] font-bold text-slate-300">발송한 공지 목록</span>
+          <span id="notice-admin-count" class="text-[10px] text-slate-500">0건</span>
+        </div>
+        <div id="notice-admin-list" class="space-y-2"></div>
+      </div>
+      <div class="p-4 border-t border-slate-800">
+        <button type="button" onclick="closeNoticeAdminModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 표시할 종목 선택 (PB 기록 / 연간 종합노트 공통) -->
+  <div id="modal-event-select" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span class="text-blue-400 shrink-0"><span class="ui-ic" data-ic="listChecks"></span></span>
+          <span>표시할 종목 선택</span>
+        </h3>
+        <button type="button" onclick="closeEventSelectModal()" class="text-slate-400 hover:text-white p-1" aria-label="닫기">
+          <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
+        <label class="flex items-center gap-2 text-xs font-bold text-slate-200 cursor-pointer">
+          <input type="checkbox" id="chk-all-events" onchange="toggleAllVisibleEvents(this.checked)" class="rounded border-slate-700 bg-slate-950 text-blue-600">
+          <span>전체 선택</span>
+        </label>
+        <span class="text-[10px] text-slate-500 text-right leading-tight">선택한 종목만 화면과<br>이미지 저장·공유에 표시됩니다</span>
+      </div>
+      <div id="event-select-list" class="flex-1 overflow-y-auto p-4 space-y-3 text-xs"></div>
+      <div class="p-4 border-t border-slate-800">
+        <button type="button" onclick="closeEventSelectModal()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition active:scale-95">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <div id="btn-add-record-fixed" class="fixed bottom-6 right-6 z-40">
     <button type="button" onclick="openRecordModal()" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold px-5 py-3.5 rounded-2xl shadow-xl shadow-blue-600/40 flex items-center gap-2 transition border border-blue-400/30">
       <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
@@ -446,6 +577,17 @@
         </div>
       </div>
 
+      <!-- 알림창 탭: 일반 알림 / 공지사항 -->
+      <div id="notif-tabs" class="flex items-center gap-1 px-3 pt-3 pb-2 border-b border-slate-800 bg-slate-950/40">
+        <button type="button" id="notif-tab-general" onclick="switchNotifTab('general')" class="flex-1 py-2 rounded-xl text-[11px] font-bold transition bg-blue-600 text-white">일반 알림</button>
+        <button type="button" id="notif-tab-notice" onclick="switchNotifTab('notice')" class="flex-1 py-2 rounded-xl text-[11px] font-bold transition text-slate-400 hover:text-white bg-slate-900 border border-slate-800 flex items-center justify-center gap-1.5">
+          <span>공지사항</span>
+          <span id="notif-notice-dot" class="hidden w-2 h-2 rounded-full bg-rose-500"></span>
+        </button>
+      </div>
+
+      <div id="notif-pane-general" class="flex-1 flex flex-col min-h-0">
+      <div id="transfer-request-container" class="hidden px-4 pt-3 space-y-2"></div>
       <div id="notif-admin-subheader" class="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
         <span class="text-slate-400">뷰어 열람 승인 대기 목록</span>
         <button type="button" onclick="loadRealtimeApprovals(); checkAppVersionUpdate();" class="text-blue-400 font-bold hover:underline flex items-center gap-1">
@@ -461,6 +603,15 @@
       <div class="p-3 border-t border-slate-800 bg-slate-900 text-center text-[10px] text-slate-500">
         승인 즉시 상대방 폰의 깡통 화면이 풀리고 지정된 기록이 열립니다.
       </div>
+      </div>
+
+      <div id="notif-pane-notice" class="hidden flex-1 flex-col min-h-0">
+        <div class="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
+          <span class="text-slate-400">전체 공지사항</span>
+          <button type="button" onclick="renderNoticeList()" class="text-blue-400 font-bold hover:underline flex items-center gap-1">새로고침</button>
+        </div>
+        <div id="notice-list-container" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+      </div>
     </div>
   </div>
 
@@ -470,8 +621,8 @@
       <!-- Modal Header -->
       <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <span class="text-blue-500"><span class="ui-ic" data-ic="clock"></span></span>
-          <span>새 운동 기록 등록</span>
+          <span class="text-blue-500 shrink-0"><span class="ui-ic" data-ic="clock"></span></span>
+          <span id="record-modal-title">새 운동 기록 등록</span>
         </h3>
         <button type="button" onclick="closeRecordModal()" class="text-slate-400 hover:text-white p-1">
           <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -488,17 +639,17 @@
           </select>
         </div>
 
-        <!-- Date & Kind (공식 vs 전문실기) -->
+        <!-- Date & 기록 구분(공식 / 비공식) -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-slate-400 mb-1">경기 날짜 *</label>
             <input type="date" id="input-date" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
           </div>
           <div>
-            <label class="block font-semibold text-slate-400 mb-1">대회 / 실기 구분 *</label>
+            <label class="block font-semibold text-slate-400 mb-1">기록 구분 *</label>
             <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-              <button type="button" id="btn-kind-official" onclick="setFormKind('공식')" class="py-1.5 rounded-lg font-bold text-center transition">공식대회</button>
-              <button type="button" id="btn-kind-practice" onclick="setFormKind('비공식')" class="py-1.5 rounded-lg font-medium text-center transition">전문실기</button>
+              <button type="button" id="btn-kind-official" onclick="setFormKind('공식')" class="py-1.5 rounded-lg font-bold text-center transition">공식</button>
+              <button type="button" id="btn-kind-practice" onclick="setFormKind('비공식')" class="py-1.5 rounded-lg font-medium text-center transition">비공식</button>
             </div>
           </div>
         </div>
@@ -511,9 +662,14 @@
               <input type="number" id="input-meet-round" min="1" step="1" inputmode="numeric" placeholder="회차" title="대회 회차(선택)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-center text-white focus:outline-none focus:border-blue-500">
               <div class="text-[9px] text-slate-500 mt-1 text-center">회차 (선택)</div>
             </div>
-            <div class="flex-1 min-w-0">
-              <input type="text" id="input-meet" required list="meet-name-options" placeholder="대회명 입력 또는 선택" onchange="onMeetNameChanged()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
-              <datalist id="meet-name-options"></datalist>
+            <div class="flex-1 min-w-0 relative">
+              <div class="flex items-center gap-1">
+                <input type="text" id="input-meet" required autocomplete="off" placeholder="대회명 입력 또는 선택" oninput="onMeetInput()" oncompositionend="onMeetInput()" onchange="onMeetNameChanged()" onfocus="onMeetInput()" class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+                <button type="button" id="btn-meet-list" onmousedown="event.preventDefault()" onclick="toggleMeetAutocomplete()" class="w-8 h-8 shrink-0 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center active:scale-95 transition" title="저장된 대회명 보기" aria-label="저장된 대회명 보기">
+                  <span class="ui-ic" data-ic="chevronDown"></span>
+                </button>
+              </div>
+              <div id="meet-name-list" class="meet-ac-list hidden" role="listbox" aria-label="저장된 대회명 목록"></div>
               <div class="text-[9px] text-slate-500 mt-1 leading-tight">기존 대회명 검색·선택 가능 · 회차 입력 시 ‘제53회 대회명’으로 저장</div>
             </div>
           </div>
@@ -521,7 +677,7 @@
 
         <!-- Round / Stage (Smart Switched) -->
         <div>
-          <label id="label-round-kind" class="block font-semibold text-slate-400 mb-1.5">라운드 (공식대회 구분)</label>
+          <label id="label-round-kind" class="block font-semibold text-slate-400 mb-1.5">라운드</label>
           <div class="flex flex-wrap gap-1.5" id="round-chips">
             <!-- Populated dynamically based on Official vs Practice -->
           </div>
@@ -557,13 +713,15 @@
             <div class="flex items-center justify-between mb-1.5">
               <span class="text-[11px] font-semibold text-slate-300">릴레이 선수 선택:</span>
               <div class="flex items-center gap-1.5">
-                <button type="button" id="btn-toggle-runner-del" onclick="toggleTeammateEditMode()" class="text-[11px] text-slate-300 hover:text-red-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95">
+                <button type="button" id="btn-toggle-runner-del" onclick="toggleTeammateEditMode()" class="text-[11px] text-slate-300 hover:text-red-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
                   편집
                 </button>
-                <button type="button" id="btn-cancel-runner-del" onclick="cancelTeammateEditMode()" class="hidden text-[11px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded-lg border border-slate-800 bg-slate-900 transition active:scale-95">
+                <span id="runner-del-count" class="hidden text-[11px] font-bold text-rose-300 px-2 py-0.5 rounded-lg border border-rose-500/40 bg-rose-950/40 whitespace-nowrap">삭제(0명)</span>
+                <button type="button" id="btn-runner-del-confirm" onclick="confirmTeammateDeletion()" disabled class="hidden text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed whitespace-nowrap">확인</button>
+                <button type="button" id="btn-cancel-runner-del" onclick="cancelTeammateEditMode()" class="hidden text-[11px] text-slate-300 hover:text-white px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
                   취소
                 </button>
-                <button type="button" id="btn-add-teammate" onclick="promptAddNewTeammate()" class="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-0.5 transition active:scale-95 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/30">
+                <button type="button" id="btn-add-teammate" onclick="promptAddNewTeammate()" class="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-0.5 transition active:scale-95 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/30 whitespace-nowrap">
                   <span>+ 새 선수 등록</span>
                 </button>
               </div>
@@ -815,7 +973,7 @@
         <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
           <div class="flex items-center justify-between text-xs">
             <span class="text-slate-400">현재 모드:</span>
-            <span id="label-current-mode" class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold text-[11px]"><span class="ui-ic" data-ic="crown"></span> 최고 관리자</span>
+            <span id="label-current-mode" class="role-badge shrink-0 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold text-[11px]"><span class="ui-ic" data-ic="crown"></span><span>최고 관리자</span></span>
           </div>
           <!-- Viewer Only: Add Player Button (지혜 님 지침 완벽 반영!) -->
           <button type="button" id="btn-viewer-add-player" onclick="openViewerAddPlayerModal()" class="w-full py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-bold text-xs border border-blue-500/30 transition active:scale-95 flex items-center justify-center gap-1.5 hidden">
@@ -877,14 +1035,6 @@
             <input type="file" id="file-import-xlsx" accept=".xlsx,.xls" onchange="importExcelXlsx(event)" class="hidden">
           </label>
 
-          <button type="button" onclick="exportDataJson()" class="w-full py-2.5 rounded-2xl bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95">
-            <span><span class="ui-ic" data-ic="save"></span> 전체 선수 JSON 백업 다운로드</span>
-          </button>
-
-          <label id="btn-import-json-label" class="w-full py-2.5 rounded-2xl bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer">
-            <span><span class="ui-ic" data-ic="folder"></span> JSON 백업 파일 불러오기 (복원)</span>
-            <input type="file" id="file-import-json" accept=".json" onchange="importDataJson(event)" class="hidden">
-          </label>
         </div>
 
         <!-- Notion Guide & FAQ Link -->
@@ -977,6 +1127,18 @@
             <span class="text-[9px] text-slate-500">열람 승인됨</span>
           </div>
         </div>
+
+        <!-- 공지 작성 및 관리 (최고관리자 전용) -->
+        <button type="button" onclick="openNoticeAdminModal()" class="w-full p-3 rounded-2xl bg-slate-950 border border-purple-500/30 hover:border-purple-400/60 flex items-center justify-between gap-2 text-left transition active:scale-[0.99]">
+          <span class="flex items-center gap-2 min-w-0">
+            <span class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center shrink-0"><span class="ui-ic" data-ic="megaphone"></span></span>
+            <span class="min-w-0">
+              <span class="block text-xs font-bold text-slate-100">공지 작성 및 관리</span>
+              <span class="block text-[10px] text-slate-400">관리자·뷰어 구분 없이 모든 회원에게 공개됩니다</span>
+            </span>
+          </span>
+          <span class="text-slate-500 shrink-0"><span class="ui-ic" data-ic="chevronRight"></span></span>
+        </button>
 
         <!-- User Hierarchy Tree (지혜 님 지침: 등록된 관리자 > 관리자별 등록선수 & 경기기록 사용내역 > 뷰어) -->
         <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
@@ -1907,6 +2069,7 @@
 
     // 7. Event Tabs Navigation (Dynamic from Player's Events)
     function getPlayerEvents(playerId) {
+      if (!playerId) return [];
       const p = playersData.find(x => x.id === playerId);
       let baseEvents;
       if (p && Array.isArray(p.events) && p.events.length > 0) {
@@ -2143,14 +2306,31 @@
         const curUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
         const curUser = curUserStr ? JSON.parse(curUserStr) : null;
         if (curUser && curUser.role === 'viewer') {
-          container.innerHTML = `
+          const approvedList = Array.isArray(curUser.allowedPlayers) ? curUser.allowedPlayers : [];
+          const sourcesList = Array.isArray(curUser.allowedSources) ? curUser.allowedSources : [];
+          const hasApproval = approvedList.length > 0 || sourcesList.length > 0;
+          container.innerHTML = hasApproval ? `
             <div class="py-16 text-center space-y-4 my-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-              <div class="w-14 h-14 rounded-2xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-3xl mx-auto shadow-lg"><span class="ui-ic" data-ic="eye" data-size="30"></span></div>
+              <div class="w-14 h-14 rounded-2xl bg-amber-600/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-lg"><span class="ui-ic" data-ic="alertCircle" data-size="30"></span></div>
               <div class="space-y-1">
-                <h3 class="text-base font-bold text-white">열람 가능한 선수를 불러오는 중입니다</h3>
+                <h3 class="text-base font-bold text-white">승인된 선수 정보를 불러오지 못했습니다</h3>
                 <p class="text-xs text-slate-400 leading-relaxed">
-                  승인된 선수가 없다면 설정에서<br>
-                  [열람할 선수 추가 신청]을 진행해 주세요.
+                  승인은 완료되었지만 이 기기에서 선수 정보를 받지 못했습니다.<br>
+                  잠시 후 다시 불러오거나 아래 버튼을 눌러 주세요.
+                </p>
+              </div>
+              <button type="button" onclick="reloadViewerData()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 transition active:scale-95 inline-flex items-center gap-1.5">
+                <span><span class="ui-ic" data-ic="refresh"></span> 다시 불러오기</span>
+              </button>
+            </div>
+          ` : `
+            <div class="py-16 text-center space-y-4 my-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+              <div class="w-14 h-14 rounded-2xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-lg"><span class="ui-ic" data-ic="eye" data-size="30"></span></div>
+              <div class="space-y-1">
+                <h3 class="text-base font-bold text-white">아직 열람이 승인된 선수가 없습니다</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  아래 버튼으로 열람할 선수를 조회해<br>
+                  담당 관리자에게 승인을 신청해 주세요.
                 </p>
               </div>
               <button type="button" onclick="openViewerAddPlayerModal()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 transition active:scale-95 inline-flex items-center gap-1.5">
@@ -2335,6 +2515,8 @@
       door: '<path d="M5 20.6V4.2a1 1 0 011-1h9a1 1 0 011 1v16.4M3.2 20.6h17.6"/><circle cx="13" cy="12" r="0.95" fill="currentColor" stroke="none"/>',
       hourglass: '<path d="M7 3h10M7 21h10M7.4 3c0 4.8 4.6 5.8 4.6 9s-4.6 4.2-4.6 9M16.6 3c0 4.8-4.6 5.8-4.6 9s4.6 4.2 4.6 9"/>',
       megaphone: '<path d="M4 10.4v3.2a1.4 1.4 0 001.4 1.4H8l5 4V5l-5 4H5.4A1.4 1.4 0 004 10.4z"/><path d="M16 8.4a5 5 0 010 7.2M8 15v4.4"/>',
+      listChecks: '<path d="M3.4 6.4l1.7 1.7 2.8-3"/><path d="M3.4 13.4l1.7 1.7 2.8-3"/><path d="M11.4 6.6h9M11.4 13.6h9M11.4 19.4h6"/>',
+      transfer: '<path d="M4 8h13M13.4 4.6L17 8l-3.6 3.4"/><path d="M20 16H7M10.6 12.6L7 16l3.6 3.4"/>',
       chevronRight: '<path d="M9.4 5.6l6.4 6.4-6.4 6.4"/>',
       chevronDown: '<path d="M5.6 9.4l6.4 6.4 6.4-6.4"/>',
       lexicon: ''
@@ -2522,6 +2704,106 @@
       return String(v === null || v === undefined ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     }
 
+    // ---------- 표시할 종목 선택 (PB 기록 / 연간 종합노트) ----------
+    // 화면과 이미지에 보일 종목만 고르는 표시용 기능이다. 실제 기록·PB·프로필은 바꾸지 않는다.
+    // 선택 상태를 어디까지 저장할지는 확정되지 않아, 이번에는 새로고침 전까지의 화면 상태로만 유지한다.
+    let pbVisibleEventsByPlayer = {};
+
+    function getPlayerSelectableEventGroups(playerId) {
+      const personal = [];
+      const team = [];
+      getPlayerEvents(playerId).forEach(ev => {
+        if (isTeamEventName(ev)) team.push(ev); else personal.push(ev);
+      });
+      return [
+        { key: 'personal', title: '개인 종목', items: personal },
+        { key: 'team', title: '단체 종목', items: team }
+      ].filter(g => g.items.length > 0);
+    }
+
+    function getVisibleEventList(playerId) {
+      const all = getPlayerEvents(playerId);
+      const saved = pbVisibleEventsByPlayer[playerId];
+      if (!Array.isArray(saved)) return all.slice();
+      return all.filter(ev => saved.indexOf(ev) >= 0);
+    }
+
+    function isEventVisible(playerId, eventName) {
+      const saved = pbVisibleEventsByPlayer[playerId];
+      if (!Array.isArray(saved)) return true;
+      return saved.some(ev => ev === eventName || isEventMatch(eventName, ev));
+    }
+
+    function syncEventFilterBadge() {
+      const dot = document.getElementById('pb-event-filter-dot');
+      const btn = document.getElementById('btn-pb-event-select');
+      if (!dot) return;
+      const all = currentPlayer ? getPlayerEvents(currentPlayer) : [];
+      const visible = currentPlayer ? getVisibleEventList(currentPlayer) : [];
+      const filtered = all.length > 0 && visible.length !== all.length;
+      dot.classList.toggle('hidden', !filtered);
+      if (btn) btn.title = filtered ? ('표시할 종목 선택 (' + visible.length + '/' + all.length + ')') : '표시할 종목 선택';
+    }
+
+    function openEventSelectModal() {
+      if (!currentPlayer) return;
+      renderEventSelectList();
+      document.getElementById('modal-event-select').classList.remove('hidden');
+    }
+
+    function closeEventSelectModal() {
+      document.getElementById('modal-event-select').classList.add('hidden');
+    }
+
+    function renderEventSelectList() {
+      const listEl = document.getElementById('event-select-list');
+      if (!listEl) return;
+      const groups = getPlayerSelectableEventGroups(currentPlayer);
+      const all = getPlayerEvents(currentPlayer);
+      const visible = getVisibleEventList(currentPlayer);
+      const chkAll = document.getElementById('chk-all-events');
+      if (chkAll) chkAll.checked = all.length > 0 && visible.length === all.length;
+      if (groups.length === 0) {
+        listEl.innerHTML = '<div class="p-4 text-center text-slate-500 text-[11px]">등록된 종목이 없습니다.</div>';
+        return;
+      }
+      listEl.innerHTML = groups.map(g => `
+        <div class="space-y-1.5">
+          <div class="text-[11px] font-bold text-slate-300">${g.title} <span class="text-slate-500 font-medium">${g.items.length}</span></div>
+          ${g.items.map(ev => `
+            <label class="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer">
+              <input type="checkbox" class="evt-visible-chk" data-event="${bodyEsc(ev)}" ${visible.indexOf(ev) >= 0 ? 'checked' : ''} onchange="onEventVisibilityChange(this)" class="rounded border-slate-700 bg-slate-900 text-blue-600">
+              <span class="text-slate-200 font-medium break-all">${bodyEsc(ev)}</span>
+            </label>`).join('')}
+        </div>`).join('');
+    }
+
+    function onEventVisibilityChange(el) {
+      if (!el || !currentPlayer) return;
+      const ev = el.getAttribute('data-event');
+      const all = getPlayerEvents(currentPlayer);
+      const set = new Set(getVisibleEventList(currentPlayer));
+      if (el.checked) set.add(ev); else set.delete(ev);
+      pbVisibleEventsByPlayer[currentPlayer] = all.filter(e => set.has(e));
+      renderEventSelectList();
+      refreshMainViewOnly();
+    }
+
+    function toggleAllVisibleEvents(checked) {
+      if (!currentPlayer) return;
+      const all = getPlayerEvents(currentPlayer);
+      pbVisibleEventsByPlayer[currentPlayer] = checked ? all.slice() : [];
+      renderEventSelectList();
+      refreshMainViewOnly();
+    }
+
+    function refreshMainViewOnly() {
+      const container = document.getElementById('view-container');
+      if (!container) return;
+      if (mainViewMode === 'ANNUAL') renderAnnualNoteView(container);
+      else renderPBView(container);
+    }
+
     // ---------- PB 본문 모델 ----------
     function buildPbBodyModel(playerId) {
       const records = appData[playerId] || [];
@@ -2530,6 +2812,8 @@
       const personal = [];
       const team = [];
       getPlayerEvents(playerId).forEach(ev => {
+        // 표시 선택을 해제한 종목은 카드를 만들지 않는다(원본 기록·PB 계산은 그대로).
+        if (!isEventVisible(playerId, ev)) return;
         // 공식기록만 PB 후보. 비공식만 있는 종목은 카드를 만들지 않는다.
         const recs = records.filter(r => isOfficialRecord(r) && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
         if (recs.length === 0) return;
@@ -2560,7 +2844,9 @@
           { title: '개인 최고기록 (Personal Best)', cards: personal },
           { title: '릴레이 / 단체전 최고기록 (Team Best)', cards: team }
         ].filter(s => s.cards.length > 0),
-        emptyText: '아직 공식기록이 없습니다.<br>공식 대회 기록을 추가하면 최고기록이 표시됩니다.'
+        emptyText: getVisibleEventList(playerId).length === 0
+          ? '표시할 종목이 선택되지 않았습니다.<br>오른쪽 위 [표시할 종목 선택]에서 종목을 골라 주세요.'
+          : '아직 공식기록이 없습니다.<br>공식 대회 기록을 추가하면 최고기록이 표시됩니다.'
       };
     }
 
@@ -2612,6 +2898,7 @@
 
     function renderPBView(container) {
       container.innerHTML = pbBodyHtml(buildPbBodyModel(currentPlayer));
+      syncEventFilterBadge();
     }
 
     // ============================================================
@@ -2906,7 +3193,9 @@
     // ============================================================
     // ---------- 연간 종합노트 본문 모델 ----------
     function buildAnnualBodyModel(playerId, year) {
-      const cards = getAnnualEventCards(playerId, year);
+      // 표시 선택을 해제한 종목 카드는 빼고 그린다(연간 통계 집계는 전체 종목 기준 그대로).
+      const cards = getAnnualEventCards(playerId, year).filter(c => isEventVisible(playerId, c.event));
+      const visibleEventCount = getVisibleEventList(playerId).length;
       const player = playersData.find(p => p.id === playerId) || null;
       const playerName = player ? (player.name || '선수') : '선수';
 
@@ -2956,7 +3245,9 @@
           { title: '단체 종목 PB 변화', cards: team }
         ].filter(s => s.cards.length > 0),
         isEmpty: cards.length === 0,
-        emptyText: year + '년에는 ' + playerName + ' 선수의 기록이 없습니다.<br>좌우 화살표로 다른 연도를 확인해 주세요.',
+        emptyText: visibleEventCount === 0
+          ? '표시할 종목이 선택되지 않았습니다.<br>오른쪽 위 [표시할 종목 선택]에서 종목을 골라 주세요.'
+          : year + '년에는 ' + playerName + ' 선수의 기록이 없습니다.<br>좌우 화살표로 다른 연도를 확인해 주세요.',
         footnoteLines: [
           '이전 PB는 직전 연도 말까지의 공식 최고기록입니다.',
           '개선율은 비교 기준 대비 단축 비율입니다.'
@@ -3036,6 +3327,7 @@
       const playerName = player ? (player.name || '선수') : '선수';
       const sportText = player ? (player.sport || '') : '';
       const model = buildAnnualBodyModel(currentPlayer, year);
+      syncEventFilterBadge();
 
       container.innerHTML = `
         <div class="space-y-1">
@@ -3737,7 +4029,7 @@
             <select id="filter-kind" onchange="updateFilters('kind')" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200">
               <option value="ALL" ${filterKind === 'ALL' ? 'selected' : ''}>구분: 전체</option>
               <option value="공식" ${filterKind === '공식' ? 'selected' : ''}>공식대회</option>
-              <option value="비공식" ${filterKind === '비공식' ? 'selected' : ''}>전문실기</option>
+              <option value="비공식" ${filterKind === '비공식' ? 'selected' : ''}>비공식대회</option>
             </select>
             <select id="filter-year" onchange="updateFilters('year')" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200">
               <option value="ALL" ${filterYear === 'ALL' ? 'selected' : ''}>연도: 전체</option>
@@ -4102,7 +4394,7 @@
         const isOfficial = group.kind === '공식';
         const kindBadge = isOfficial 
           ? '<span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold whitespace-nowrap shrink-0">공식</span>'
-          : '<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold whitespace-nowrap shrink-0">실기</span>';
+          : '<span class="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold whitespace-nowrap shrink-0">비공식</span>';
         const meetIcon = isOfficial ? '<span class="ui-ic" data-ic="trophy"></span>' : '<span class="ui-ic" data-ic="file"></span>';
 
         const header = document.createElement('div');
@@ -4283,6 +4575,7 @@
     }
 
     function resetFormFields() {
+      closeMeetAutocomplete();
       document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
       document.getElementById('input-meet').value = '';
       const elMeetRound = document.getElementById('input-meet-round');
@@ -4318,9 +4611,11 @@
     }
 
     // 기록 추가·수정 모달의 대회명 후보(기존 등록 대회명 검색·선택용).
+    // 브라우저 기본 datalist 대신 입력란 바로 아래 앱 자체 목록을 쓴다(PC·모바일 동일).
+    let meetAutocompleteNames = [];
+    let meetAutocompleteOpen = false;
+
     function populateMeetNameOptions() {
-      const listEl = document.getElementById('meet-name-options');
-      if (!listEl) return;
       const names = [];
       const seen = {};
       (appData[currentPlayer] || []).forEach(r => {
@@ -4330,8 +4625,70 @@
         names.push(name);
       });
       names.sort((a, b) => a.localeCompare(b, 'ko'));
-      listEl.innerHTML = names.map(name => `<option value="${name.replace(/"/g, '&quot;')}"></option>`).join('');
+      meetAutocompleteNames = names;
+      if (meetAutocompleteOpen) {
+        const inp = document.getElementById('input-meet');
+        renderMeetAutocomplete(inp ? inp.value : '');
+      }
     }
+
+    // 입력한 글자에 맞는 대회명만 실시간으로 보여 준다. 한글 조합 중에도 현재 입력값으로 거른다.
+    function renderMeetAutocomplete(query) {
+      const listEl = document.getElementById('meet-name-list');
+      if (!listEl) return;
+      const q = String(query || '').trim().toLowerCase();
+      const names = meetAutocompleteNames.filter(n => !q || n.toLowerCase().indexOf(q) >= 0);
+      if (names.length === 0) {
+        const empty = meetAutocompleteNames.length === 0
+          ? '저장된 대회명이 없습니다. 직접 입력해 주세요.'
+          : '일치하는 대회명이 없습니다. 직접 입력해 주세요.';
+        listEl.innerHTML = '<div class="meet-ac-empty">' + empty + '</div>';
+        return;
+      }
+      listEl.innerHTML = names.map(n =>
+        `<button type="button" class="meet-ac-item" role="option" onmousedown="event.preventDefault()" onclick="selectMeetName(this.getAttribute('data-name'))" data-name="${bodyEsc(n)}">${bodyEsc(n)}</button>`
+      ).join('');
+    }
+
+    function closeMeetAutocomplete() {
+      const listEl = document.getElementById('meet-name-list');
+      if (listEl) listEl.classList.add('hidden');
+      meetAutocompleteOpen = false;
+    }
+
+    function openMeetAutocomplete() {
+      const listEl = document.getElementById('meet-name-list');
+      if (!listEl) return;
+      const inp = document.getElementById('input-meet');
+      renderMeetAutocomplete(inp ? inp.value : '');
+      listEl.classList.remove('hidden');
+      meetAutocompleteOpen = true;
+    }
+
+    // 화살표 버튼은 입력란에 포커스를 주지 않고 목록만 연다(모바일 키보드가 올라오지 않게).
+    function toggleMeetAutocomplete() {
+      if (meetAutocompleteOpen) closeMeetAutocomplete();
+      else openMeetAutocomplete();
+    }
+
+    function onMeetInput() {
+      openMeetAutocomplete();
+    }
+
+    function selectMeetName(name) {
+      const inp = document.getElementById('input-meet');
+      if (inp) inp.value = String(name || '');
+      closeMeetAutocomplete();
+      onMeetNameChanged();
+    }
+
+    document.addEventListener('click', function (e) {
+      if (!meetAutocompleteOpen) return;
+      const t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('#meet-name-list') || t.closest('#input-meet') || t.closest('#btn-meet-list')) return;
+      closeMeetAutocomplete();
+    });
 
     // '제53회 대회명'을 선택·입력하면 회차 칸과 대회명 칸으로 나눠 보여 준다(저장 결과는 동일).
     function onMeetNameChanged() {
@@ -4403,7 +4760,7 @@
       if (kind === '공식') {
         bOfficial.className = 'py-1.5 rounded-lg font-bold text-center bg-blue-600 text-white shadow-md';
         bPractice.className = 'py-1.5 rounded-lg font-medium text-center text-slate-400 hover:text-white';
-        if (roundLabel) roundLabel.textContent = '라운드 (공식대회 구분)';
+        if (roundLabel) roundLabel.textContent = '라운드';
         
         chipsContainer.innerHTML = `
           <button type="button" onclick="setRound('결승')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-blue-500 font-medium">결승</button>
@@ -4414,7 +4771,7 @@
       } else {
         bOfficial.className = 'py-1.5 rounded-lg font-medium text-center text-slate-400 hover:text-white';
         bPractice.className = 'py-1.5 rounded-lg font-bold text-center bg-blue-600 text-white shadow-md';
-        if (roundLabel) roundLabel.textContent = '시기 (전문실기 구분)';
+        if (roundLabel) roundLabel.textContent = '차수';
 
         chipsContainer.innerHTML = `
           <button type="button" onclick="setRound('1차')" class="chip-round px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-purple-300 hover:border-purple-500 font-medium">1차</button>
@@ -4473,11 +4830,12 @@
     function openRecordModal() {
       if (!canManageRecords()) { alert('뷰어 계정은 기록을 추가할 수 없습니다.'); return; }
       cancelTeammateEditMode();
+      closeMeetAutocomplete();
       editingRecordId = null;
       if (!isMeetLocked) {
         resetFormFields();
       }
-      document.querySelector('#modal-record h3 span:last-child').textContent = '새 운동 기록 등록';
+      document.getElementById('record-modal-title').textContent = '새 운동 기록 등록';
       updateFormChips();
       setFormKind(selectedKind);
       document.getElementById('modal-record').classList.remove('hidden');
@@ -4496,7 +4854,7 @@
       if (!isMeetLocked) toggleLockMeet();
 
       setFormKind(kind || '공식');
-      document.querySelector('#modal-record h3 span:last-child').textContent = '새 운동 기록 등록';
+      document.getElementById('record-modal-title').textContent = '새 운동 기록 등록';
       updateFormChips();
       checkRelayVisibility();
       document.getElementById('modal-record').classList.remove('hidden');
@@ -4510,7 +4868,7 @@
       editingRecordId = recordId;
       resetFormFields();
 
-      document.querySelector('#modal-record h3 span:last-child').textContent = '운동 기록 수정';
+      document.getElementById('record-modal-title').textContent = '운동 기록 수정';
       document.getElementById('input-date').value = record.date || '';
       applyMeetToForm(record.meet || '');
       setFormKind(record.kind || '공식');
@@ -5394,13 +5752,36 @@
       renderCurrentView();
     }
 
-    function deletePlayer(id) {
-      if (playersData.length <= 1) {
-        alert('최소 한 명의 선수는 남아있어야 합니다.');
-        return;
-      }
+    // 선수 삭제 확인창: 선수 이름과 함께 삭제되는 경기 기록 건수를 보여 주고, 취소하면 아무것도 바꾸지 않는다.
+    let playerDeleteResolver = null;
+    function askPlayerDeleteConfirm(name, recordCount) {
+      return new Promise(resolve => {
+        playerDeleteResolver = resolve;
+        const body = document.getElementById('player-delete-body');
+        if (body) {
+          body.innerHTML = `
+            <div><strong class="text-white">${bodyEsc(name)}</strong> 선수를 삭제하시겠습니까?</div>
+            <div class="mt-1">함께 처리되는 경기 기록: <strong class="text-rose-300">${recordCount}건</strong></div>
+            <div class="mt-1 text-[11px] text-slate-400">선수 프로필과 경기 기록이 함께 삭제됩니다. 취소하면 아무 데이터도 바뀌지 않습니다.</div>
+            <div class="mt-1 text-[11px] text-amber-300">선수 삭제 유예(72시간) 정책은 그대로 적용됩니다.</div>`;
+        }
+        document.getElementById('modal-player-delete')?.classList.remove('hidden');
+      });
+    }
+    function resolvePlayerDeleteConfirm(ok) {
+      document.getElementById('modal-player-delete')?.classList.add('hidden');
+      const r = playerDeleteResolver;
+      playerDeleteResolver = null;
+      if (r) r(!!ok);
+    }
+
+    async function deletePlayer(id) {
       const p = playersData.find(x => x.id === id);
-      if (!confirm(`${p.name} 선수의 모든 기록과 프로필을 삭제하시겠습니까?`)) return;
+      if (!p) return;
+      // 관리자가 보유한 마지막 선수도 삭제할 수 있다(선수 0명 계정 허용, 계정 자체는 유지).
+      const recordCount = Array.isArray(appData[id]) ? appData[id].length : 0;
+      const okToDelete = await askPlayerDeleteConfirm(p.name, recordCount);
+      if (!okToDelete) return;
 
       try {
         const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
@@ -5423,7 +5804,7 @@
       delete appData[id];
 
       if (currentPlayer === id) {
-        currentPlayer = playersData[0].id;
+        currentPlayer = playersData.length > 0 ? playersData[0].id : '';
       }
 
       if (!saveChangeOrRevert(prevAppData, prevPlayersData)) {
@@ -5438,41 +5819,67 @@
     }
 
     // 11. Teammate Multi-Select & Batch Delete
-    function toggleTeammateEditMode() {
+    //  삭제 모드 상단은 [삭제(N명)] [확인] [취소] 세 칸이다. 이름은 한 번 누르면 선택, 다시 누르면 해제되고
+    //  [확인]을 눌러야 실제로 지운다. 인원수는 항상 현재 선택만 세어 연속 삭제에도 누적되지 않는다.
+    function updateTeammateDeleteControls() {
+      const count = selectedTeammatesToDelete.size;
+      const countEl = document.getElementById('runner-del-count');
+      const confirmBtn = document.getElementById('btn-runner-del-confirm');
+      if (countEl) countEl.textContent = `삭제(${count}명)`;
+      if (confirmBtn) {
+        confirmBtn.disabled = count === 0;
+        confirmBtn.className = count === 0
+          ? 'text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed whitespace-nowrap'
+          : 'text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-rose-600 text-white border-rose-400 shadow-sm transition active:scale-95 whitespace-nowrap';
+      }
+    }
+
+    function enterTeammateEditMode() {
+      isTeammateEditMode = true;
+      selectedTeammatesToDelete.clear();
       const btn = document.getElementById('btn-toggle-runner-del');
+      const countEl = document.getElementById('runner-del-count');
+      const confirmBtn = document.getElementById('btn-runner-del-confirm');
       const cancelBtn = document.getElementById('btn-cancel-runner-del');
       const addBtn = document.getElementById('btn-add-teammate');
-
-      if (!isTeammateEditMode) {
-        isTeammateEditMode = true;
-        selectedTeammatesToDelete.clear();
-        btn.textContent = '삭제';
-        btn.className = 'text-[11px] text-red-300 font-bold px-2.5 py-0.5 rounded-lg border border-red-500/60 bg-red-950/70 shadow-sm transition active:scale-95';
-        if (cancelBtn) cancelBtn.classList.remove('hidden');
-        if (addBtn) addBtn.classList.add('hidden');
-      } else {
-        if (selectedTeammatesToDelete.size > 0) {
-          savedTeammates = savedTeammates.filter(name => !selectedTeammatesToDelete.has(name));
-          saveTeammates();
-        }
-        cancelTeammateEditMode();
-      }
+      if (btn) btn.classList.add('hidden');
+      if (countEl) countEl.classList.remove('hidden');
+      if (confirmBtn) confirmBtn.classList.remove('hidden');
+      if (cancelBtn) cancelBtn.classList.remove('hidden');
+      if (addBtn) addBtn.classList.add('hidden');
+      updateTeammateDeleteControls();
       renderTeammateChips();
+    }
+
+    function toggleTeammateEditMode() {
+      if (!isTeammateEditMode) enterTeammateEditMode();
+      else cancelTeammateEditMode();
     }
 
     function cancelTeammateEditMode() {
       isTeammateEditMode = false;
       selectedTeammatesToDelete.clear();
       const btn = document.getElementById('btn-toggle-runner-del');
+      const countEl = document.getElementById('runner-del-count');
+      const confirmBtn = document.getElementById('btn-runner-del-confirm');
       const cancelBtn = document.getElementById('btn-cancel-runner-del');
       const addBtn = document.getElementById('btn-add-teammate');
-      if (btn) {
-        btn.textContent = '편집';
-        btn.className = 'text-[11px] text-slate-300 hover:text-red-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95';
-      }
+      if (btn) btn.classList.remove('hidden');
+      if (countEl) { countEl.classList.add('hidden'); countEl.textContent = '삭제(0명)'; }
+      if (confirmBtn) { confirmBtn.classList.add('hidden'); }
       if (cancelBtn) cancelBtn.classList.add('hidden');
       if (addBtn) addBtn.classList.remove('hidden');
+      updateTeammateDeleteControls();
       renderTeammateChips();
+    }
+
+    function confirmTeammateDeletion() {
+      if (selectedTeammatesToDelete.size === 0) return;
+      // 저장된 주자 이름 목록에서만 지운다. 과거 경기 기록·PB의 주자 명단은 건드리지 않는다.
+      savedTeammates = savedTeammates.filter(name => !selectedTeammatesToDelete.has(name));
+      saveTeammates();
+      selectedTeammatesToDelete.clear();
+      cancelTeammateEditMode();
     }
 
     function toggleSelectTeammateToDelete(name) {
@@ -5481,12 +5888,7 @@
       } else {
         selectedTeammatesToDelete.add(name);
       }
-
-      const btn = document.getElementById('btn-toggle-runner-del');
-      if (btn) {
-        const count = selectedTeammatesToDelete.size;
-        btn.textContent = count > 0 ? `삭제 (${count}명)` : '삭제';
-      }
+      updateTeammateDeleteControls();
       renderTeammateChips();
     }
 
@@ -5610,14 +6012,14 @@
 
       if (modeLabel) {
         if (role === 'super_admin') {
-          modeLabel.className = 'px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-[11px]';
-          modeLabel.innerHTML = uiIconSvg('crown', 12) + ' 최고 관리자';
+          modeLabel.className = 'role-badge shrink-0 px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-[11px]';
+          modeLabel.innerHTML = uiIconSvg('crown', 12) + '<span>최고 관리자</span>';
         } else if (role === 'admin') {
-          modeLabel.className = 'px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold text-[11px]';
-          modeLabel.innerHTML = uiIconSvg('shield', 12) + ' 선수 관리자';
+          modeLabel.className = 'role-badge shrink-0 px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold text-[11px]';
+          modeLabel.innerHTML = uiIconSvg('shield', 12) + '<span>선수 관리자</span>';
         } else {
-          modeLabel.className = 'px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-bold text-[11px]';
-          modeLabel.innerHTML = uiIconSvg('eye', 12) + ' 뷰어 (열람 전용)';
+          modeLabel.className = 'role-badge shrink-0 px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-bold text-[11px]';
+          modeLabel.innerHTML = uiIconSvg('eye', 12) + '<span>뷰어 (열람 전용)</span>';
         }
       }
 
@@ -5710,30 +6112,38 @@
         ensureAllPlayerEvents(true);
       } else if (user.role === 'viewer') {
         // Viewer: only sees approved players (both MASTER + external admin players!)
+        //  선수 id는 관리자별로 겹칠 수 있으므로 '소유 관리자 + 선수 id' 짝으로 고른다.
         const allowed = user.allowedPlayers || [];
-        if (user.approved && allowed.length > 0) {
-          const poolPlayers = [...MASTER_PLAYERS_DATA];
+        const sources = Array.isArray(user.allowedSources) ? user.allowedSources : [];
+        if (user.approved && (allowed.length > 0 || sources.length > 0)) {
           const poolAppData = { ...MASTER_APP_DATA };
+          const poolList = [];
+          MASTER_PLAYERS_DATA.forEach(p => poolList.push(Object.assign({}, p, { __owner: 'super_admin' })));
           try {
-            const admins = Object.values(realtimeAuthData?._admins || {});
-            admins.forEach(adm => {
-              if (Array.isArray(adm.players)) {
+            const admins = Object.entries(realtimeAuthData?._admins || {});
+            admins.forEach(([admId, adm]) => {
+              if (adm && Array.isArray(adm.players)) {
                 adm.players.forEach(ap => {
-                  if (!poolPlayers.some(x => x.id === ap.id)) {
-                    poolPlayers.push(ap);
-                  }
+                  if (ap && ap.id) poolList.push(Object.assign({}, ap, { __owner: adm.id || admId }));
                 });
               }
-              if (adm.records && typeof adm.records === 'object') {
+              if (adm && adm.records && typeof adm.records === 'object') {
                 Object.entries(adm.records).forEach(([pid, recs]) => {
                   if (!poolAppData[pid]) poolAppData[pid] = recs;
                 });
               }
             });
           } catch (e) {}
-          playersData = poolPlayers.filter(p => allowed.includes(p.id));
+          let picked = [];
+          if (sources.length > 0) {
+            const wanted = {};
+            sources.forEach(s => { if (s && s.playerId) wanted[(s.ownerAdminId || 'super_admin') + '::' + s.playerId] = 1; });
+            picked = poolList.filter(p => wanted[(p.__owner || 'super_admin') + '::' + p.id]);
+          }
+          if (picked.length === 0) picked = poolList.filter(p => allowed.indexOf(p.id) >= 0);
+          playersData = picked.map(p => { const copy = Object.assign({}, p); delete copy.__owner; return copy; });
           appData = poolAppData;
-          currentPlayer = playersData[0]?.id || '';
+          currentPlayer = playersData.length > 0 ? playersData[0].id : '';
         } else {
           playersData = [];
           appData = {};
@@ -5742,6 +6152,8 @@
       }
       // 역할과 무관하게, 공식기록 기준과 맞지 않는 예전 PB 갱신 배지를 한 번 정리한다.
       reconcilePbBadgeTimestamps();
+      // 새 공지·양도 요청·승인 대기가 있으면 종 아이콘에 바로 표시한다.
+      if (typeof updatePendingBadge === 'function') updatePendingBadge();
     }
 
     // --- Global Gate & Auth State Management ---
@@ -6236,6 +6648,15 @@
     async function submitViewerAddPlayer() {
       const selected = selectedViewerSearchPlayer || 'yusin';
       const ownerAdminId = selectedViewerSearchOwnerAdminId || 'super_admin';
+      // 이미 승인된 선수는 다시 신청할 수 없다(중복 신청 방지).
+      try {
+        const meNow = getCurrentAuthUser();
+        const approvedNow = viewerApprovedSourcesFor(meNow);
+        if (approvedNow.some(s => s.ownerAdminId === ownerAdminId && s.playerId === selected)) {
+          alert('이미 열람이 승인된 선수입니다. 추가 신청이 필요하지 않습니다.');
+          return;
+        }
+      } catch (e) {}
       const allSearchable = getAllSearchableAthletes();
       const targetAthlete = allSearchable.find(p => p.id === selected) || MASTER_PLAYERS_DATA.find(p => p.id === selected);
       const targetName = targetAthlete ? `${targetAthlete.name} (${targetAthlete.sport})` : '김유신';
@@ -6300,6 +6721,47 @@
     function findViewerCloudEntry(data, authUser) {
       const all = findAllViewerCloudEntries(data, authUser);
       return all.length > 0 ? all[0] : null;
+    }
+
+    // 승인된 뷰어 권한을 '소유 관리자 + 선수' 짝으로 모은다.
+    // 선수 id는 관리자별로 겹칠 수 있어(동명이인 포함) 소유자와 함께 비교해야 다른 관리자의 동명이인 선수에
+    // 권한이 잘못 붙지 않는다.
+    function viewerApprovedSourcesFromEntries(entries) {
+      const out = [];
+      const seen = {};
+      (entries || []).forEach(({ item }) => {
+        if (!item || item.status !== 'approved' || !item.allowed || item.allowed === 'none') return;
+        const owner = item.ownerAdminId || 'super_admin';
+        let ids = Array.isArray(item.allowedPlayers) ? item.allowedPlayers.slice() : [];
+        if (ids.length === 0) {
+          if (item.allowed === 'all') {
+            if (owner === 'super_admin') ids = ['yusin', 'byeolha'];
+            else {
+              try {
+                const c = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{}');
+                const a = (c._admins || {})[owner];
+                ids = (a && Array.isArray(a.players)) ? a.players.map(p => p.id) : [];
+              } catch (e) { ids = []; }
+            }
+          } else {
+            ids = [item.allowed];
+          }
+        }
+        ids.forEach(pid => {
+          if (!pid) return;
+          const k = owner + '::' + pid;
+          if (seen[k]) return;
+          seen[k] = 1;
+          out.push({ ownerAdminId: owner, playerId: pid });
+        });
+      });
+      return out;
+    }
+
+    function viewerApprovedSourcesFor(me) {
+      const data = (realtimeAuthData && Object.keys(realtimeAuthData).length) ? realtimeAuthData
+        : (function () { try { return JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{}'); } catch (e) { return {}; } })();
+      return viewerApprovedSourcesFromEntries(findAllViewerCloudEntries(data, me));
     }
 
     function getPlayerDisplayLabel(pid) {
@@ -6992,16 +7454,28 @@
     function renderAdminMyPlayers() {
       const c = document.getElementById('admin-my-players-list');
       if (!c) return;
-      c.innerHTML = (playersData || []).map(p => `
-        <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-base">${p.sport === '육상' ? '<span class="ui-ic" data-ic="running"></span>' : '<span class="ui-ic" data-ic="cycling"></span>'}</span>
-            <div>
-              <div class="font-bold text-slate-200">${p.name} <span class="text-[10px] text-slate-400 font-normal">(${p.sport} · ${p.mainEvent || ''})</span></div>
+      const authUser = getCurrentAuthUser();
+      const canTransfer = authUser.role === 'admin';
+      const pendingRequests = getTransferRequests().filter(r => r.status === 'pending' && r.fromAdminId === authUser.id);
+      if (!playersData || playersData.length === 0) {
+        c.innerHTML = '<div class="py-3 text-center text-slate-500 text-[11px]">등록된 선수가 없습니다. 새 선수를 등록할 수 있습니다.</div>';
+        return;
+      }
+      c.innerHTML = playersData.map(p => `
+        <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-base shrink-0">${p.sport === '육상' ? '<span class="ui-ic" data-ic="running"></span>' : '<span class="ui-ic" data-ic="cycling"></span>'}</span>
+            <div class="min-w-0">
+              <div class="font-bold text-slate-200 truncate">${bodyEsc(p.name)} <span class="text-[10px] text-slate-400 font-normal">(${bodyEsc(p.sport)} · ${bodyEsc(p.mainEvent || '')})</span></div>
               <div class="text-[10px] text-slate-500">기록 ${(appData[p.id]||[]).length}건 관리중</div>
             </div>
           </div>
-          <button type="button" onclick="closeAdminProfileModal(); openAddEditPlayerModal('${p.id}');" class="text-indigo-400 hover:text-indigo-300 font-semibold text-[11px]">수정</button>
+          <div class="flex items-center gap-1.5 shrink-0">
+            ${canTransfer ? (pendingRequests.some(r => r.playerId === p.id)
+              ? '<span class="text-[10px] text-amber-300 font-semibold whitespace-nowrap">양도 요청 중</span>'
+              : `<button type="button" onclick="openPlayerTransferModal('${p.id}')" class="text-slate-400 hover:text-blue-300 font-semibold text-[11px] whitespace-nowrap">양도</button>`) : ''}
+            <button type="button" onclick="closeAdminProfileModal(); openAddEditPlayerModal('${p.id}');" class="text-indigo-400 hover:text-indigo-300 font-semibold text-[11px] whitespace-nowrap">수정</button>
+          </div>
         </div>
       `).join('');
     }
@@ -7087,253 +7561,6 @@
     function toggleAuthMode() {
       handleLogout();
     }
-
-    function exportToExcelExactFormat() {
-      const p = currentPlayer;
-      let csvContent = "\ufeff";
-      
-      if (p === 'yusin') {
-        const headers = ['날짜', '대회명', '종목', '순위', '기록', '풍속', '릴레이조', '비고'];
-        csvContent += headers.join(',') + '\n';
-        (appData.yusin || []).forEach(r => {
-          const secNum = parseFloat(r.seconds || 0);
-          const formattedSec = secNum > 0 ? secNum.toFixed(2) : '';
-          const row = [
-            `"${r.date || ''}"`,
-            `"${(r.meet || '').replace(/"/g, '""')}"`,
-            `"${r.event || ''}"`,
-            `"${r.rank || ''}"`,
-            `="${formattedSec}"`,
-            `"${r.wind || ''}"`,
-            `"${r.relay || (r.runners ? r.runners.join('/') : '')}"`,
-            `"${(r.note || '').replace(/"/g, '""')}"`
-          ];
-          csvContent += row.join(',') + '\n';
-        });
-      } else {
-        const headers = ['날짜', '대회명', '종목', '순위', '기록', '비고'];
-        csvContent += headers.join(',') + '\n';
-        (appData.byeolha || []).forEach(r => {
-          const secNum = parseFloat(r.seconds || 0);
-          const formattedSec = secNum > 0 ? secNum.toFixed(3) : '';
-          const row = [
-            `"${r.date || ''}"`,
-            `"${(r.meet || '').replace(/"/g, '""')}"`,
-            `"${r.event || ''}"`,
-            `"${r.rank || ''}"`,
-            `="${formattedSec}"`,
-            `"${(r.note || '').replace(/"/g, '""')}"`
-          ];
-          csvContent += row.join(',') + '\n';
-        });
-      }
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const pObj = playersData.find(x => x.id === p);
-      const pName = pObj ? pObj.name : '선수';
-      const today = new Date().toISOString().split('T')[0];
-      a.download = `${pName}_아이들기록지_내양식_${today}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-    function exportDataJson() {
-      const exportPayload = {
-        appName: '선수 성장노트',
-        appData: appData,
-        playersData: playersData,
-        savedTeammates: savedTeammates,
-        exportedAt: new Date().toISOString()
-      };
-      const jsonStr = JSON.stringify(exportPayload, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const today = new Date().toISOString().split('T')[0];
-      a.download = `선수성장노트_전체백업_${today}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-    function validateBackupJson(parsed) {
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        return { ok: false, reason: 'JSON 최상위 구조가 올바른 객체가 아닙니다.' };
-      }
-
-      // 신규 형식(players/records)과 운영·구형 형식(appData/playersData)을 모두 받아 정규화한다.
-      const hasPlayers = Array.isArray(parsed.players);
-      const hasRecords = !!parsed.records && typeof parsed.records === 'object' && !Array.isArray(parsed.records);
-      const hasPlayersData = Array.isArray(parsed.playersData);
-      const hasAppData = !!parsed.appData && typeof parsed.appData === 'object' && !Array.isArray(parsed.appData);
-
-      let players = null;
-      let records = null;
-      let format = '';
-      if (hasPlayers || hasRecords) {
-        if (!hasPlayers || !hasRecords) {
-          return { ok: false, reason: '신규 백업 형식이 완전하지 않습니다(players와 records가 모두 필요합니다).' };
-        }
-        players = parsed.players;
-        records = parsed.records;
-        format = 'current';
-      } else if (hasPlayersData || hasAppData) {
-        if (!hasPlayersData || !hasAppData) {
-          return { ok: false, reason: '구형 백업 형식이 완전하지 않습니다(playersData와 appData가 모두 필요합니다).' };
-        }
-        players = parsed.playersData;
-        records = parsed.appData;
-        format = 'legacy';
-      } else {
-        return { ok: false, reason: '백업 파일에 선수·기록 데이터(players/records 또는 appData/playersData)가 없습니다.' };
-      }
-
-      for (let i = 0; i < players.length; i++) {
-        const p = players[i];
-        if (!p || typeof p !== 'object' || !p.id || !p.name) {
-          return { ok: false, reason: `선수 정보(${i + 1}번째 항목)에 필수값(id, name)이 누락되었습니다.` };
-        }
-      }
-      for (const pid of Object.keys(records)) {
-        const recs = records[pid];
-        if (!Array.isArray(recs)) {
-          return { ok: false, reason: `선수 기록(${pid}) 형식이 배열이 아닙니다.` };
-        }
-        for (let j = 0; j < recs.length; j++) {
-          const r = recs[j];
-          if (!r || typeof r !== 'object' || (!r.event && !r.date)) {
-            return { ok: false, reason: `기록 데이터(${pid}의 ${j + 1}번째 항목)가 손상되었습니다.` };
-          }
-        }
-      }
-      const teammates = parsed.savedTeammates !== undefined ? parsed.savedTeammates : (Array.isArray(parsed.teammates) ? parsed.teammates : undefined);
-      if (teammates !== undefined && !Array.isArray(teammates)) {
-        return { ok: false, reason: '팀원 목록(savedTeammates) 형식이 올바르지 않습니다.' };
-      }
-      return {
-        ok: true,
-        format: format,
-        playersData: players,
-        appData: records,
-        savedTeammates: teammates,
-        playersCount: players.length,
-        recordsCount: Object.keys(records).reduce((sum, pid) => sum + (Array.isArray(records[pid]) ? records[pid].length : 0), 0),
-        exportedAt: parsed.exportedAt || '',
-        ownerUid: parsed.ownerUid || '',
-        ownerEmail: parsed.ownerEmail || ''
-      };
-    }
-
-    function importDataJson(e) {
-      const inputEl = e.target;
-      const file = inputEl && inputEl.files ? inputEl.files[0] : null;
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const prevAppData = JSON.parse(JSON.stringify(appData || {}));
-        const prevPlayersData = JSON.parse(JSON.stringify(playersData || []));
-        const prevSavedTeammates = JSON.parse(JSON.stringify(savedTeammates || []));
-
-        try {
-          const parsed = JSON.parse(event.target.result);
-          const check = validateBackupJson(parsed);
-          if (!check.ok) {
-            alert(`복원을 진행할 수 없습니다.\n사유: ${check.reason}\n\n기존 데이터는 안전하게 유지됩니다.`);
-            if (inputEl) inputEl.value = '';
-            return;
-          }
-
-          const playerCount = parsed.playersData.length;
-          const recordCount = Object.values(parsed.appData).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
-          const dateLabel = parsed.exportedAt ? String(parsed.exportedAt).slice(0, 10) : '알 수 없음';
-          const okConfirm = confirm(
-            `백업 파일을 복원하시겠습니까?\n\n` +
-            `• 백업 날짜: ${dateLabel}\n` +
-            `• 선수 수: ${playerCount}명 / 기록 수: ${recordCount}건\n\n` +
-            `복원 직전 현재 데이터는 브라우저에 자동 임시 백업됩니다.`
-          );
-          if (!okConfirm) {
-            if (inputEl) inputEl.value = '';
-            return;
-          }
-
-          try {
-            const backupEntry = {
-              savedAt: new Date().toISOString(),
-              appData: prevAppData,
-              playersData: prevPlayersData,
-              savedTeammates: prevSavedTeammates
-            };
-            let historyList = [];
-            try {
-              const rawHist = localStorage.getItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS');
-              if (rawHist) {
-                const parsedHist = JSON.parse(rawHist);
-                if (Array.isArray(parsedHist)) historyList = parsedHist;
-              }
-            } catch (e) {}
-            historyList.unshift(backupEntry);
-            if (historyList.length > 3) historyList = historyList.slice(0, 3);
-            while (historyList.length > 0) {
-              try {
-                localStorage.setItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS', JSON.stringify(historyList));
-                break;
-              } catch (quotaErr) {
-                historyList.pop();
-              }
-            }
-            localStorage.setItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUP', JSON.stringify(backupEntry));
-          } catch (backupErr) {
-            console.warn('pre-restore auto backup failed:', backupErr);
-          }
-
-          appData = parsed.appData;
-          playersData = parsed.playersData;
-          if (parsed.savedTeammates !== undefined) savedTeammates = parsed.savedTeammates;
-          const savedOk = saveDataToStorage();
-          if (!savedOk) {
-            throw new Error('브라우저 저장소 용량이 초과되어 데이터를 저장할 수 없습니다.');
-          }
-          initPlayerSelectDropdown();
-          renderEventTabs();
-          renderCurrentView();
-          alert('데이터를 성공적으로 복원했습니다!');
-          closeSettingsModal();
-        } catch (err) {
-          appData = prevAppData;
-          playersData = prevPlayersData;
-          savedTeammates = prevSavedTeammates;
-          let rollbackSaved = saveDataToStorage();
-          if (!rollbackSaved) {
-            try {
-              localStorage.removeItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUP');
-              localStorage.removeItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS');
-            } catch (e) {}
-            rollbackSaved = saveDataToStorage();
-          }
-          if (rollbackSaved) {
-            alert('복원 중 오류가 발생하여 기존 데이터를 안전하게 복구·유지했습니다.\n(' + (err && err.message ? err.message : '올바른 백업 JSON 파일이 아닙니다.') + ')');
-          } else {
-            alert('복원 및 저장소 재저장 모두 실패했으나 현재 메모리상의 기존 데이터는 유지됩니다.\n즉시 [데이터 파일로 내보내기]로 JSON 백업을 저장해 주세요.');
-          }
-        } finally {
-          if (inputEl) inputEl.value = '';
-        }
-      };
-      reader.onerror = () => {
-        alert('파일을 읽는 중 오류가 발생했습니다. 기존 데이터는 유지됩니다.');
-        if (inputEl) inputEl.value = '';
-      };
-      reader.readAsText(file);
-    }
-
 
     function formatBirthInput(el) {
       const digits = el.value.replace(/\D/g, '').slice(0, 8);
@@ -7581,8 +7808,11 @@
         return v && isViewerOwnedByCurrentAdmin(v, scopeId) && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
       });
       const hasViewerNotif = !isAdmin && viewerApprovalNotifs.length > 0;
-      if (hasPending || hasNewVersionUpdate || hasViewerNotif) badge.classList.remove('hidden');
+      const hasTransferRequest = isAdmin && getTransferRequests().some(r => r.status === 'pending' && r.toAdminId === authUser.id);
+      const hasUnreadNotice = getUnreadNoticeCount() > 0;
+      if (hasPending || hasNewVersionUpdate || hasViewerNotif || hasTransferRequest || hasUnreadNotice) badge.classList.remove('hidden');
       else badge.classList.add('hidden');
+      updateNoticeDot();
     }
 
     let adminPendingPollTimer = null;
@@ -7734,21 +7964,37 @@
         return;
       }
 
-      container.innerHTML = matched.map((p, idx) => `
-        <label class="flex items-center gap-3 p-3 rounded-2xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-blue-500/50 transition">
-          <input type="radio" name="viewer-search-target-radio" value="${p.id}" ${idx === 0 ? 'checked' : ''} onchange="onViewerSelectSearchTarget('${p.id}', '${p.ownerAdminId || 'super_admin'}')" class="text-blue-600">
-          <div>
-            <div class="font-bold text-slate-200 flex items-center gap-1.5">
-              <span>${(p.sport || '').includes('육상') ? '<span class="ui-ic" data-ic="running"></span>' : '<span class="ui-ic" data-ic="cycling"></span>'}</span>
-              <span>${p.name}</span>
-              <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">${p.sport}</span>
-            </div>
-            <div class="text-[10px] text-slate-400 mt-0.5">${p.mainEvent || ''} · ${p.birth || ''} (${p.ownerAdminName || '관리자'})</div>
-          </div>
-        </label>
-      `).join('');
+      const me = getCurrentAuthUser();
+      const approvedSources = viewerApprovedSourcesFor(me);
+      const isApproved = (p) => approvedSources.some(s => s.ownerAdminId === (p.ownerAdminId || 'super_admin') && s.playerId === p.id);
+      const firstPick = matched.find(p => !isApproved(p)) || null;
 
-      onViewerSelectSearchTarget(matched[0].id, matched[0].ownerAdminId || 'super_admin');
+      container.innerHTML = matched.map(p => {
+        const approved = isApproved(p);
+        return `
+        <label class="flex items-center gap-3 p-3 rounded-2xl bg-slate-950 border ${approved ? 'border-emerald-500/40' : 'border-slate-800 cursor-pointer hover:border-blue-500/50'} transition">
+          <input type="radio" name="viewer-search-target-radio" value="${p.id}" ${(!approved && firstPick && firstPick.id === p.id) ? 'checked' : ''} ${approved ? 'disabled' : ''} onchange="onViewerSelectSearchTarget('${p.id}', '${p.ownerAdminId || 'super_admin'}')" class="text-blue-600">
+          <div class="min-w-0">
+            <div class="font-bold text-slate-200 flex items-center gap-1.5 flex-wrap">
+              <span>${(p.sport || '').includes('육상') ? '<span class="ui-ic" data-ic="running"></span>' : '<span class="ui-ic" data-ic="cycling"></span>'}</span>
+              <span>${bodyEsc(p.name)}</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">${bodyEsc(p.sport)}</span>
+              ${approved ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">승인됨</span>' : ''}
+            </div>
+            <div class="text-[10px] text-slate-400 mt-0.5">${bodyEsc(p.mainEvent || '')} · ${bodyEsc(p.birth || '')} (${bodyEsc(p.ownerAdminName || '관리자')})</div>
+          </div>
+        </label>`;
+      }).join('');
+
+      if (firstPick) onViewerSelectSearchTarget(firstPick.id, firstPick.ownerAdminId || 'super_admin');
+      else {
+        const btnSubmit2 = document.getElementById('btn-submit-viewer-add');
+        if (btnSubmit2) {
+          btnSubmit2.disabled = true;
+          btnSubmit2.className = 'flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-500 font-bold cursor-not-allowed transition';
+        }
+        container.insertAdjacentHTML('beforeend', '<div class="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-[11px] text-emerald-300">검색된 선수는 모두 이미 열람이 승인되어 있습니다.</div>');
+      }
     }
 
     function onViewerSelectSearchTarget(playerId, ownerAdminId) {
@@ -8048,6 +8294,7 @@
             clearInterval(viewerPollingInterval);
             authUser.approved = true;
             authUser.allowedPlayers = Array.from(approvedIds);
+            authUser.allowedSources = viewerApprovedSourcesFromEntries(entries);
             localStorage.setItem('STAGING_ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
             syncDataForUserRole(authUser);
 
@@ -8090,6 +8337,7 @@
           if (viewerPollingInterval) clearInterval(viewerPollingInterval);
           authUser.approved = true;
           authUser.allowedPlayers = Array.from(approvedIds);
+          authUser.allowedSources = viewerApprovedSourcesFromEntries(entries);
           localStorage.setItem('STAGING_ATHLETE_APP_AUTH_USER', JSON.stringify(authUser));
           syncDataForUserRole(authUser);
 
@@ -8133,6 +8381,7 @@
         if (nextAllowedSet.size === 0) return;
 
         const nextAllowed = Array.from(nextAllowedSet);
+        authUser.allowedSources = viewerApprovedSourcesFromEntries(entries);
         const prevAllowed = authUser.allowedPlayers || [];
         const prevStr = JSON.stringify([...prevAllowed].sort());
         const nextStr = JSON.stringify([...nextAllowed].sort());
@@ -8185,10 +8434,40 @@
       window.location.reload();
     }
 
+    async function reloadViewerData() {
+      try {
+        const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
+        const json = await res.json();
+        if (json && json.data) realtimeAuthData = { ...json.data };
+      } catch (e) {}
+      const me = getCurrentAuthUser();
+      if (!me || me.role !== 'viewer') return;
+      const entries = findAllViewerCloudEntries(realtimeAuthData, me);
+      const sources = viewerApprovedSourcesFromEntries(entries);
+      if (sources.length > 0) {
+        me.approved = true;
+        me.allowedSources = sources;
+        me.allowedPlayers = sources.map(s => s.playerId);
+        localStorage.setItem('STAGING_ATHLETE_APP_AUTH_USER', JSON.stringify(me));
+      }
+      syncDataForUserRole(me);
+      if (!playersData.some(p => p.id === currentPlayer)) currentPlayer = playersData.length > 0 ? playersData[0].id : '';
+      initPlayerSelectDropdown();
+      renderEventTabs();
+      renderCurrentView();
+      updatePendingBadge();
+      if (playersData.length === 0) {
+        alert('승인된 선수 정보를 아직 받지 못했습니다.\n관리자 승인이 취소되었는지 확인하거나 잠시 후 다시 시도해 주세요.');
+      }
+    }
+
     function openViewerApprovalModal() {
       pushModalHistory('modal-viewer-approvals');
-      document.getElementById('modal-viewer-approvals').classList.remove('hidden');
+      const modal = document.getElementById('modal-viewer-approvals');
+      if (modal) modal.classList.remove('hidden');
+      switchNotifTab('general');
       loadRealtimeApprovals();
+      updateNoticeDot();
     }
 
     function closeViewerApprovalModal() {
@@ -8394,14 +8673,16 @@
       if (acc.role === 'viewer') {
         initStagingSeedData();
         const entries = findAllViewerCloudEntries(realtimeAuthData, { email: acc.email, name: acc.name });
-        const approvedSet = new Set(); const requestedSet = new Set();
+        const requestedSet = new Set();
         entries.forEach(({ item }) => {
-          if (item.status === 'approved' && Array.isArray(item.allowedPlayers)) item.allowedPlayers.forEach(pid => approvedSet.add(pid));
           if (Array.isArray(item.requestedPlayers)) item.requestedPlayers.forEach(pid => requestedSet.add(pid));
         });
+        const approvedSources = viewerApprovedSourcesFromEntries(entries);
+        const approvedSet = new Set(approvedSources.map(s => s.playerId));
         const user = {
           id: acc.id, name: acc.name, email: acc.email, role: 'viewer',
-          approved: approvedSet.size > 0, allowedPlayers: Array.from(approvedSet),
+          approved: approvedSources.length > 0, allowedPlayers: Array.from(approvedSet),
+          allowedSources: approvedSources,
           requestedPlayers: Array.from(requestedSet), targetPlayer: Array.from(requestedSet)[0] || ''
         };
         localStorage.setItem('STAGING_ATHLETE_APP_AUTH_USER', JSON.stringify(user));
@@ -8414,27 +8695,66 @@
       checkInitialAuthGate(); openDataNoticeModal(false);
     };
 
+    let signupInFlight = false;
     handleSignupSubmit = async function(event) {
       if (event) event.preventDefault();
-      const name = (document.getElementById('signup-name-input')?.value || '').trim();
-      const email = (document.getElementById('signup-email-input')?.value || '').trim().toLowerCase();
-      const p1 = (document.getElementById('signup-password-input')?.value || '');
-      const p2 = (document.getElementById('signup-password-confirm-input')?.value || '');
-      if (!name || !email || !p1 || p1 !== p2) { alert('성함, 이메일, 비밀번호 확인을 정확히 입력해 주세요.'); return; }
-      const accounts = getStagingAccounts();
-      if (accounts[email] && accounts[email].status === 'active') { alert('이미 가입된 이메일입니다.'); return; }
-      const role = currentSignupRole === 'viewer' ? 'viewer' : 'admin';
-      const id = role === 'admin' ? getStableAdminId(email, name) : 'viewer_' + getStableAdminId(email, name);
-      accounts[email] = { id, email, name, role, status: 'active', pwHash: simpleDemoHash(p1) };
-      saveStagingAccounts(accounts);
-      if (role === 'admin') {
-        const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
-        cloud._admins = cloud._admins || {};
-        cloud._admins[id] = { id, email, name, role: 'admin', players: [], records: {}, deletedPlayers: {}, deletedRecords: {} };
-        saveStagingCloud(cloud);
+      if (signupInFlight) return;
+      const nameEl = document.getElementById('signup-name-input');
+      const emailEl = document.getElementById('signup-email-input');
+      const pwEl = document.getElementById('signup-password-input');
+      const pw2El = document.getElementById('signup-password-confirm-input');
+      const btn = document.getElementById('btn-signup-submit');
+      const name = (nameEl?.value || '').trim();
+      const email = (emailEl?.value || '').trim().toLowerCase();
+      const p1 = (pwEl?.value || '');
+      const p2 = (pw2El?.value || '');
+      const fail = (msg, el) => { alert(msg); if (el && el.focus) el.focus(); };
+      if (!name) { fail('성함(닉네임)을 입력해 주세요.', nameEl); return; }
+      if (!email || email.indexOf('@') < 1 || email.endsWith('@')) { fail('이메일 주소를 정확히 입력해 주세요.', emailEl); return; }
+      if (!p1) { fail('비밀번호를 설정해 주세요.', pwEl); return; }
+      if (p1 !== p2) { fail('비밀번호와 비밀번호 확인이 일치하지 않습니다.', pw2El); return; }
+
+      signupInFlight = true;
+      const prevLabel = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = '가입 처리 중...'; }
+      try {
+        const accounts = getStagingAccounts();
+        if (accounts[email] && accounts[email].status === 'active') throw new Error('이미 가입된 이메일입니다.');
+        const role = currentSignupRole === 'viewer' ? 'viewer' : 'admin';
+        const id = role === 'admin' ? getStableAdminId(email, name) : 'viewer_' + getStableAdminId(email, name);
+        accounts[email] = { id, email, name, role, status: 'active', pwHash: simpleDemoHash(p1) };
+        saveStagingAccounts(accounts);
+        if (role === 'admin') {
+          const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
+          cloud._admins = cloud._admins || {};
+          cloud._admins[id] = { id, email, name, role: 'admin', players: [], records: {}, deletedPlayers: {}, deletedRecords: {} };
+          saveStagingCloud(cloud);
+        }
+        // 가입이 끝나면 그대로 로그인되어 메인 화면으로 이동한다.
+        const user = {
+          id, name, email, role,
+          approved: role === 'admin',
+          allowedPlayers: [], requestedPlayers: [], targetPlayer: ''
+        };
+        localStorage.setItem('STAGING_ATHLETE_APP_AUTH_USER', JSON.stringify(user));
+        switchAuthTab('login');
+        document.getElementById('gate-login-screen')?.classList.add('hidden');
+        checkInitialAuthGate();
+        if (role === 'admin') {
+          initPlayerSelectDropdown();
+          renderEventTabs();
+          renderCurrentView();
+          alert(`${name} 관리자님, 회원가입이 완료되었습니다.\n상단 [선수관리]에서 첫 선수를 등록해 보세요.`);
+        } else {
+          openViewerAddPlayerModal(true);
+          alert(`${name} 뷰어님, 회원가입이 완료되었습니다.\n이제 열람할 선수를 조회해 관리자에게 승인을 신청하세요.`);
+        }
+      } catch (err) {
+        alert('회원가입을 완료하지 못했습니다.\n사유: ' + (err && err.message ? err.message : err));
+      } finally {
+        signupInFlight = false;
+        if (btn) { btn.disabled = false; btn.textContent = prevLabel || '가입 완료하고 시작하기'; }
       }
-      alert(`${name}님 회원가입이 완료되었습니다! 설정한 이메일과 비밀번호로 로그인해 주세요.`);
-      document.getElementById('modal-signup')?.classList.add('hidden');
     };
 
     async function syncRealtimeAuthToRemote() { saveStagingCloud(realtimeAuthData); return true; }
@@ -8442,8 +8762,11 @@
       try {
         initStagingSeedData();
         if (typeof updateAdminPendingBadge === 'function') updateAdminPendingBadge();
-        renderApprovalList();
+        if (notifFilterTab === 'notice') renderNoticeList();
+        else renderApprovalList();
         renderSuperAdminViewersTree();
+        renderTransferRequests();
+        updateNoticeDot();
       } catch (e) {
         console.warn('loadRealtimeApprovals fallback:', e);
       }
@@ -8507,135 +8830,11 @@
     applyAuthModeUI = function(role) {
       _origApplyAuthModeUI(role);
       const backupSec = document.getElementById('section-admin-backup');
-      const importJsonLbl = document.getElementById('btn-import-json-label');
       const importXlsxLbl = document.getElementById('btn-import-xlsx-label');
       if (backupSec) backupSec.classList.remove('hidden');
-      if (role === 'viewer') {
-        if (importJsonLbl) importJsonLbl.classList.add('hidden');
-        if (importXlsxLbl) importXlsxLbl.classList.add('hidden');
-      } else {
-        if (importJsonLbl) importJsonLbl.classList.remove('hidden');
-        if (importXlsxLbl) importXlsxLbl.classList.remove('hidden');
-      }
+      // 사용자용 백업·복원은 엑셀 하나로 단일화했다. 뷰어는 읽기 전용 엑셀 다운로드만 쓴다.
+      if (importXlsxLbl) importXlsxLbl.classList.toggle('hidden', role === 'viewer');
       updateBackupStatusUI();
-    };
-
-    function buildBackupJsonPayload() {
-      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
-      const totalRecordsCount = Object.values(appData).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0);
-      return {
-        appName: '선수 성장노트',
-        appVersion: CURRENT_APP_VERSION,
-        schemaVersion: '2.0',
-        exportedAt: new Date().toISOString(),
-        ownerUid: authUser.id || '',
-        ownerEmail: authUser.email || '',
-        playersCount: playersData.length,
-        recordsCount: totalRecordsCount,
-        players: playersData,
-        records: appData,
-        // 구형 복원기(운영 앱 포함)와의 호환용 별칭 — 같은 내용을 두 이름으로 담는다.
-        appData: appData,
-        playersData: playersData,
-        savedTeammates: savedTeammates
-      };
-    }
-
-    function pushPreRestoreBackup() {
-      try {
-        const entry = {
-          savedAt: new Date().toISOString(),
-          appData: JSON.parse(JSON.stringify(appData || {})),
-          playersData: JSON.parse(JSON.stringify(playersData || [])),
-          savedTeammates: JSON.parse(JSON.stringify(savedTeammates || []))
-        };
-        let historyList = [];
-        try {
-          const rawHist = localStorage.getItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS');
-          if (rawHist) {
-            const parsedHist = JSON.parse(rawHist);
-            if (Array.isArray(parsedHist)) historyList = parsedHist;
-          }
-        } catch (e) {}
-        historyList.unshift(entry);
-        if (historyList.length > 3) historyList = historyList.slice(0, 3);
-        while (historyList.length > 0) {
-          try {
-            localStorage.setItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS', JSON.stringify(historyList));
-            break;
-          } catch (quotaErr) {
-            historyList.pop();
-          }
-        }
-        localStorage.setItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUP', JSON.stringify(entry));
-        return true;
-      } catch (e) {
-        console.warn('pre-restore auto backup failed:', e);
-        return false;
-      }
-    }
-
-    function applyBackupRestore(validated) {
-      const prevAppData = appData;
-      const prevPlayersData = playersData;
-      const prevSavedTeammates = savedTeammates;
-      const prevCurrentPlayer = currentPlayer;
-      try {
-        const nextPlayers = JSON.parse(JSON.stringify(validated.playersData));
-        const nextRecords = JSON.parse(JSON.stringify(validated.appData));
-        nextPlayers.forEach(p => { if (!Array.isArray(nextRecords[p.id])) nextRecords[p.id] = []; });
-        appData = nextRecords;
-        playersData = nextPlayers;
-        if (validated.savedTeammates !== undefined) {
-          savedTeammates = JSON.parse(JSON.stringify(validated.savedTeammates));
-        }
-        if (!playersData.some(p => p.id === currentPlayer)) {
-          currentPlayer = playersData.length > 0 ? playersData[0].id : '';
-        }
-        if (currentEvent !== 'ALL_PB' && getPlayerEvents(currentPlayer).indexOf(currentEvent) < 0) {
-          currentEvent = 'ALL_PB';
-        }
-        if (!saveDataToStorage()) {
-          throw new Error('브라우저 저장소 용량이 초과되어 데이터를 저장할 수 없습니다.');
-        }
-        initPlayerSelectDropdown();
-        renderEventTabs();
-        renderCurrentView();
-        return { ok: true };
-      } catch (err) {
-        appData = prevAppData;
-        playersData = prevPlayersData;
-        savedTeammates = prevSavedTeammates;
-        currentPlayer = prevCurrentPlayer;
-        let rollbackSaved = false;
-        try { rollbackSaved = saveDataToStorage(); } catch (e) { rollbackSaved = false; }
-        if (!rollbackSaved) {
-          try {
-            localStorage.removeItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUP');
-            localStorage.removeItem('STAGING_ATHLETE_APP_PRE_RESTORE_BACKUPS');
-          } catch (e) {}
-          try { rollbackSaved = saveDataToStorage(); } catch (e) { rollbackSaved = false; }
-        }
-        return { ok: false, error: err && err.message ? err.message : String(err), rollbackSaved: rollbackSaved };
-      }
-    }
-
-    exportDataJson = function() {
-      try {
-        const payload = buildBackupJsonPayload();
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `선수성장노트_백업_${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-        recordBackupCompleted();
-      } catch (err) {
-        alert('백업 파일을 만들 수 없습니다: ' + (err && err.message ? err.message : err));
-      }
     };
 
     // ------------------------------------------------------------
@@ -8700,104 +8899,6 @@
       legacyImportResolver = null;
       if (r) r(player ? { player: player, sheetName: sheetSel ? sheetSel.value : '' } : null);
     }
-
-    // JSON 백업/복원도 합치기로 처리한다: 파일의 선수 정보로 현재 관리자 소유 트리 안에서만 식별하고,
-    // 기존 기록은 고치거나 지우지 않으며 대회명·날짜·종목·기록 4개가 모두 같을 때만 중복으로 본다.
-    importDataJson = function (e) {
-      const inputEl = e.target;
-      const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
-      if (authUser.role === 'viewer') { alert('뷰어 계정은 데이터 복원을 할 수 없습니다.'); if (inputEl) inputEl.value = ''; return; }
-      const file = inputEl && inputEl.files ? inputEl.files[0] : null;
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async function (evt) {
-        let parsed = null;
-        try { parsed = JSON.parse(evt.target.result); }
-        catch (err) {
-          alert('복원을 진행할 수 없습니다. 올바른 JSON 파일이 아닙니다.\n기존 데이터는 그대로 유지됩니다.');
-          if (inputEl) inputEl.value = '';
-          return;
-        }
-        const v = validateBackupJson(parsed);
-        if (!v.ok) {
-          alert('복원을 진행할 수 없습니다.\n사유: ' + v.reason + '\n\n기존 데이터는 그대로 유지됩니다.');
-          if (inputEl) inputEl.value = '';
-          return;
-        }
-
-        // 파일에 적힌 관리자 ID·선수 ID는 현재 관리자의 소유권을 바꾸지 못한다.
-        // 다른 관리자 자료가 들어 있어도 이 계정의 소유 트리에 별도 선수로만 등록된다.
-
-        const plans = [];
-        const problems = [];
-        let dupCount = 0;
-        v.playersData.forEach(fp => {
-          if (!fp || !fp.name) return;
-          const name = String(fp.name).trim();
-          const birth = xlsxNormalizeBirth(fp.birth || '');
-          const matches = birth ? findOwnedPlayersByNameBirth(name, birth) : findOwnedPlayersByName(name);
-          if (matches.length > 1) {
-            problems.push(name + ' 선수: 같은 이름과 생년월일의 선수가 ' + matches.length + '명 있어 자동으로 연결할 수 없습니다.');
-            return;
-          }
-          const player = matches.length === 1 ? matches[0] : null;
-          if (!player && (!birth || (fp.gender !== '남' && fp.gender !== '여') || !fp.sport)) {
-            problems.push(name + ' 선수: 성별·생년월일·종목 정보가 없어 신규 등록할 수 없습니다.');
-            return;
-          }
-          const existing = player ? (appData[player.id] || []) : [];
-          const fileRecs = v.appData[fp.id] || v.appData[fp.name] || [];
-          const newRecs = [];
-          (Array.isArray(fileRecs) ? fileRecs : []).forEach(r => {
-            if (!r || (!r.event && !r.date)) return;
-            const hit = existing.concat(newRecs).some(x =>
-              String(x.date || '') === String(r.date || '') &&
-              String(x.meet || '') === String(r.meet || '') &&
-              isEventMatch(x.event, r.event) &&
-              Math.abs(Number(x.seconds) - Number(r.seconds)) < 0.0011);
-            if (hit) { dupCount++; return; }
-            newRecs.push(Object.assign({}, r, { id: 'rec_json_' + Date.now() + '_' + newRecs.length + '_' + Math.floor(Math.random() * 10000) }));
-          });
-          plans.push({
-            player: player,
-            profile: player ? null : { name: name, birth: birth, gender: fp.gender, sport: fp.sport, mainEvent: String(fp.mainEvent || '') },
-            records: newRecs,
-            isNew: !player
-          });
-        });
-
-        const effective = plans.filter(p => p.isNew || p.records.length > 0);
-        if (effective.length === 0) {
-          alert('추가할 기록이나 새로 등록할 선수가 없습니다.' + (dupCount ? '\n(이미 있는 기록 ' + dupCount + '건)' : '') + (problems.length ? '\n\n' + problems.join('\n') : ''));
-          if (inputEl) inputEl.value = '';
-          return;
-        }
-
-        const lines = effective.map(p => {
-          const label = p.isNew ? p.profile.name + ' (신규 등록)' : p.player.name + ' 선수';
-          return (p.isNew && p.records.length === 0) ? (label + '의 프로필을 등록합니다.') : (label + '의 기록 ' + p.records.length + '건을 추가합니다.');
-        });
-        if (dupCount > 0) lines.push('이미 있는 기록 ' + dupCount + '건은 중복으로 보아 넣지 않습니다.');
-        if (problems.length > 0) lines.push('건너뛴 선수: ' + problems.join(' / '));
-        lines.push('기존 선수 정보와 기록은 수정하거나 삭제하지 않습니다.');
-        const ok = await askImportConfirm('JSON 백업 복원', lines);
-        if (!ok) { if (inputEl) inputEl.value = ''; return; }
-
-        const res = applyImportPlans(effective.map(p => ({ player: p.player, profile: p.profile, records: p.records })));
-        if (!res.ok) {
-          alert('저장에 실패해 복원을 취소했습니다. 기존 데이터는 그대로입니다.');
-        } else {
-          alert('복원이 완료되었습니다.\n- 추가한 기록: ' + res.addedRecords + '건\n- 새로 등록한 선수: ' + res.newPlayers + '명');
-          try { closeSettingsModal(); } catch (err) {}
-        }
-        if (inputEl) inputEl.value = '';
-      };
-      reader.onerror = function () {
-        alert('파일을 읽는 중 오류가 발생했습니다. 기존 데이터는 유지됩니다.');
-        if (inputEl) inputEl.value = '';
-      };
-      reader.readAsText(file);
-    };
 
     // ============================================================
     // 9-1. 전체 선수 엑셀 백업 (신규 JH v2 양식) — 선수별 1시트
@@ -9400,16 +9501,9 @@
       _origOpenSettingsModal();
       const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
       const sec = document.getElementById('section-admin-backup');
-      const impJ = document.getElementById('btn-import-json-label');
       const impX = document.getElementById('btn-import-xlsx-label');
       if (sec) sec.classList.remove('hidden');
-      if (authUser.role === 'viewer') {
-        if (impJ) impJ.classList.add('hidden');
-        if (impX) impX.classList.add('hidden');
-      } else {
-        if (impJ) impJ.classList.remove('hidden');
-        if (impX) impX.classList.remove('hidden');
-      }
+      if (impX) impX.classList.toggle('hidden', authUser.role === 'viewer');
       updateBackupStatusUI();
     };
 
@@ -9752,6 +9846,353 @@
     // =========================================================================
     // TRANSACTIONAL ADMIN DATA TRANSFER, TOMBSTONE MERGE & VIEWER SCOPE PRESERVATION
     // =========================================================================
+    // =========================================================================
+    // 개별 선수 양도 (관리자 계정 유지)
+    //  요청 → 상대 관리자의 명시적 수락 → 그때만 소유권 이전. 수락 전에는 아무것도 바뀌지 않는다.
+    //  이번 구현은 같은 브라우저의 staging 클라우드 저장소에서만 동작하는 로컬 시뮬레이션이며,
+    //  실제 다른 기기의 관리자끼리 주고받는 것은 Supabase 연동 이후 검수 대상이다.
+    // =========================================================================
+    let playerTransferPlayerId = null;
+    let playerTransferTarget = null;
+
+    function getCurrentAuthUser() {
+      try { return JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}'); } catch (e) { return {}; }
+    }
+
+    function getTransferRequests() {
+      const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
+      return Array.isArray(cloud._transfers) ? cloud._transfers : [];
+    }
+
+    function saveTransferRequests(list) {
+      const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
+      cloud._transfers = list;
+      saveStagingCloud(cloud);
+    }
+
+    function openPlayerTransferModal(playerId) {
+      const p = (playersData || []).find(x => x.id === playerId);
+      if (!p) return;
+      playerTransferPlayerId = playerId;
+      playerTransferTarget = null;
+      const lbl = document.getElementById('transfer-player-label');
+      const rec = document.getElementById('transfer-player-records');
+      if (lbl) lbl.textContent = p.name + ' (' + (p.sport || '') + ')';
+      if (rec) rec.textContent = '경기 기록 ' + ((appData[playerId] || []).length) + '건 · 주종목 ' + (p.mainEvent || '-');
+      const inp = document.getElementById('transfer-search-input');
+      if (inp) inp.value = '';
+      const res = document.getElementById('transfer-search-result');
+      if (res) res.innerHTML = '';
+      updateTransferRequestButton();
+      document.getElementById('modal-player-transfer')?.classList.remove('hidden');
+    }
+
+    function closePlayerTransferModal() {
+      document.getElementById('modal-player-transfer')?.classList.add('hidden');
+      playerTransferTarget = null;
+    }
+
+    function updateTransferRequestButton() {
+      const btn = document.getElementById('btn-request-transfer');
+      if (!btn) return;
+      const ok = !!playerTransferTarget;
+      btn.disabled = !ok;
+      btn.className = 'flex-1 py-2.5 rounded-xl font-bold text-xs border transition active:scale-95 ' + (ok
+        ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-400'
+        : 'bg-slate-800 text-slate-500 cursor-not-allowed border-slate-700');
+    }
+
+    function searchPlayerTransferAdmin() {
+      const q = (document.getElementById('transfer-search-input')?.value || '').trim().toLowerCase();
+      const res = document.getElementById('transfer-search-result');
+      if (!res) return;
+      playerTransferTarget = null;
+      updateTransferRequestButton();
+      if (!q) { res.innerHTML = '<div class="text-rose-400 text-[11px]">관리자 이름이나 이메일을 입력해 주세요.</div>'; return; }
+      const me = getCurrentAuthUser();
+      const matches = getStagingActiveAdmins().filter(a =>
+        a.id !== me.id && (String(a.name || '').toLowerCase().indexOf(q) >= 0 || String(a.email || '').toLowerCase().indexOf(q) >= 0)
+      );
+      if (matches.length === 0) {
+        res.innerHTML = '<div class="p-2 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-[11px]">해당하는 관리자를 찾을 수 없습니다.</div>';
+        return;
+      }
+      res.innerHTML = matches.map(a => `
+        <button type="button" onclick="selectPlayerTransferAdmin('${a.id}')" class="w-full text-left p-2.5 rounded-xl bg-slate-950 border border-slate-700 hover:border-blue-500 transition">
+          <div class="font-bold text-white text-[11px]">${bodyEsc(a.name)}</div>
+          <div class="text-[10px] text-blue-300">${bodyEsc(a.email)}</div>
+          <div class="text-[10px] text-slate-500">선수 ${a.playersCount}명 · 기록 ${a.recordsCount}건</div>
+        </button>`).join('');
+    }
+
+    function selectPlayerTransferAdmin(adminId) {
+      const adm = getStagingActiveAdmins().find(a => a.id === adminId);
+      if (!adm) return;
+      playerTransferTarget = adm;
+      updateTransferRequestButton();
+      const res = document.getElementById('transfer-search-result');
+      if (res) res.innerHTML = `<div class="p-2.5 rounded-xl bg-blue-950/40 border border-blue-500/40 text-[11px] text-blue-200">받을 관리자로 <strong class="text-white">${bodyEsc(adm.name)}</strong> (${bodyEsc(adm.email)}) 선택됨</div>`;
+    }
+
+    function requestPlayerTransfer() {
+      const me = getCurrentAuthUser();
+      const p = (playersData || []).find(x => x.id === playerTransferPlayerId);
+      if (!me || me.role !== 'admin') { alert('선수 관리자 계정에서만 양도를 요청할 수 있습니다.'); return; }
+      if (!p || !playerTransferTarget) { alert('양도할 선수와 받을 관리자를 선택해 주세요.'); return; }
+      const list = getTransferRequests();
+      if (list.some(r => r.status === 'pending' && r.playerId === p.id && r.fromAdminId === me.id)) {
+        alert('이미 양도 요청이 진행 중입니다. 상대 관리자의 수락을 기다려 주세요.');
+        return;
+      }
+      list.push({
+        id: 'tr_' + Date.now(),
+        playerId: p.id,
+        playerName: p.name,
+        recordsCount: (appData[p.id] || []).length,
+        fromAdminId: me.id,
+        fromAdminName: me.name || me.email || '관리자',
+        toAdminId: playerTransferTarget.id,
+        toAdminName: playerTransferTarget.name,
+        status: 'pending',
+        requestedAt: new Date().toISOString()
+      });
+      saveTransferRequests(list);
+      closePlayerTransferModal();
+      renderAdminMyPlayers();
+      renderTransferRequests();
+      alert('[' + p.name + '] 선수 양도 요청을 보냈습니다.\n' + playerTransferTarget.name + ' 관리자가 수락해야 실제로 이전됩니다.');
+    }
+
+    function renderTransferRequests() {
+      const c = document.getElementById('transfer-request-container');
+      if (!c) return;
+      const me = getCurrentAuthUser();
+      if (!me || (me.role !== 'admin' && me.role !== 'super_admin')) { c.classList.add('hidden'); c.innerHTML = ''; return; }
+      const list = getTransferRequests().filter(r => r.status === 'pending' && r.toAdminId === me.id);
+      if (list.length === 0) { c.classList.add('hidden'); c.innerHTML = ''; return; }
+      c.classList.remove('hidden');
+      c.innerHTML = list.map(r => `
+        <div class="p-3 rounded-2xl bg-blue-950/40 border border-blue-500/40 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-bold text-blue-200 flex items-center gap-1.5"><span class="ui-ic" data-ic="transfer"></span> 선수 양도 요청</span>
+            <span class="text-[10px] text-slate-400">${new Date(r.requestedAt).toLocaleString('ko-KR')}</span>
+          </div>
+          <p class="text-[11px] text-slate-200 leading-relaxed"><strong class="text-white">${bodyEsc(r.fromAdminName)}</strong> 관리자가 <strong class="text-white">${bodyEsc(r.playerName)}</strong> 선수(기록 ${r.recordsCount || 0}건)를 양도하겠다고 요청했습니다.</p>
+          <div class="flex gap-1.5">
+            <button type="button" onclick="respondPlayerTransfer('${r.id}', true)" class="flex-1 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px]">수락</button>
+            <button type="button" onclick="respondPlayerTransfer('${r.id}', false)" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 text-[11px] font-semibold">거절</button>
+          </div>
+        </div>`).join('');
+    }
+
+    async function respondPlayerTransfer(reqId, accept) {
+      const me = getCurrentAuthUser();
+      const list = getTransferRequests();
+      const req = list.find(r => r.id === reqId);
+      if (!req) return;
+      if (req.toAdminId !== me.id) { alert('양도를 받는 관리자만 수락할 수 있습니다.'); return; }
+      if (!accept) {
+        req.status = 'rejected';
+        req.respondedAt = new Date().toISOString();
+        saveTransferRequests(list);
+        renderTransferRequests();
+        alert('양도 요청을 거절했습니다. 선수 소유권은 기존 관리자에게 그대로 유지됩니다.');
+        return;
+      }
+      const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
+      const from = (cloud._admins || {})[req.fromAdminId];
+      const to = (cloud._admins || {})[req.toAdminId];
+      if (!from || !to) { alert('관리자 정보를 찾을 수 없어 양도를 진행하지 않았습니다.'); return; }
+      const idx = (from.players || []).findIndex(p => p.id === req.playerId);
+      if (idx < 0) { alert('양도할 선수가 이미 없습니다. 요청을 종료합니다.'); req.status = 'canceled'; saveTransferRequests(list); renderTransferRequests(); return; }
+      const player = from.players.splice(idx, 1)[0];
+      const recs = (from.records && Array.isArray(from.records[req.playerId])) ? from.records[req.playerId] : [];
+      if (from.records) delete from.records[req.playerId];
+      from.deletedPlayers = from.deletedPlayers || {};
+      from.deletedPlayers[req.playerId] = Date.now();   // 이전한 선수가 원 관리자 쪽에 되살아나지 않게 한다.
+      to.players = to.players || [];
+      to.players.push(player);
+      to.records = to.records || {};
+      to.records[req.playerId] = recs;
+      // 연결된 뷰어 열람 권한도 함께 옮긴다(같은 선수에 대한 승인만).
+      Object.entries(cloud).forEach(([k, v]) => {
+        if (k.startsWith('_') || !v) return;
+        if (v.ownerAdminId !== req.fromAdminId) return;
+        const allowed = Array.isArray(v.allowedPlayers) ? v.allowedPlayers : (v.allowed && v.allowed !== 'none' && v.allowed !== 'all' ? [v.allowed] : []);
+        if (allowed.indexOf(req.playerId) >= 0 || v.allowed === req.playerId) {
+          v.ownerAdminId = req.toAdminId;
+          v.coachChangedNotice = true;
+        }
+      });
+      req.status = 'accepted';
+      req.respondedAt = new Date().toISOString();
+      saveStagingCloud(cloud);
+      saveTransferRequests(list);
+
+      // 로그인 중인 수락 관리자 화면에 바로 반영한다.
+      syncDataForUserRole(me);
+      if (!playersData.some(p => p.id === currentPlayer)) {
+        currentPlayer = playersData.length > 0 ? playersData[0].id : '';
+      }
+      initPlayerSelectDropdown();
+      renderEventTabs();
+      renderCurrentView();
+      renderAdminMyPlayers();
+      renderTransferRequests();
+      updatePendingBadge();
+      alert('[' + req.playerName + '] 선수와 기록 ' + recs.length + '건, 연결된 열람 권한을 넘겨받았습니다.');
+    }
+
+    // =========================================================================
+    // 공지사항 (최고관리자 작성 · 전체 회원 동일 공개)
+    // =========================================================================
+    const NOTICE_STORE_KEY = 'STAGING_NOTICES_V1';
+    const NOTICE_READ_PREFIX = 'STAGING_NOTICE_READ_';
+
+    function getNotices() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(NOTICE_STORE_KEY) || '[]');
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+
+    function saveNotices(list) {
+      localStorage.setItem(NOTICE_STORE_KEY, JSON.stringify(list));
+    }
+
+    function getNoticeReadKey() {
+      const me = getCurrentAuthUser();
+      return NOTICE_READ_PREFIX + (me.id || me.email || 'guest');
+    }
+
+    function getReadNoticeIds() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(getNoticeReadKey()) || '[]');
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+
+    function saveReadNoticeIds(ids) {
+      localStorage.setItem(getNoticeReadKey(), JSON.stringify(ids));
+    }
+
+    function getUnreadNoticeCount() {
+      const read = getReadNoticeIds();
+      return getNotices().filter(n => read.indexOf(n.id) < 0).length;
+    }
+
+    function openNoticeAdminModal() {
+      const me = getCurrentAuthUser();
+      if (me.role !== 'super_admin') { alert('공지 작성과 발송은 최고관리자만 할 수 있습니다.'); return; }
+      renderNoticeAdminList();
+      document.getElementById('modal-notice-admin')?.classList.remove('hidden');
+    }
+
+    function closeNoticeAdminModal() {
+      document.getElementById('modal-notice-admin')?.classList.add('hidden');
+    }
+
+    function renderNoticeAdminList() {
+      const c = document.getElementById('notice-admin-list');
+      const cnt = document.getElementById('notice-admin-count');
+      if (!c) return;
+      const list = getNotices().slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      if (cnt) cnt.textContent = list.length + '건';
+      if (list.length === 0) {
+        c.innerHTML = '<div class="p-3 text-center text-slate-500 text-[11px] rounded-2xl bg-slate-950 border border-slate-800">아직 발송한 공지가 없습니다.</div>';
+        return;
+      }
+      c.innerHTML = list.map(n => `
+        <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-bold text-white break-all">${bodyEsc(n.title)}</span>
+            <span class="text-[10px] text-slate-500 shrink-0">${new Date(n.createdAt).toLocaleString('ko-KR')}</span>
+          </div>
+          <div class="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words">${bodyEsc(n.body)}</div>
+        </div>`).join('');
+    }
+
+    async function submitNotice() {
+      const me = getCurrentAuthUser();
+      if (me.role !== 'super_admin') { alert('공지 작성과 발송은 최고관리자만 할 수 있습니다.'); return; }
+      const titleEl = document.getElementById('notice-title-input');
+      const bodyEl = document.getElementById('notice-body-input');
+      const title = (titleEl?.value || '').trim();
+      const body = (bodyEl?.value || '').trim();
+      if (!title) { alert('공지 제목을 입력해 주세요.'); titleEl?.focus(); return; }
+      if (!body) { alert('공지 내용을 입력해 주세요.'); bodyEl?.focus(); return; }
+      const ok = await askImportConfirm('공지 발송 확인', [
+        '제목: ' + title,
+        '내용: ' + (body.length > 120 ? body.slice(0, 120) + '…' : body),
+        '관리자·뷰어 구분 없이 모든 회원에게 같은 내용으로 공개됩니다.'
+      ]);
+      if (!ok) return;
+      const list = getNotices();
+      list.push({
+        id: 'notice_' + Date.now(),
+        title: title,
+        body: body,
+        createdAt: new Date().toISOString(),
+        author: me.name || '최고관리자'
+      });
+      saveNotices(list);
+      if (titleEl) titleEl.value = '';
+      if (bodyEl) bodyEl.value = '';
+      renderNoticeAdminList();
+      updatePendingBadge();
+      if (notifTab === 'notice') renderNoticeList();
+      alert('공지를 발송했습니다. 모든 회원의 [공지사항] 탭에 표시됩니다.');
+    }
+
+    let notifFilterTab = 'general';
+    function switchNotifTab(tab) {
+      notifFilterTab = tab === 'notice' ? 'notice' : 'general';
+      const generalPane = document.getElementById('notif-pane-general');
+      const noticePane = document.getElementById('notif-pane-notice');
+      const btnG = document.getElementById('notif-tab-general');
+      const btnN = document.getElementById('notif-tab-notice');
+      const isNotice = notifFilterTab === 'notice';
+      if (generalPane) generalPane.classList.toggle('hidden', isNotice);
+      if (noticePane) noticePane.classList.toggle('hidden', !isNotice);
+      if (btnG) btnG.className = 'flex-1 py-2 rounded-xl text-[11px] font-bold transition ' + (isNotice ? 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800' : 'bg-blue-600 text-white');
+      if (btnN) btnN.className = 'flex-1 py-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1.5 ' + (isNotice ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800');
+      if (isNotice) renderNoticeList();
+      else renderApprovalList();
+      updateNoticeDot();
+    }
+
+    function updateNoticeDot() {
+      const dot = document.getElementById('notif-notice-dot');
+      if (!dot) return;
+      dot.classList.toggle('hidden', getUnreadNoticeCount() === 0);
+    }
+
+    function renderNoticeList() {
+      const c = document.getElementById('notice-list-container');
+      if (!c) return;
+      const list = getNotices().slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      if (list.length === 0) {
+        c.innerHTML = '<div class="py-10 text-center text-slate-500 text-xs">등록된 공지사항이 없습니다.</div>';
+      } else {
+        c.innerHTML = list.map(n => `
+          <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold text-white flex items-center gap-1.5 min-w-0"><span class="text-blue-400 shrink-0"><span class="ui-ic" data-ic="megaphone"></span></span><span class="break-all">${bodyEsc(n.title)}</span></span>
+              <span class="text-[10px] text-slate-500 shrink-0">${new Date(n.createdAt).toLocaleDateString('ko-KR')}</span>
+            </div>
+            <div class="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words">${bodyEsc(n.body)}</div>
+          </div>`).join('');
+      }
+      // 목록을 펼쳐 본 시점에 읽음으로 처리해 빨간 점을 지운다.
+      const ids = getNotices().map(n => n.id);
+      const read = getReadNoticeIds();
+      const next = read.slice();
+      ids.forEach(id => { if (next.indexOf(id) < 0) next.push(id); });
+      saveReadNoticeIds(next);
+      updateNoticeDot();
+      updatePendingBadge();
+    }
+
     function getOwnedAdminDataset(authUser) {
       if (!authUser || authUser.role !== 'admin') return { players: [], records: {}, deletedPlayers: {}, deletedRecords: {} };
       const stableKey = getStableAdminId(authUser.email, authUser.name);
