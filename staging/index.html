@@ -52,6 +52,21 @@
     .ui-notice { display: flex; align-items: flex-start; gap: 5px; }
     .ui-notice > .ui-ic { margin-top: 0.15em; }
     .ui-notice > .ui-notice-text { flex: 1 1 auto; min-width: 0; }
+    /* 공지사항 아코디언: 기본은 제목·날짜 요약만 보이고, 제목을 누르면 본문이 부드럽게 펼쳐진다. */
+    .notice-item { background: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; transition: border-color 200ms ease; }
+    .notice-item.open { border-color: #334155; }
+    .notice-head { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 12px 13px; background: transparent; border: 0; cursor: pointer; }
+    .notice-head-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .notice-title-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .notice-unread-dot { width: 7px; height: 7px; border-radius: 50%; background: #f43f5e; flex: 0 0 auto; }
+    .notice-title { font-size: 12px; font-weight: 700; color: #ffffff; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+    .notice-meta { font-size: 10px; color: #64748b; }
+    .notice-chevron { color: #64748b; font-size: 14px; transition: transform 240ms ease; flex: 0 0 auto; }
+    .notice-item.open .notice-chevron { transform: rotate(180deg); }
+    .notice-body-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 260ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+    .notice-item.open .notice-body-wrap { grid-template-rows: 1fr; }
+    .notice-body-inner { overflow: hidden; min-height: 0; }
+    .notice-body { padding: 10px 13px 12px; border-top: 1px solid #1e293b; font-size: 11px; line-height: 1.65; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
     /* 생년월일 달력 버튼: 브라우저 기본 달력 아이콘은 숨기고 단색 SVG 하나만 보이게 한다. */
     .birth-picker-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
     .birth-picker-wrap .birth-picker-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; color: #64748b; }
@@ -287,7 +302,7 @@
     <header class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800/80">
       <div class="flex items-center gap-2.5 min-w-0">
         <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
-          <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+          <svg width="19" height="19" class="w-[19px] h-[19px]" style="max-width:22px;max-height:22px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
         </div>
         <div class="min-w-0">
           <h1 class="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5 whitespace-nowrap truncate">
@@ -298,23 +313,23 @@
       <div class="flex items-center gap-1.5 shrink-0">
         <!-- Admin Center Button (선수 관리자용 - 지혜 님 & 타 관리자: 세로 32px 칼각) -->
         <button type="button" id="btn-admin-profile-top" onclick="openAdminProfileModal()" class="h-8 px-2.5 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-95 hidden whitespace-nowrap shrink-0" title="선수기록 관리자 센터">
-          <span class="whitespace-nowrap"><span class="ui-ic" data-ic="shield"></span> 관리자</span>
+          <span class="whitespace-nowrap"><span class="ui-ic" data-ic="shield" style="font-size:14px"></span> 관리자</span>
         </button>
 
         <!-- Notification Bell Button (모든 사용자 노출: 세로 32px 정사각형 + 빨간색 알림 배지) -->
         <button type="button" id="btn-viewer-approve-top" onclick="openViewerApprovalModal()" class="relative h-8 w-8 rounded-xl bg-slate-900 text-slate-300 border border-slate-800 hover:text-white hover:border-slate-700 flex items-center justify-center transition active:scale-95" title="알림">
-          <span class="text-sm leading-none"><span class="ui-ic" data-ic="bell"></span></span>
+          <span class="text-sm leading-none"><span class="ui-ic" data-ic="bell" style="font-size:16px"></span></span>
           <span id="badge-pending-count" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-slate-900 shadow-sm hidden"></span>
         </button>
 
         <!-- Super Admin Icon Button (지혜 님 전용 - 왕관 아이콘: 세로 32px 칼각) -->
         <button type="button" id="btn-super-admin-top" onclick="openSuperAdminModal()" class="h-8 w-8 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 flex items-center justify-center transition active:scale-95 hidden" title="최고관리자 관제실">
-          <span class="text-xs leading-none"><span class="ui-ic" data-ic="crown"></span></span>
+          <span class="text-xs leading-none"><span class="ui-ic" data-ic="crown" style="font-size:14px"></span></span>
         </button>
 
         <!-- Settings Button (설정: 세로 32px 칼각) -->
         <button type="button" onclick="openSettingsModal()" class="h-8 w-8 text-slate-400 hover:text-white rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center transition active:scale-95" title="설정 및 계정">
-          <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <svg width="19" height="19" class="w-[19px] h-[19px]" style="max-width:22px;max-height:22px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         </button>
       </div>
     </header>
@@ -326,7 +341,7 @@
           <!-- Dynamically populated -->
         </select>
         <button type="button" id="custom-player-dropdown-btn" onclick="toggleCustomPlayerDropdown(event)" class="w-full bg-slate-900 border border-blue-500/50 rounded-2xl px-4 py-2.5 text-white font-bold text-sm flex items-center justify-between focus:outline-none focus:border-blue-400 cursor-pointer shadow-lg shadow-blue-500/10 text-left">
-          <span id="custom-player-dropdown-label" class="truncate"><span class="ui-ic" data-ic="medal"></span> 선수 선택</span>
+          <span id="custom-player-dropdown-label" class="truncate"><span class="ui-ic" data-ic="medal" style="font-size:16px"></span> 선수 선택</span>
           <svg width="16" height="16" class="w-4 h-4 text-blue-400 shrink-0 ml-2 transition-transform" id="custom-player-dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
         </button>
         <div id="custom-player-dropdown-menu" class="hidden absolute left-0 right-0 mt-1.5 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-40 overflow-hidden divide-y divide-slate-800/80 max-h-60 overflow-y-auto">
@@ -335,7 +350,7 @@
       </div>
 
       <button type="button" id="btn-manage-players-top" onclick="openPlayerManageModal()" class="px-3.5 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm active:scale-95 whitespace-nowrap shrink-0 hidden">
-        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <svg width="18" height="18" class="w-[18px] h-[18px] text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
         <span>선수관리</span>
       </button>
     </div>
@@ -818,18 +833,21 @@
           <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
 
-        <!-- Filter Chips: School Level & Gender -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] no-scrollbar">
-          <span class="text-slate-500 text-[10px] whitespace-nowrap">부별:</span>
-          <button type="button" onclick="setPlayerFilterLevel('all')" id="pf-level-all" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
-          <button type="button" onclick="setPlayerFilterLevel('중등부')" id="pf-level-middle" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">중등부</button>
-          <button type="button" onclick="setPlayerFilterLevel('고등부')" id="pf-level-high" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">고등부</button>
-          <button type="button" onclick="setPlayerFilterLevel('대학/실업')" id="pf-level-adult" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">대학/실업</button>
-          
-          <span class="text-slate-500 text-[10px] ml-2 whitespace-nowrap">성별:</span>
-          <button type="button" onclick="setPlayerFilterGender('all')" id="pf-gender-all" class="px-2 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
-          <button type="button" onclick="setPlayerFilterGender('남')" id="pf-gender-m" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">남</button>
-          <button type="button" onclick="setPlayerFilterGender('여')" id="pf-gender-f" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">여</button>
+        <!-- Filter Chips: School Level & Gender (좁은 화면에서는 부별·성별 묶음 단위로 자연스럽게 즐을 바꿈) -->
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-slate-500 text-[10px] whitespace-nowrap">부별:</span>
+            <button type="button" onclick="setPlayerFilterLevel('all')" id="pf-level-all" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
+            <button type="button" onclick="setPlayerFilterLevel('중등부')" id="pf-level-middle" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">중등부</button>
+            <button type="button" onclick="setPlayerFilterLevel('고등부')" id="pf-level-high" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">고등부</button>
+            <button type="button" onclick="setPlayerFilterLevel('대학/실업')" id="pf-level-adult" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">대학/실업</button>
+          </div>
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-slate-500 text-[10px] whitespace-nowrap">성별:</span>
+            <button type="button" onclick="setPlayerFilterGender('all')" id="pf-gender-all" class="px-2 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
+            <button type="button" onclick="setPlayerFilterGender('남')" id="pf-gender-m" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">남</button>
+            <button type="button" onclick="setPlayerFilterGender('여')" id="pf-gender-f" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">여</button>
+          </div>
         </div>
       </div>
 
@@ -1995,8 +2013,8 @@
 
       playersData.forEach(p => {
         const sportText = p.sport || '';
-        const iconHtml = sportText.includes('육상') ? '<span class="ui-ic" data-ic="running"></span>'
-          : (sportText.includes('사이클') ? '<span class="ui-ic" data-ic="cycling"></span>' : '<span class="ui-ic" data-ic="medal"></span>');
+        const iconHtml = sportText.includes('육상') ? '<span class="ui-ic" data-ic="running" style="font-size:16px"></span>'
+          : (sportText.includes('사이클') ? '<span class="ui-ic" data-ic="cycling" style="font-size:16px"></span>' : '<span class="ui-ic" data-ic="medal" style="font-size:16px"></span>');
         const plainText = `${p.name || ''} (${sportText}) - ${p.mainEvent || ''}`;
         const fullText = `${iconHtml} ${plainText}`;
         const opt = document.createElement('option');
@@ -2390,6 +2408,8 @@
       sectionTitleH: 14, sectionTitleSize: 12.5, sectionTitleWeight: 800, sectionTitleColor: '#e2e8f0',
       sectionBarW: 3, sectionBarH: 12, sectionBarColor: '#3b82f6', sectionTitleGap: 6, sectionTitleMb: 8, sectionBlockMb: 10, sectionGapExtra: 6,
       iconTile: 22, iconTileRadius: 7, iconTileBg: 'rgba(59,130,246,0.14)', iconTileBorder: 'rgba(59,130,246,0.35)', iconGlyph: 18, iconColor: '#bfdbfe',
+      // 연간 종합노트는 테두리 없는 원형 배경 아이콘(인포그래픽 스타일)을 쓴다. 앱·이미지 공통.
+      anIconTile: 28, anIconGlyph: 21, statIconTile: 36, statIconGlyph: 25,
       pbPadX: 14, pbPadTop: 14, pbPadBottom: 14,
       pbHeadH: 18, pbTimeH: 28, pbTimeMt: 2, pbMetaH: 15, pbHeadGap: 6,
       pbTitleSize: 13, pbTitleWeight: 800, pbTitleColor: '#e2e8f0',
@@ -2401,22 +2421,22 @@
       dateBadgeBg: '#1e293b', dateBadgeBorder: '#334155', dateBadgeColor: '#cbd5e1',
       stripMt: 6, stripH: 14, stripRadius: 5, stripPadX: 6, stripFontSize: 8.5, stripFontWeight: 500,
       stripBg: '#020617', stripBorder: '#1e293b', runnerColor: '#94a3b8', heroColor: '#fcd34d', sepColor: '#64748b',
-      annualPadTop: 13, annualPadBottom: 13, annualHeadH: 22, annualHeadGap: 8, annualHeadGapX: 8,
-      annualCompareH: 20, annualBarMt: 6, annualBarH: 6, annualBarRadius: 3,
-      annualMetaMt: 10, annualMetaH: 25, annualMetaGap: 3, annualFooterMt: 8, annualFooterH: 14, annualSlowerMt: 4, annualSlowerH: 12,
-      annualEventSize: 14, annualEventWeight: 800, annualEventColor: '#ffffff',
+      annualPadTop: 13, annualPadBottom: 13, annualHeadH: 28, annualHeadGap: 8, annualHeadGapX: 8,
+      annualCompareH: 28, annualBarMt: 6, annualBarH: 6, annualBarRadius: 3,
+      annualMetaMt: 10, annualMetaH: 27, annualMetaGap: 3, annualFooterMt: 8, annualFooterH: 16, annualSlowerMt: 4, annualSlowerH: 12,
+      annualEventSize: 18, annualEventWeight: 800, annualEventColor: '#ffffff',
       annualBadgeSize: 9.5, annualBadgeH: 17, annualBadgePadX: 6,
-      annualLabelSize: 9.5, annualLabelColor: '#64748b', annualLabelWeight: 600,
-      annualPriorSize: 13.5, annualPriorWeight: 700, annualPriorColor: '#cbd5e1',
-      annualArrowSize: 11, annualArrowColor: '#475569',
-      annualCurrentSize: 18, annualCurrentWeight: 800, annualCurrentColor: '#ffffff',
+      annualLabelSize: 10, annualLabelColor: '#64748b', annualLabelWeight: 600,
+      annualPriorSize: 16, annualPriorWeight: 700, annualPriorColor: '#cbd5e1',
+      annualArrowSize: 16, annualArrowColor: '#64748b',
+      annualCurrentSize: 24, annualCurrentWeight: 800, annualCurrentColor: '#ffffff',
       barBg: '#1e293b', barBlue: 'rgba(59,130,246,0.65)', barAmber: '#fbbf24',
-      metaValueSize: 10, metaValueWeight: 600, metaValueColor: '#cbd5e1', metaValueH: 12,
-      metaLabelSize: 8.5, metaLabelColor: '#64748b', metaLabelH: 10,
-      rateSize: 9.5, rateColorUp: '#6ee7b7', rateColorFlat: '#94a3b8',
-      slowerSize: 9, slowerColor: '#64748b',
-      statH: 104, statPadTop: 11, statLabelMt: 6, statLabelH: 14, statLabelSize: 10.5, statLabelColor: '#94a3b8', statLabelWeight: 600,
-      statValueMt: 4, statValueH: 22, statValueSize: 21, statValueWeight: 800, statValueColor: '#f8fafc', statUnitSize: 9,
+      metaValueSize: 11, metaValueWeight: 600, metaValueColor: '#cbd5e1', metaValueH: 13,
+      metaLabelSize: 9, metaLabelColor: '#64748b', metaLabelH: 10,
+      rateSize: 10.5, rateColorUp: '#6ee7b7', rateColorFlat: '#94a3b8',
+      slowerSize: 9.5, slowerColor: '#64748b',
+      statH: 120, statPadTop: 12, statLabelMt: 7, statLabelH: 14, statLabelSize: 10.5, statLabelColor: '#94a3b8', statLabelWeight: 600,
+      statValueMt: 3, statValueH: 32, statValueSize: 30, statValueWeight: 800, statValueColor: '#f8fafc', statUnitSize: 10.5,
       statSubMt: 4, statSubH: 12, statSubSize: 8.5, statSubColor: '#64748b',
       footnoteSize: 9.5, footnoteColor: '#64748b', footnoteMt: 2, footnoteH: 14, emptyFontColor: '#64748b',
       emptyPadY: 44, emptyFontSize: 11,
@@ -2643,6 +2663,9 @@
         .body-card { background: ${S.cardBg}; border: 1px solid ${S.cardBorder}; border-radius: ${S.cardRadius}px; box-sizing: border-box; }
         .body-icon { width: ${S.iconTile}px; height: ${S.iconTile}px; border-radius: ${S.iconTileRadius}px; background: ${S.iconTileBg}; border: 1px solid ${S.iconTileBorder}; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: ${S.iconColor}; box-sizing: border-box; }
         .body-icon svg { display: block; }
+        /* 연간 종합노트 인포그래픽 아이콘: 테두리 선 없이 은은한 원형 배경만 두고 아이콘을 크게 채운다. */
+        .body-icon.an-icon { width: ${S.anIconTile}px; height: ${S.anIconTile}px; border-radius: 50%; border: 0; }
+        .body-icon.stat-icon { width: ${S.statIconTile}px; height: ${S.statIconTile}px; border-radius: 50%; border: 0; margin: 0 auto; }
         .pb-card { padding: ${S.pbPadTop}px ${S.pbPadX}px ${S.pbPadBottom}px; cursor: pointer; }
         .pb-head { display: flex; align-items: center; gap: ${S.pbHeadGap}px; height: ${S.pbHeadH}px; }
         .pb-title { font-size: ${S.pbTitleSize}px; font-weight: ${S.pbTitleWeight}; color: ${S.pbTitleColor}; line-height: ${S.pbHeadH}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; min-width: 0; }
@@ -2706,8 +2729,55 @@
 
     // ---------- 표시할 종목 선택 (PB 기록 / 연간 종합노트) ----------
     // 화면과 이미지에 보일 종목만 고르는 표시용 기능이다. 실제 기록·PB·프로필은 바꾸지 않는다.
-    // 선택 상태를 어디까지 저장할지는 확정되지 않아, 이번에는 새로고침 전까지의 화면 상태로만 유지한다.
-    let pbVisibleEventsByPlayer = {};
+    // 선택 상태는 '소유자(로그인 계정) + 선수'별로 localStorage에 저장해 새로고침·앱 재실행 뒤에도 유지한다.
+    // 저장은 '숨긴 종목' 목록으로 한다. 저장값이 없으면 전부 보이는 기본 상태이고,
+    // 나중에 새로 추가된 종목도 자동으로 보이므로 기존 선택이 자연스럽게 유지된다.
+    const HIDDEN_EVENTS_PREFIX = 'STAGING_HIDDEN_EVENTS_V1';
+    let pbHiddenEventsCache = null;
+    let pbHiddenEventsCacheKey = null;
+
+    function getEventFilterStorageKey() {
+      return HIDDEN_EVENTS_PREFIX + '_' + getPbBadgeOwnerKey();
+    }
+
+    function readHiddenEventsMap() {
+      const key = getEventFilterStorageKey();
+      if (pbHiddenEventsCache && pbHiddenEventsCacheKey === key) return pbHiddenEventsCache;
+      let map = {};
+      try {
+        const raw = localStorage.getItem(key);
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) map = parsed;
+      } catch (e) { map = {}; }
+      pbHiddenEventsCache = map;
+      pbHiddenEventsCacheKey = key;
+      return map;
+    }
+
+    function writeHiddenEventsMap(map) {
+      pbHiddenEventsCache = map || {};
+      pbHiddenEventsCacheKey = getEventFilterStorageKey();
+      try { localStorage.setItem(pbHiddenEventsCacheKey, JSON.stringify(pbHiddenEventsCache)); } catch (e) {}
+    }
+
+    function getHiddenEventsForPlayer(playerId) {
+      if (!playerId) return [];
+      const arr = readHiddenEventsMap()[playerId];
+      return Array.isArray(arr) ? arr : [];
+    }
+
+    function setHiddenEventsForPlayer(playerId, hidden) {
+      if (!playerId) return;
+      const map = Object.assign({}, readHiddenEventsMap());
+      const all = getPlayerEvents(playerId);
+      const cleaned = [];
+      (Array.isArray(hidden) ? hidden : []).forEach(ev => {
+        if (all.indexOf(ev) >= 0 && cleaned.indexOf(ev) < 0) cleaned.push(ev);
+      });
+      if (cleaned.length === 0) delete map[playerId];
+      else map[playerId] = cleaned;
+      writeHiddenEventsMap(map);
+    }
 
     function getPlayerSelectableEventGroups(playerId) {
       const personal = [];
@@ -2723,15 +2793,15 @@
 
     function getVisibleEventList(playerId) {
       const all = getPlayerEvents(playerId);
-      const saved = pbVisibleEventsByPlayer[playerId];
-      if (!Array.isArray(saved)) return all.slice();
-      return all.filter(ev => saved.indexOf(ev) >= 0);
+      const hidden = getHiddenEventsForPlayer(playerId);
+      if (hidden.length === 0) return all.slice();
+      return all.filter(ev => hidden.indexOf(ev) < 0);
     }
 
     function isEventVisible(playerId, eventName) {
-      const saved = pbVisibleEventsByPlayer[playerId];
-      if (!Array.isArray(saved)) return true;
-      return saved.some(ev => ev === eventName || isEventMatch(eventName, ev));
+      const hidden = getHiddenEventsForPlayer(playerId);
+      if (hidden.length === 0) return true;
+      return !hidden.some(ev => ev === eventName || isEventMatch(eventName, ev));
     }
 
     function syncEventFilterBadge() {
@@ -2782,10 +2852,15 @@
     function onEventVisibilityChange(el) {
       if (!el || !currentPlayer) return;
       const ev = el.getAttribute('data-event');
-      const all = getPlayerEvents(currentPlayer);
-      const set = new Set(getVisibleEventList(currentPlayer));
-      if (el.checked) set.add(ev); else set.delete(ev);
-      pbVisibleEventsByPlayer[currentPlayer] = all.filter(e => set.has(e));
+      const hidden = getHiddenEventsForPlayer(currentPlayer).slice();
+      if (el.checked) {
+        for (let i = hidden.length - 1; i >= 0; i--) {
+          if (hidden[i] === ev || isEventMatch(ev, hidden[i])) hidden.splice(i, 1);
+        }
+      } else if (hidden.indexOf(ev) < 0) {
+        hidden.push(ev);
+      }
+      setHiddenEventsForPlayer(currentPlayer, hidden);
       renderEventSelectList();
       refreshMainViewOnly();
     }
@@ -2793,7 +2868,7 @@
     function toggleAllVisibleEvents(checked) {
       if (!currentPlayer) return;
       const all = getPlayerEvents(currentPlayer);
-      pbVisibleEventsByPlayer[currentPlayer] = checked ? all.slice() : [];
+      setHiddenEventsForPlayer(currentPlayer, checked ? [] : all.slice());
       renderEventSelectList();
       refreshMainViewOnly();
     }
@@ -3007,17 +3082,21 @@
       const records = appData[playerId] || [];
       let total = 0;
       getPlayerEvents(playerId).forEach(ev => {
+        // 표시할 종목 선택을 반영한다(숨긴 종목의 경신은 세지 않는다).
+        if (!isEventVisible(playerId, ev)) return;
         total += countEventRenewalsInYear(records, ev, year);
       });
       return total;
     }
 
     // 출전 대회 수: 그 해 '공식' 기록이 있는 대회명 기준(같은 대회의 여러 날짜·라운드·종목은 1회).
+    // 표시할 종목 선택을 반영해, 선택된 종목의 기록만 대회 수에 넣는다.
     function getAnnualMeetCount(playerId, year) {
       const seen = {};
       let count = 0;
       getRecordsForYear(playerId, year).forEach(r => {
         if (!r || r.kind !== '공식') return;
+        if (!isEventVisible(playerId, r.event)) return;
         const name = String(r.meet || '').trim();
         if (!name || seen[name]) return;
         seen[name] = true;
@@ -3026,9 +3105,9 @@
       return count;
     }
 
-    // 총 경기 수: 그 해 '공식' 기록 건수(라운드별 1경기). 비공식·전문실기는 제외.
+    // 총 경기 수: 그 해 '공식' 기록 건수(라운드별 1경기). 비공식·전문실기와 숨긴 종목은 제외.
     function getAnnualGameCount(playerId, year) {
-      return getRecordsForYear(playerId, year).filter(isOfficialRecord).length;
+      return getRecordsForYear(playerId, year).filter(r => isOfficialRecord(r) && isEventVisible(playerId, r.event)).length;
     }
 
     // 종목별 표시 정밀도: 3자리 기록이 있는 종목(사이클 트랙)은 3자리, 그 외는 2자리.
@@ -3194,7 +3273,8 @@
     // ============================================================
     // ---------- 연간 종합노트 본문 모델 ----------
     function buildAnnualBodyModel(playerId, year) {
-      // 표시 선택을 해제한 종목 카드는 빼고 그린다(연간 통계 집계는 전체 종목 기준 그대로).
+      // 표시 선택을 해제한 종목 카드는 빼고 그린다. 상단 요약 3개(출전 대회·총 경기·PB 경신)도
+      // 같은 선택을 따르도록 집계 함수가 isEventVisible로 걸러 준다.
       const cards = getAnnualEventCards(playerId, year).filter(c => isEventVisible(playerId, c.event));
       const visibleEventCount = getVisibleEventList(playerId).length;
       const player = playersData.find(p => p.id === playerId) || null;
@@ -3267,7 +3347,7 @@
       return `
         <div class="body-card an-card">
           <div class="an-head">
-            <span class="body-icon">${bodyIconSvg(card.icon, S.iconGlyph)}</span>
+            <span class="body-icon an-icon">${bodyIconSvg(card.icon, S.anIconGlyph)}</span>
             <span class="an-title">${bodyEsc(card.event)}</span>
             <span class="an-badge ${card.badge.cls}">${bodyEsc(card.badge.text)}</span>
           </div>
@@ -3304,7 +3384,7 @@
       const S = BODY_SPEC;
       const statsHtml = model.stats.map(s => `
         <div class="body-card body-stat">
-          <span class="body-icon">${bodyIconSvg(s.icon, S.iconGlyph)}</span>
+          <span class="body-icon stat-icon">${bodyIconSvg(s.icon, S.statIconGlyph)}</span>
           <div class="body-stat-label">${bodyEsc(s.label)}</div>
           <div class="body-stat-value">${s.value}<span class="body-stat-unit">회</span></div>
           <div class="body-stat-sub">${bodyEsc(s.sub)}</div>
@@ -3535,6 +3615,19 @@
       drawBodyIcon(ctx, iconName, x + (size - g) / 2, y + (size - g) / 2, g, color);
     }
 
+    // 연간 종합노트·요약 카드용: 테두리 없이 은은한 원형 배경 + 큰 아이콘(앱 화면과 같은 규칙).
+    function capCircleIconBody(ctx, x, y, size, iconName, glyphSize, color) {
+      const S = BODY_SPEC;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+      ctx.fillStyle = S.iconTileBg;
+      ctx.fill();
+      ctx.restore();
+      const g = glyphSize || S.anIconGlyph;
+      drawBodyIcon(ctx, iconName, x + (size - g) / 2, y + (size - g) / 2, g, color);
+    }
+
     // 단색 원형 느낌표(안내 문구 아이콘). 앱 화면의 alertCircle SVG와 같은 도형.
     function capAlertCircle(ctx, x, y, size, color) {
       const k = size / 24;
@@ -3671,7 +3764,7 @@
       const padX = S.pbPadX;
       const headTop = y + S.annualPadTop;
       const headCenterY = headTop + S.annualHeadH / 2;
-      if (!measureOnly) capIconTileBody(ctx, x + padX, headTop, S.annualHeadH, card.icon, S.iconColor);
+      if (!measureOnly) capCircleIconBody(ctx, x + padX, headTop, S.anIconTile, card.icon, S.anIconGlyph, S.iconColor);
 
       const badgeFont = capFont(700, S.annualBadgeSize);
       const rightX = x + w - padX;
@@ -3738,9 +3831,9 @@
         const cx0 = x + i * (cw + gap);
         if (!measureOnly) {
           capRoundRect(ctx, cx0, y, cw, S.statH, S.cardRadius, S.cardBg, S.cardBorder);
-          capIconTileBody(ctx, cx0 + cw / 2 - S.iconTile / 2, y + S.statPadTop, S.iconTile, s.icon, S.iconColor);
+          capCircleIconBody(ctx, cx0 + cw / 2 - S.statIconTile / 2, y + S.statPadTop, S.statIconTile, s.icon, S.statIconGlyph, S.iconColor);
         }
-        const labelMid = y + S.statPadTop + S.iconTile + S.statLabelMt + S.statLabelH / 2;
+        const labelMid = y + S.statPadTop + S.statIconTile + S.statLabelMt + S.statLabelH / 2;
         capMid(ctx, s.label, cx0 + cw / 2, labelMid, capFont(S.statLabelWeight, S.statLabelSize), S.statLabelColor, { align: 'center' });
         const valueMid = labelMid + S.statLabelH / 2 + S.statValueMt + S.statValueH / 2;
         capMid(ctx, String(s.value) + '회', cx0 + cw / 2, valueMid, capFont(S.statValueWeight, S.statValueSize), S.statValueColor, { align: 'center' });
@@ -5277,10 +5370,10 @@
         const sportIcon = pSport.includes('육상') ? '<span class="ui-ic" data-ic="running" data-size="20"></span>' : (pSport.includes('사이클') ? '<span class="ui-ic" data-ic="cycling" data-size="20"></span>' : '<span class="ui-ic" data-ic="medal" data-size="20"></span>');
 
         card.innerHTML = `
-          <!-- Left: Sport Icon (Portrait 3:4, 사진 기능 없음) -->
+          <!-- Left: Sport Icon (성별은 이름 옆 배지로만 표시하고, 아이콘 박스는 정사각형으로 둔다) -->
           <div onclick="selectPlayerFromCard('${p.id}')" class="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer">
-            <div class="w-12 h-16 rounded-xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center text-xl shadow-inner shrink-0 overflow-hidden relative">
-              <span>${sportIcon}</span><span class="text-[9px] text-slate-500 mt-0.5">${p.gender || ''}</span>
+            <div class="w-12 h-12 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-xl shadow-inner shrink-0 overflow-hidden">
+              <span>${sportIcon}</span>
             </div>
 
             <!-- Right: Info Rows (User's Hand-drawn Layout) -->
@@ -10263,21 +10356,56 @@
       if (list.length === 0) {
         c.innerHTML = '<div class="py-10 text-center text-slate-500 text-xs">등록된 공지사항이 없습니다.</div>';
       } else {
-        c.innerHTML = list.map(n => `
-          <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1.5">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs font-bold text-white flex items-center gap-1.5 min-w-0"><span class="text-blue-400 shrink-0"><span class="ui-ic" data-ic="megaphone"></span></span><span class="break-all">${bodyEsc(n.title)}</span></span>
-              <span class="text-[10px] text-slate-500 shrink-0">${new Date(n.createdAt).toLocaleDateString('ko-KR')}</span>
-            </div>
-            <div class="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words">${bodyEsc(n.body)}</div>
-          </div>`).join('');
+        const read = getReadNoticeIds();
+        c.innerHTML = list.map(n => {
+          const unread = read.indexOf(n.id) < 0;
+          return `
+          <div class="notice-item" data-notice-id="${bodyEsc(n.id)}">
+            <button type="button" class="notice-head" aria-expanded="false" onclick="toggleNoticeItem(this)">
+              <span class="text-blue-400 shrink-0"><span class="ui-ic" data-ic="megaphone"></span></span>
+              <span class="notice-head-main">
+                <span class="notice-title-row">
+                  ${unread ? '<span class="notice-unread-dot"></span>' : ''}
+                  <span class="notice-title">${bodyEsc(n.title)}</span>
+                </span>
+                <span class="notice-meta">${new Date(n.createdAt).toLocaleDateString('ko-KR')}</span>
+              </span>
+              <span class="notice-chevron"><span class="ui-ic" data-ic="chevronDown"></span></span>
+            </button>
+            <div class="notice-body-wrap"><div class="notice-body-inner"><div class="notice-body">${bodyEsc(n.body)}</div></div></div>
+          </div>`;
+        }).join('');
       }
-      // 목록을 펼쳐 본 시점에 읽음으로 처리해 빨간 점을 지운다.
-      const ids = getNotices().map(n => n.id);
+      updateNoticeDot();
+      updatePendingBadge();
+    }
+
+    // 제목을 눌러 본문을 펼칠 때만 읽음 처리하고 빨간 점을 지운다(접힌 목록만 봤을 때는 읽음 아님).
+    function toggleNoticeItem(btn) {
+      const item = btn && btn.closest ? btn.closest('.notice-item') : null;
+      if (!item) return;
+      const willOpen = !item.classList.contains('open');
+      item.classList.toggle('open', willOpen);
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      if (willOpen) markNoticeRead(item.getAttribute('data-notice-id'), item);
+    }
+
+    function markNoticeRead(noticeId, itemEl) {
+      if (!noticeId) return;
       const read = getReadNoticeIds();
-      const next = read.slice();
-      ids.forEach(id => { if (next.indexOf(id) < 0) next.push(id); });
-      saveReadNoticeIds(next);
+      if (read.indexOf(noticeId) < 0) {
+        read.push(noticeId);
+        saveReadNoticeIds(read);
+      }
+      let item = itemEl;
+      if (!item) {
+        const safeId = String(noticeId).replace(/"/g, '\\"');
+        item = document.querySelector('.notice-item[data-notice-id="' + safeId + '"]');
+      }
+      if (item) {
+        const dot = item.querySelector('.notice-unread-dot');
+        if (dot) dot.remove();
+      }
       updateNoticeDot();
       updatePendingBadge();
     }

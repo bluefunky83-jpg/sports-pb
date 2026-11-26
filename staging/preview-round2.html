@@ -833,18 +833,21 @@
           <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
 
-        <!-- Filter Chips: School Level & Gender -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] no-scrollbar">
-          <span class="text-slate-500 text-[10px] whitespace-nowrap">부별:</span>
-          <button type="button" onclick="setPlayerFilterLevel('all')" id="pf-level-all" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
-          <button type="button" onclick="setPlayerFilterLevel('중등부')" id="pf-level-middle" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">중등부</button>
-          <button type="button" onclick="setPlayerFilterLevel('고등부')" id="pf-level-high" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">고등부</button>
-          <button type="button" onclick="setPlayerFilterLevel('대학/실업')" id="pf-level-adult" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">대학/실업</button>
-          
-          <span class="text-slate-500 text-[10px] ml-2 whitespace-nowrap">성별:</span>
-          <button type="button" onclick="setPlayerFilterGender('all')" id="pf-gender-all" class="px-2 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
-          <button type="button" onclick="setPlayerFilterGender('남')" id="pf-gender-m" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">남</button>
-          <button type="button" onclick="setPlayerFilterGender('여')" id="pf-gender-f" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">여</button>
+        <!-- Filter Chips: School Level & Gender (좁은 화면에서는 부별·성별 묶음 단위로 자연스럽게 즐을 바꿈) -->
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-slate-500 text-[10px] whitespace-nowrap">부별:</span>
+            <button type="button" onclick="setPlayerFilterLevel('all')" id="pf-level-all" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
+            <button type="button" onclick="setPlayerFilterLevel('중등부')" id="pf-level-middle" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">중등부</button>
+            <button type="button" onclick="setPlayerFilterLevel('고등부')" id="pf-level-high" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">고등부</button>
+            <button type="button" onclick="setPlayerFilterLevel('대학/실업')" id="pf-level-adult" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">대학/실업</button>
+          </div>
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-slate-500 text-[10px] whitespace-nowrap">성별:</span>
+            <button type="button" onclick="setPlayerFilterGender('all')" id="pf-gender-all" class="px-2 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
+            <button type="button" onclick="setPlayerFilterGender('남')" id="pf-gender-m" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">남</button>
+            <button type="button" onclick="setPlayerFilterGender('여')" id="pf-gender-f" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">여</button>
+          </div>
         </div>
       </div>
 
@@ -2421,11 +2424,11 @@
       annualPadTop: 13, annualPadBottom: 13, annualHeadH: 28, annualHeadGap: 8, annualHeadGapX: 8,
       annualCompareH: 28, annualBarMt: 6, annualBarH: 6, annualBarRadius: 3,
       annualMetaMt: 10, annualMetaH: 27, annualMetaGap: 3, annualFooterMt: 8, annualFooterH: 16, annualSlowerMt: 4, annualSlowerH: 12,
-      annualEventSize: 17, annualEventWeight: 800, annualEventColor: '#ffffff',
+      annualEventSize: 18, annualEventWeight: 800, annualEventColor: '#ffffff',
       annualBadgeSize: 9.5, annualBadgeH: 17, annualBadgePadX: 6,
       annualLabelSize: 10, annualLabelColor: '#64748b', annualLabelWeight: 600,
       annualPriorSize: 16, annualPriorWeight: 700, annualPriorColor: '#cbd5e1',
-      annualArrowSize: 13, annualArrowColor: '#475569',
+      annualArrowSize: 16, annualArrowColor: '#64748b',
       annualCurrentSize: 24, annualCurrentWeight: 800, annualCurrentColor: '#ffffff',
       barBg: '#1e293b', barBlue: 'rgba(59,130,246,0.65)', barAmber: '#fbbf24',
       metaValueSize: 11, metaValueWeight: 600, metaValueColor: '#cbd5e1', metaValueH: 13,
@@ -5367,10 +5370,10 @@
         const sportIcon = pSport.includes('육상') ? '<span class="ui-ic" data-ic="running" data-size="20"></span>' : (pSport.includes('사이클') ? '<span class="ui-ic" data-ic="cycling" data-size="20"></span>' : '<span class="ui-ic" data-ic="medal" data-size="20"></span>');
 
         card.innerHTML = `
-          <!-- Left: Sport Icon (Portrait 3:4, 사진 기능 없음) -->
+          <!-- Left: Sport Icon (성별은 이름 옆 배지로만 표시하고, 아이콘 박스는 정사각형으로 둔다) -->
           <div onclick="selectPlayerFromCard('${p.id}')" class="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer">
-            <div class="w-12 h-16 rounded-xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center text-xl shadow-inner shrink-0 overflow-hidden relative">
-              <span>${sportIcon}</span><span class="text-[9px] text-slate-500 mt-0.5">${p.gender || ''}</span>
+            <div class="w-12 h-12 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-xl shadow-inner shrink-0 overflow-hidden">
+              <span>${sportIcon}</span>
             </div>
 
             <!-- Right: Info Rows (User's Hand-drawn Layout) -->
