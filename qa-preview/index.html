@@ -9013,8 +9013,10 @@
           ? item.requestedPlayers
           : (item.targetPlayer === 'all' ? myPlayerIds : [item.targetPlayer || '']);
         let list = raw.filter(pid => pid && myPlayerIds.indexOf(pid) >= 0);
-        if (item.pendingAdditional && Array.isArray(item.allowedPlayers) && item.allowedPlayers.length > 0) {
-          const onlyNew = list.filter(pid => item.allowedPlayers.indexOf(pid) < 0);
+        // 이미 승인된 선수는 '새로 신청한 선수'가 아니므로 카드에서 빼고 보여 준다.
+        if (item.approved || isSpecialViewerRecord(item)) {
+          const already = viewerAllowedPlayerIds(item, myPlayerIds);
+          const onlyNew = list.filter(pid => already.indexOf(pid) < 0);
           if (onlyNew.length > 0) list = onlyNew;
         }
         return list.filter((v, i, a) => a.indexOf(v) === i);
@@ -9038,8 +9040,10 @@
           return `<span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[11px] font-bold">${bodyEsc(label)}${lockedMark}</span>`;
         }).join(' ');
 
-        // 승인 버튼은 이 뷰어가 신청한 선수만 그대로 승인한다(다른 선수를 끼워 넣지 않는다).
-        pendingViewerSelections[key] = reqArr.slice();
+        // 승인 버튼은 이 뷰어가 신청한 선수만 승인한다(다른 선수를 끼워 넣지 않는다).
+        // 이미 개별 승인된 선수의 권한은 유지한 채, 새로 신청한 선수를 더한다.
+        const existingIds = viewerAllowedPlayerIds(item, myPlayerIds);
+        pendingViewerSelections[key] = existingIds.concat(reqArr).filter((v, i, a) => a.indexOf(v) === i);
 
         const card = document.createElement('div');
         card.className = 'p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 space-y-2.5 shadow-md';
