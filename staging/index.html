@@ -6210,9 +6210,14 @@
         birthInput.value = p.birth || '';
         // 기록에는 있는데 프로필 종목에 빠진 종목(예: 300m)을 먼저 정상화한 뒤 연다.
         ensurePlayerEventsForRecords(p.id, true);
-        formCurrentEvents = Array.isArray(p.events) && p.events.length > 0
+        // 예전 저장본은 단체 종목도 문자열로 들어 있을 수 있어, 이름으로 개인/단체를 다시 판정한다.
+        formCurrentEvents = (Array.isArray(p.events) && p.events.length > 0
           ? [...p.events]
-          : getDefaultEventsForSport(p.sport || '육상', p.birth || '', p.gender || '남');
+          : getDefaultEventsForSport(p.sport || '육상', p.birth || '', p.gender || '남'))
+          .map(ev => {
+            const evName = getFormEventName(ev);
+            return { name: evName, isTeam: isFormEventTeam(ev) || isTeamEventName(evName) };
+          });
         resetFormAccordionForEvents();
         formOriginalMainEvent = String(p.mainEvent || '');
         setFormPlayerSport(p.sport || '육상', false, p.mainEvent || '');
