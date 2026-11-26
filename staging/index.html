@@ -5878,6 +5878,11 @@
       renderTeammateChips();
     }
 
+    // 주자 이름 목록을 이 기기에 저장한다(정의가 빠져 있어 삭제·추가가 중간에 멈추던 문제 수정).
+    function saveTeammates() {
+      try { localStorage.setItem(TEAMMATES_KEY, JSON.stringify(savedTeammates)); } catch (e) {}
+    }
+
     function confirmTeammateDeletion() {
       if (selectedTeammatesToDelete.size === 0) return;
       // 저장된 주자 이름 목록에서만 지운다. 과거 경기 기록·PB의 주자 명단은 건드리지 않는다.
