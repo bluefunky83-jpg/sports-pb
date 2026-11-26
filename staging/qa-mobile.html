@@ -24,6 +24,8 @@
   <button onclick="kb(false)">키보드 시뮬 OFF</button>
   <button onclick="measure()">측정</button>
   <button onclick="openModal()">기록창 열기</button>
+  <button onclick="openSuper()">관리자센터 열기</button>
+  <button onclick="closeAll()">모달 모두 닫기</button>
 </div>
 <div id="wrap">
   <iframe id="frame" src="./index.html"></iframe>
@@ -54,6 +56,18 @@
         log('키보드 시뮬레이션 OFF');
       }
     } catch (e) { log('kb err: ' + e.message); }
+  }
+  function openSuper() {
+    try { w().openSuperAdminModal(); log('최고관리자 센터 열기 호출'); } catch (e) { log('openSuper err: ' + e.message); }
+  }
+  function closeAll() {
+    try {
+      const d2 = d();
+      try { w().closeSuperAdminModal(); } catch (e) {}
+      try { w().closeRecordModal(); } catch (e) {}
+      d2.querySelectorAll('.modal-overlay').forEach(el => el.classList.add('hidden'));
+      log('모달 모두 닫음');
+    } catch (e) { log('closeAll err: ' + e.message); }
   }
   function openModal() {
     try { w().openRecordModal(); log('기록 모달 열기 호출'); } catch (e) { log('open err: ' + e.message); }
