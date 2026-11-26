@@ -8203,7 +8203,8 @@
         allowedStr = allSelected ? 'all' : selectedArr[0];
       }
 
-      realtimeAuthData[nick] = {
+      const nextData = Object.assign({}, realtimeAuthData);
+      nextData[nick] = {
         ...(realtimeAuthData[nick] || {}),
         status: isApproved ? 'approved' : 'pending',
         pendingAdditional: false,
@@ -8212,6 +8213,10 @@
         approved: isApproved,
         time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
       };
+      // 화면 갱신 함수(updateSuperAdminStats 등)가 저장본을 다시 읽어 방금 승인을 덮어쓰지 않도록
+      // 먼저 저장한 뒤 화면을 갱신한다.
+      realtimeAuthData = nextData;
+      saveStagingCloud(nextData);
 
       // Sync with local registered viewers
       const list = getRegisteredViewers();
@@ -8231,7 +8236,7 @@
         await stagingCloudFetch(AUTH_API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
+          body: JSON.stringify({ name: 'sports_pb_auth', data: nextData })
         });
       } catch (err) {
         console.error('Update permission error:', err);
@@ -8248,8 +8253,11 @@
       const dispNick = (realtimeAuthData[nick] && realtimeAuthData[nick].name) ? realtimeAuthData[nick].name : nick;
       if (!confirm(`[${dispNick}] 뷰어를 열람 목록에서 삭제하시겠습니까?\n삭제 즉시 열람 권한이 차단됩니다.`)) return;
 
-      delete realtimeAuthData[nick];
+      const remainData = Object.assign({}, realtimeAuthData);
+      delete remainData[nick];
       delete pendingViewerSelections[nick];
+      realtimeAuthData = remainData;
+      saveStagingCloud(remainData);
 
       const list = getRegisteredViewers().filter(v => v.name !== nick);
       saveRegisteredViewers(list);
@@ -8263,7 +8271,7 @@
         await stagingCloudFetch(AUTH_API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'sports_pb_auth', data: realtimeAuthData })
+          body: JSON.stringify({ name: 'sports_pb_auth', data: remainData })
         });
       } catch (err) {
         console.error('deleteViewer error:', err);
