@@ -5366,35 +5366,20 @@
         card.className = `p-3.5 rounded-2xl bg-slate-800/80 border ${isCurrent ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700/80 hover:border-slate-600'} flex items-center justify-between gap-3 shadow-md transition`;
         
         const genderBadgeClass = p.gender === '남' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-pink-500/20 text-pink-300 border-pink-500/40';
-        const pSport = p.sport || '';
-        const sportIcon = pSport.includes('육상') ? '<span class="ui-ic" data-ic="running" data-size="20"></span>' : (pSport.includes('사이클') ? '<span class="ui-ic" data-ic="cycling" data-size="20"></span>' : '<span class="ui-ic" data-ic="medal" data-size="20"></span>');
 
         card.innerHTML = `
-          <!-- Left: Sport Icon (성별은 이름 옆 배지로만 표시하고, 아이콘 박스는 정사각형으로 둔다) -->
-          <div onclick="selectPlayerFromCard('${p.id}')" class="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer">
-            <div class="w-12 h-12 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-xl shadow-inner shrink-0 overflow-hidden">
-              <span>${sportIcon}</span>
+          <!-- Left: Info (종목 아이콘 박스 없이 2줄로 간결하게 · 선택 표시는 카드 테두리로만) -->
+          <div onclick="selectPlayerFromCard('${p.id}')" class="flex-1 min-w-0 cursor-pointer">
+            <!-- 1줄: 이름 · 생년월일 · [성별] · [학년] -->
+            <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
+              <span class="text-sm font-bold text-white truncate">${p.name || ''}</span>
+              <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
+              <span class="px-1.5 py-0.5 rounded border ${genderBadgeClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${p.gender || ''}</span>
+              <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${gradeBadge}</span>
             </div>
-
-            <!-- Right: Info Rows (User's Hand-drawn Layout) -->
-            <div class="space-y-1 min-w-0">
-              <!-- Row 1: Name + [Gender] -->
-              <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
-                <span class="text-sm font-bold text-white max-w-full truncate">${p.name || ''}</span>
-                <span class="px-1.5 py-0.5 rounded border ${genderBadgeClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${p.gender || ''}</span>
-                ${isCurrent ? '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold shrink-0 whitespace-nowrap">선택됨</span>' : ''}
-              </div>
-
-              <!-- Row 2: Birth + [Grade] -->
-              <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-400 font-mono min-w-0">
-                <span class="whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
-                <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold font-sans shrink-0 whitespace-nowrap">${gradeBadge}</span>
-              </div>
-
-              <!-- Row 3: Event -->
-              <div class="text-xs text-blue-400 font-medium truncate">
-                ${p.sport || '운동'} · ${p.mainEvent || '종목 미지정'}
-              </div>
+            <!-- 2줄: 종목 · 주종목 -->
+            <div class="mt-1 text-xs text-blue-400 font-medium truncate">
+              ${p.sport || '운동'} · ${p.mainEvent || '종목 미지정'}
             </div>
           </div>
 
@@ -10372,7 +10357,7 @@
               </span>
               <span class="notice-chevron"><span class="ui-ic" data-ic="chevronDown"></span></span>
             </button>
-            <div class="notice-body-wrap"><div class="notice-body-inner"><div class="notice-body">${bodyEsc(n.body)}</div></div></div>
+            <div class="notice-body-wrap"><div class="notice-body-inner" aria-hidden="true"><div class="notice-body">${bodyEsc(n.body)}</div></div></div>
           </div>`;
         }).join('');
       }
@@ -10387,6 +10372,8 @@
       const willOpen = !item.classList.contains('open');
       item.classList.toggle('open', willOpen);
       btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      const inner = item.querySelector('.notice-body-inner');
+      if (inner) inner.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
       if (willOpen) markNoticeRead(item.getAttribute('data-notice-id'), item);
     }
 
