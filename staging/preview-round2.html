@@ -7575,12 +7575,9 @@
       }
       c.innerHTML = playersData.map(p => `
         <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2 min-w-0">
-            <span class="text-base shrink-0">${p.sport === '육상' ? '<span class="ui-ic" data-ic="running"></span>' : '<span class="ui-ic" data-ic="cycling"></span>'}</span>
-            <div class="min-w-0">
-              <div class="font-bold text-slate-200 truncate">${bodyEsc(p.name)} <span class="text-[10px] text-slate-400 font-normal">(${bodyEsc(p.sport)} · ${bodyEsc(p.mainEvent || '')})</span></div>
-              <div class="text-[10px] text-slate-500">기록 ${(appData[p.id]||[]).length}건 관리중</div>
-            </div>
+          <div class="min-w-0">
+            <div class="font-bold text-slate-200 truncate">${bodyEsc(p.name)} <span class="text-[10px] text-slate-400 font-normal">(${bodyEsc(p.sport)} · ${bodyEsc(p.mainEvent || '')})</span></div>
+            <div class="text-[10px] text-slate-500">기록 ${(appData[p.id]||[]).length}건 관리중</div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             ${canTransfer ? (pendingRequests.some(r => r.playerId === p.id)
