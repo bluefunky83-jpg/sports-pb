@@ -8640,7 +8640,11 @@
         };
         localStorage.setItem(STAGING_CLOUD_KEY, JSON.stringify(cloud));
       }
-      try { realtimeAuthData = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{}'); } catch (e) { realtimeAuthData = {}; }
+      let primaryStore = {};
+      let altStore = {};
+      try { primaryStore = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{}'); } catch (e) { primaryStore = {}; }
+      try { altStore = JSON.parse(localStorage.getItem('STAGING_CLOUD_AUTH_DB_v2') || '{}'); } catch (e) { altStore = {}; }
+      realtimeAuthData = mergeStagingCloudStores(primaryStore, altStore);
     }
     initStagingSeedData();
 
@@ -8648,7 +8652,42 @@
       try { return JSON.parse(localStorage.getItem(STAGING_ACCOUNTS_KEY) || '{}'); } catch (e) { return {}; }
     }
     function saveStagingAccounts(acc) { localStorage.setItem(STAGING_ACCOUNTS_KEY, JSON.stringify(acc)); }
-    function saveStagingCloud(data) { realtimeAuthData = data; localStorage.setItem(STAGING_CLOUD_KEY, JSON.stringify(data)); }
+    // 검수용 클라우드 저장소는 하나다. 예전 코드가 두 키(STAGING_CLOUD_KEY / STAGING_CLOUD_AUTH_DB_v2)에
+    // 나누어 쓰면서 승인 결과가 한쪽에만 남아 뷰어에게 전달되지 않던 문제를 막기 위해 항상 함께 기록한다.
+    function saveStagingCloud(data) {
+      realtimeAuthData = data;
+      localStorage.setItem(STAGING_CLOUD_KEY, JSON.stringify(data));
+      localStorage.setItem('STAGING_CLOUD_AUTH_DB_v2', JSON.stringify(data));
+    }
+
+    // 두 키에 갈라져 저장된 자료를 key 단위로 합친다. 같은 사용자 항목은 승인된 상태를 우선한다.
+    function mergeStagingCloudStores(primary, alt) {
+      const out = Object.assign({}, primary || {});
+      const b = alt || {};
+      Object.keys(b).forEach(k => {
+        if (k === '_admins') {
+          out._admins = out._admins || {};
+          Object.keys(b._admins || {}).forEach(ak => {
+            if (!out._admins[ak]) out._admins[ak] = b._admins[ak];
+          });
+          return;
+        }
+        if (k === '_transfers') {
+          const list = Array.isArray(out._transfers) ? out._transfers.slice() : [];
+          (Array.isArray(b._transfers) ? b._transfers : []).forEach(r => {
+            if (r && r.id && !list.some(x => x.id === r.id)) list.push(r);
+          });
+          out._transfers = list;
+          return;
+        }
+        if (!out[k]) { out[k] = b[k]; return; }
+        const cur = out[k] || {};
+        const other = b[k] || {};
+        if (cur.status === 'approved' && other.status !== 'approved') return;
+        if (other.status === 'approved' && cur.status !== 'approved') { out[k] = other; return; }
+      });
+      return out;
+    }
 
     function fillStagingTestAccount(email, role) {
       switchLoginRole(role);
@@ -9537,8 +9576,7 @@
         try {
           const parsed = JSON.parse(options.body);
           const nextData = parsed && parsed.data ? parsed.data : parsed;
-          localStorage.setItem('STAGING_CLOUD_AUTH_DB_v2', JSON.stringify(nextData || {}));
-          realtimeAuthData = nextData || {};
+          saveStagingCloud(nextData || {});
         } catch (e) {}
         return {
           ok: true,
@@ -9547,7 +9585,11 @@
         };
       }
       let cur = {};
-      try { cur = JSON.parse(localStorage.getItem('STAGING_CLOUD_AUTH_DB_v2') || '{}'); } catch (e) { cur = {}; }
+      let alt = {};
+      try { cur = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{}'); } catch (e) { cur = {}; }
+      try { alt = JSON.parse(localStorage.getItem('STAGING_CLOUD_AUTH_DB_v2') || '{}'); } catch (e) { alt = {}; }
+      cur = mergeStagingCloudStores(cur, alt);
+      saveStagingCloud(cur);
       realtimeAuthData = cur;
       return {
         ok: true,
