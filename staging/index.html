@@ -107,8 +107,9 @@
       max-height: var(--app-vh, 100dvh);
       border-radius: 0 0 1.5rem 1.5rem;
     }
-    /* 모달이 열려 있는 동안은 배경 화면이 따라 움직이지 않게 잠근다(모달 안쪽 스크롤은 그대로). */
-    body.modal-open { overflow: hidden; overscroll-behavior: none; }
+    /* 모달이 열려 있는 동안은 배경 화면이 따라 움직이지 않게 잠근다(모달 안쪽 스크롤은 그대로).
+       body를 fixed로 잠그고 top을 보던 위치만큼 당겨 두어, 잠그는 순간 배경이 맨 위로 튀지 않게 한다. */
+    body.modal-open { position: fixed; left: 0; right: 0; width: 100%; overflow: hidden; overscroll-behavior: none; }
     body.modal-open .modal-overlay { overscroll-behavior: contain; }
     /* 한글 단어 중간 잘림 방지: 단어 단위로 줄바꿈하고, 띄어쓰기 없는 긴 영문·이메일만 필요할 때 끊는다. */
     html, body { word-break: keep-all; }
@@ -759,10 +760,10 @@
         <div>
           <label class="block font-semibold text-slate-400 mb-1">대회명 / 경기명 *</label>
           <div class="flex items-center gap-2">
-            <input type="number" id="input-meet-round" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="회차" title="대회 회차(선택)" class="w-[3.4rem] shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-1.5 py-2 text-center text-white focus:outline-none focus:border-blue-500">
+            <input type="number" id="input-meet-round" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="회차" title="대회 회차(선택)" class="w-[3.2rem] shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-1 py-2 text-center text-white focus:outline-none focus:border-blue-500">
             <div class="flex-1 min-w-0 relative">
               <div class="flex items-center gap-1">
-                <input type="text" id="input-meet" required autocomplete="off" placeholder="대회명 입력 또는 선택" oninput="onMeetInput()" oncompositionend="onMeetInput()" onchange="onMeetNameChanged()" onfocus="onMeetInput()" class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+                <input type="text" id="input-meet" required autocomplete="off" placeholder="대회명 입력·선택" oninput="onMeetInput()" oncompositionend="onMeetInput()" onchange="onMeetNameChanged()" onfocus="onMeetInput()" class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-blue-500">
                 <button type="button" id="btn-meet-list" onmousedown="event.preventDefault()" onclick="toggleMeetAutocomplete()" class="w-8 h-8 shrink-0 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center active:scale-95 transition" title="저장된 대회명 보기" aria-label="저장된 대회명 보기">
                   <span class="ui-ic" data-ic="chevronDown"></span>
                 </button>
@@ -7006,11 +7007,14 @@
       if (open === locked) return;
       if (open) {
         modalLockScrollY = window.scrollY || window.pageYOffset || 0;
+        // body를 fixed로 잠그면 스크롤이 0으로 돌아가므로, 보던 위치만큼 위로 당겨 화면이 튀지 않게 한다.
+        body.style.top = (-modalLockScrollY) + 'px';
         body.classList.add('modal-open');
       } else {
         body.classList.remove('modal-open');
+        body.style.top = '';
         const y = modalLockScrollY;
-        if (y) requestAnimationFrame(function () { window.scrollTo(0, y); });
+        window.scrollTo(0, y);
       }
     }
     document.addEventListener('DOMContentLoaded', function () {
