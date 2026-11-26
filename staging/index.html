@@ -5434,6 +5434,15 @@
         appData[currentPlayer].push(newEntry);
       }
 
+      // 방금 기록한 종목을 프로필에서 해제해 두었던 상태라면 다시 표시하도록 되돌린다
+      // (기록을 넣었는데 탭에 보이지 않는 일을 막는다).
+      if (isEventDisabledInPlayer(currentPlayer, targetEvent)) {
+        const ownerPlayer = playersData.find(x => x.id === currentPlayer);
+        if (ownerPlayer && Array.isArray(ownerPlayer.disabledEvents)) {
+          ownerPlayer.disabledEvents = ownerPlayer.disabledEvents.filter(d => !(d === targetEvent || isEventMatch(d, targetEvent) || isEventMatch(targetEvent, d)));
+        }
+      }
+
       // 방금 저장한 종목이 프로필의 출전 세부 종목에 없으면 개인·단체 구분해 자동 추가한다.
       ensurePlayerEventsForRecords(currentPlayer, false);
 
