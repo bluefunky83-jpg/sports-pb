@@ -2121,7 +2121,8 @@
       playersData.forEach(p => {
         const sportText = p.sport || '';
         // 종목 아이콘(달리기·사이클·메달)은 쓰지 않는다. 이름과 종목은 글자로만 보여 준다.
-        const fullText = `${p.name || ''} (${sportText}) - ${p.mainEvent || ''}`;
+        const plainText = `${p.name || ''} (${sportText}) - ${p.mainEvent || ''}`;
+        const fullText = plainText;
         const opt = document.createElement('option');
         opt.value = p.id;
         opt.textContent = plainText;
