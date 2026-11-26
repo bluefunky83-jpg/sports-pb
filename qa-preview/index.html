@@ -1282,7 +1282,7 @@
             <span class="text-[11px] font-bold text-emerald-300"><span class="ui-ic" data-ic="users"></span> 승인된 뷰어 관리</span>
             <button type="button" onclick="openAdminProfileModal()" class="text-[10px] text-slate-400 hover:text-white">↻ 새로고침</button>
           </div>
-          <div id="admin-approved-viewers-list" class="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+          <div id="admin-approved-viewers-list" class="space-y-2 pr-0.5">
             <!-- Render approved viewers -->
           </div>
         </div>
@@ -8622,7 +8622,8 @@
       const hasPending = isAdmin && Object.keys(realtimeAuthData).some(k => {
         if (k.startsWith('_') || dummyNames.includes(k)) return false;
         const v = realtimeAuthData[k];
-        return v && isViewerOwnedByCurrentAdmin(v, scopeId) && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
+        if (!v || v.status === 'rejected') return false;
+        return isViewerOwnedByCurrentAdmin(v, scopeId) && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
       });
       const hasViewerNotif = !isAdmin && viewerApprovalNotifs.length > 0;
       const hasTransferRequest = isAdmin && getTransferRequests().some(r => r.status === 'pending' && r.toAdminId === authUser.id);
@@ -9115,6 +9116,8 @@
       const nextData = Object.assign({}, realtimeAuthData);
       nextData[nick] = {
         ...(realtimeAuthData[nick] || {}),
+        // 승인한 관리자 소유로 고정한다(소유 정보가 비면 관리자 화면에서 사라진다).
+        ownerAdminId: (realtimeAuthData[nick] && realtimeAuthData[nick].ownerAdminId) || getCurrentAdminScopeId(),
         status: isApproved ? 'approved' : 'pending',
         pendingAdditional: false,
         allowed: allowedStr,
