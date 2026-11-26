@@ -5363,7 +5363,7 @@
         const { gradeBadge } = calculateGradeAndAge(p.birth || '');
         const card = document.createElement('div');
         const isCurrent = p.id === currentPlayer;
-        card.className = `p-3.5 rounded-2xl bg-slate-800/80 border ${isCurrent ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700/80 hover:border-slate-600'} flex items-center justify-between gap-3 shadow-md transition`;
+        card.className = `p-3.5 rounded-2xl bg-slate-800/80 border ${isCurrent ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700/80 hover:border-slate-600'} flex items-start justify-between gap-2 shadow-md transition`;
         
         const genderBadgeClass = p.gender === '남' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-pink-500/20 text-pink-300 border-pink-500/40';
 
@@ -5383,8 +5383,8 @@
             </div>
           </div>
 
-          <!-- Actions: Edit / Delete -->
-          <div class="flex flex-col gap-1 items-end shrink-0">
+          <!-- Actions: Edit / Delete (가로 한 줄 · 첫줄 오른쪽 끝) -->
+          <div class="flex items-center gap-0.5 shrink-0 -mr-1">
             <button type="button" onclick="openAddEditPlayerModal('${p.id}')" class="p-1.5 text-slate-400 hover:text-blue-400 rounded-lg hover:bg-slate-700/50 transition" title="프로필 수정">
               <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
             </button>
