@@ -8020,6 +8020,9 @@
       closeSuperAdminModal();
       closeAdminProfileModal();
       closeSettingsModal();
+      // 로그아웃하면 보던 탭·요약 모드를 기본값으로 되돌린다(다른 계정으로 들어올 때 앞 계정 화면이 남지 않게).
+      currentEvent = 'ALL_PB';
+      mainViewMode = 'PB';
       checkInitialAuthGate();
     }
 
@@ -8848,6 +8851,16 @@
     }
 
     let viewerApprovalNotifs = [];
+    // 알림 목록이 실제로 바뀌었는지 비교하는 서명. 5초 폴링마다 목록을 다시 그리면
+    // 보고 있던 목록이 깜박이고 버튼을 누르기 어려우므로, 내용이 바뀈을 때만 다시 그린다.
+    let lastApprovalListSig = '';
+    function approvalListSignature() {
+      try {
+        const offers = getMySpecialOffers().map(o => (o.key || '') + ':' + (o.adminId || '')).join(',');
+        const notifs = (viewerApprovalNotifs || []).map(n => n.id).join(',');
+        return offers + '|' + notifs;
+      } catch (e) { return ''; }
+    }
 
     function dismissViewerApprovalNotifs() {
       viewerApprovalNotifs = [];
@@ -9231,6 +9244,7 @@
         } else {
           container.innerHTML = '';
         }
+        lastApprovalListSig = approvalListSignature();
         return;
       }
 
@@ -9573,7 +9587,13 @@
         // 특별 뷰어 초대·열람 승인 등이 바뀌었을 수 있으므로 매 주기마다 종 레드닷을 다시 계산한다.
         updatePendingBadge();
         const notifModal = document.getElementById('modal-viewer-approvals');
-        if (notifModal && !notifModal.classList.contains('hidden')) renderApprovalList();
+        if (notifModal && !notifModal.classList.contains('hidden')) {
+          const sig = approvalListSignature();
+          if (sig !== lastApprovalListSig) {
+            lastApprovalListSig = sig;
+            renderApprovalList();
+          }
+        }
         const entries = findAllViewerCloudEntries(json?.data, authUser);
         if (entries.length === 0) return;
 
