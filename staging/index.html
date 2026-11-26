@@ -78,6 +78,23 @@
     #form-player-birth-picker::-webkit-datetime-edit,
     #form-player-birth-picker::-webkit-datetime-edit-fields-wrapper { display: none; }
     #form-player-birth-picker { -webkit-appearance: none; appearance: none; color: transparent; }
+    /* 숫자 입력칸: 브라우저 기본 증감(▲▼) 버튼은 쓰지 않고 직접 입력만 받는다(PC·모바일 공통). */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+    /* 공통 팝업 구조: 위 제목·닫기 고정 / 가운데 내용만 스크롤 / 아래 버튼 고정.
+       화면 배율(100~130%)과 모바일 키보드로 보이는 높이가 줄어도 버튼이 잘리지 않도록
+       --app-vh(지금 보이는 높이 ÷ 배율)를 기준으로 최대 높이를 잡는다. */
+    .modal-panel { max-height: calc(var(--app-vh, 100dvh) - 2rem); }
+    .modal-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+    .modal-fixed { flex: 0 0 auto; }
+    /* 그래프 포인트에서 찾아온 경기 기록 카드: 잠깐 강조해 위치를 알려 준다. */
+    .record-row-flash { animation: recordRowFlash 2.4s ease-out 1; }
+    @keyframes recordRowFlash {
+      0% { background-color: rgba(59,130,246,0.40); box-shadow: inset 0 0 0 1px rgba(96,165,250,0.9); }
+      65% { background-color: rgba(59,130,246,0.22); box-shadow: inset 0 0 0 1px rgba(96,165,250,0.6); }
+      100% { background-color: transparent; box-shadow: none; }
+    }
   </style>
   <script>
     /* 화면 크기(배율): 첫 화면이 그려지기 전에 적용해 깜빡임을 막는다. 설정 모달과 같은 규칙을 쓴다. */
@@ -353,6 +370,12 @@
         <svg width="18" height="18" class="w-[18px] h-[18px] text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
         <span>선수관리</span>
       </button>
+
+      <!-- 뷰어 전용: 선수관리 버튼과 같은 자리에서 기존 열람 신청창으로 바로 연결 -->
+      <button type="button" id="btn-viewer-add-player-top" onclick="openViewerAddPlayerModal()" class="px-3 py-2.5 rounded-2xl bg-slate-900 border border-blue-500/40 hover:border-blue-400 text-blue-300 hover:text-white font-bold text-[11px] flex items-center gap-1.5 transition shadow-sm active:scale-95 whitespace-nowrap shrink-0 hidden">
+        <span class="ui-ic" data-ic="plus" data-size="14"></span>
+        <span>열람 선수 추가 신청</span>
+      </button>
     </div>
 
     <!-- Event Category Tabs (Horizontal Scroll) -->
@@ -407,10 +430,10 @@
 
   <!-- 가져오기 확인 (예 / 아니오) -->
   <div id="modal-import-confirm" class="fixed inset-0 z-[90] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
-      <h3 id="import-confirm-title" class="text-base font-bold text-white">가져오기 확인</h3>
-      <div id="import-confirm-body" class="text-xs text-slate-300 leading-relaxed space-y-1 max-h-64 overflow-y-auto"></div>
-      <div class="flex gap-2 pt-1">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 pt-4 modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <h3 id="import-confirm-title" class="modal-fixed text-base font-bold text-white pb-2">가져오기 확인</h3>
+      <div id="import-confirm-body" class="modal-scroll text-xs text-slate-300 leading-relaxed space-y-1 py-1"></div>
+      <div class="modal-fixed flex gap-2 pt-3">
         <button type="button" onclick="resolveImportConfirm(false)" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">아니오</button>
         <button type="button" onclick="resolveImportConfirm(true)" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition active:scale-95">예</button>
       </div>
@@ -419,8 +442,9 @@
 
   <!-- 기존 엑셀 양식(선수 정보 없음) 가져오기: 대상 선수 선택 -->
   <div id="modal-import-target" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 space-y-3 shadow-2xl">
-      <h3 class="text-base font-bold text-white">기존 엑셀 양식 가져오기</h3>
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 pt-4 modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <h3 class="modal-fixed text-base font-bold text-white pb-2">기존 엑셀 양식 가져오기</h3>
+      <div class="modal-scroll space-y-3 pb-1">
       <p class="text-[11px] text-slate-400 leading-relaxed">이 파일에는 선수 기본 정보가 없습니다. 기록을 넣을 선수를 선택해 주세요. 선택 전에는 아무 데이터도 바뀌지 않습니다.</p>
       <div>
         <label class="block text-[11px] font-semibold text-slate-300 mb-1">대상 선수</label>
@@ -432,7 +456,8 @@
         <label class="block text-[11px] font-semibold text-slate-300 mb-1">시트</label>
         <select id="import-target-sheet" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"></select>
       </div>
-      <div class="flex gap-2 pt-1">
+      </div>
+      <div class="modal-fixed flex gap-2 pt-3">
         <button type="button" onclick="resolveLegacyImportTarget(false)" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">취소</button>
         <button type="button" id="btn-import-target-ok" onclick="resolveLegacyImportTarget(true)" disabled class="flex-1 py-2.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-500 cursor-not-allowed">가져오기</button>
       </div>
@@ -441,13 +466,13 @@
 
   <!-- 선수 삭제 확인창 -->
   <div id="modal-player-delete" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
-      <h3 class="text-base font-bold text-white flex items-center gap-2">
+    <div class="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-sm p-5 pt-4 modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <h3 class="modal-fixed text-base font-bold text-white flex items-center gap-2 pb-2">
         <span class="text-rose-400 shrink-0"><span class="ui-ic" data-ic="alertTri"></span></span>
         <span>선수 삭제 확인</span>
       </h3>
-      <div id="player-delete-body" class="text-xs text-slate-300 leading-relaxed space-y-1"></div>
-      <div class="flex gap-2 pt-1">
+      <div id="player-delete-body" class="modal-scroll text-xs text-slate-300 leading-relaxed space-y-1 py-1"></div>
+      <div class="modal-fixed flex gap-2 pt-3">
         <button type="button" onclick="resolvePlayerDeleteConfirm(false)" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">취소</button>
         <button type="button" onclick="resolvePlayerDeleteConfirm(true)" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition active:scale-95">삭제</button>
       </div>
@@ -456,8 +481,8 @@
 
   <!-- 개별 선수 양도 (관리자 계정 유지) -->
   <div id="modal-player-transfer" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm max-h-[88vh] flex flex-col overflow-hidden shadow-2xl">
-      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span class="text-blue-400 shrink-0"><span class="ui-ic" data-ic="transfer"></span></span>
           <span>선수 양도</span>
@@ -466,7 +491,7 @@
           <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <div class="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
+      <div class="modal-scroll p-4 space-y-3 text-xs">
         <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800">
           <div class="text-[10px] text-slate-400">양도할 선수</div>
           <div id="transfer-player-label" class="font-bold text-white mt-0.5">-</div>
@@ -485,7 +510,7 @@
           선수 프로필, 경기 기록, PB, 연결된 뷰어 열람 권한이 함께 이전됩니다.
         </p>
       </div>
-      <div class="p-4 border-t border-slate-800 flex gap-2">
+      <div class="modal-fixed p-4 border-t border-slate-800 flex gap-2">
         <button type="button" onclick="closePlayerTransferModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">취소</button>
         <button type="button" id="btn-request-transfer" onclick="requestPlayerTransfer()" disabled class="flex-1 py-2.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700">양도 요청</button>
       </div>
@@ -494,8 +519,8 @@
 
   <!-- 최고관리자 공지 작성 및 관리 -->
   <div id="modal-notice-admin" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md max-h-[88vh] flex flex-col overflow-hidden shadow-2xl">
-      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span class="text-purple-300 shrink-0"><span class="ui-ic" data-ic="megaphone"></span></span>
           <span>공지 작성 및 관리</span>
@@ -504,7 +529,7 @@
           <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <div class="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
+      <div class="modal-scroll p-4 space-y-3 text-xs">
         <div class="space-y-2 p-3 rounded-2xl bg-slate-950 border border-slate-800">
           <div>
             <label class="block font-semibold text-slate-300 mb-1">제목</label>
@@ -523,7 +548,7 @@
         </div>
         <div id="notice-admin-list" class="space-y-2"></div>
       </div>
-      <div class="p-4 border-t border-slate-800">
+      <div class="modal-fixed p-4 border-t border-slate-800">
         <button type="button" onclick="closeNoticeAdminModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition active:scale-95">닫기</button>
       </div>
     </div>
@@ -531,8 +556,8 @@
 
   <!-- 표시할 종목 선택 (PB 기록 / 연간 종합노트 공통) -->
   <div id="modal-event-select" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
-      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span class="text-blue-400 shrink-0"><span class="ui-ic" data-ic="listChecks"></span></span>
           <span>표시할 종목 선택</span>
@@ -541,15 +566,15 @@
           <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
+      <div class="modal-fixed px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
         <label class="flex items-center gap-2 text-xs font-bold text-slate-200 cursor-pointer">
           <input type="checkbox" id="chk-all-events" onchange="toggleAllVisibleEvents(this.checked)" class="rounded border-slate-700 bg-slate-950 text-blue-600">
           <span>전체 선택</span>
         </label>
         <span class="text-[10px] text-slate-500 text-right leading-tight">선택한 종목만 화면과<br>이미지 저장·공유에 표시됩니다</span>
       </div>
-      <div id="event-select-list" class="flex-1 overflow-y-auto p-4 space-y-3 text-xs"></div>
-      <div class="p-4 border-t border-slate-800">
+      <div id="event-select-list" class="modal-scroll p-4 space-y-3 text-xs"></div>
+      <div class="modal-fixed p-4 border-t border-slate-800">
         <button type="button" onclick="closeEventSelectModal()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition active:scale-95">닫기</button>
       </div>
     </div>
@@ -565,13 +590,17 @@
 
   <!-- Modal: Viewer Approval Management (Realtime Cloud) -->
   <div id="modal-viewer-approvals" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
-      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-        <div class="flex items-center gap-2">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-1.5 min-w-0 flex-wrap">
           <span><span class="ui-ic" data-ic="bell"></span></span>
-          <h3 id="modal-notif-title" class="text-base font-bold text-white">알림 센터</h3>
+          <h3 id="modal-notif-title" class="text-base font-bold text-white whitespace-nowrap">알림 센터</h3>
           <button type="button" id="btn-notif-app-invite" onclick="shareKakaoInviteLink()" class="ml-1 text-[11px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 px-2 py-0.5 rounded-lg transition active:scale-95 shadow flex items-center gap-1">
             <span><span class="ui-ic" data-ic="chat"></span></span><span>앱초대</span>
+          </button>
+          <!-- 최고관리자 전용: 일회용 SVIP 초대 링크 발급 -->
+          <button type="button" id="btn-notif-svip-invite" onclick="shareSvipInviteLink()" class="hidden text-[11px] font-bold text-white bg-purple-600 hover:bg-purple-500 px-2 py-0.5 rounded-lg transition active:scale-95 shadow flex items-center gap-1">
+            <span><span class="ui-ic" data-ic="crown"></span></span><span>SVIP앱초대</span>
           </button>
         </div>
         <button type="button" onclick="closeViewerApprovalModal()" class="text-slate-400 hover:text-white p-1">
@@ -632,9 +661,9 @@
 
   <!-- Modal 1: Add/Edit Record Modal -->
   <div id="modal-record" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-      <!-- Modal Header -->
-      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <!-- Modal Header (고정) -->
+      <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span class="text-blue-500 shrink-0"><span class="ui-ic" data-ic="clock"></span></span>
           <span id="record-modal-title">새 운동 기록 등록</span>
@@ -644,13 +673,14 @@
         </button>
       </div>
 
-      <!-- Form Body -->
-      <form onsubmit="handleSaveRecord(event)" class="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+      <!-- Form Body: 위쪽 기본 입력(선수·종목·날짜·구분·회차·대회명)은 고정, 가운데만 스크롤, 아래 버튼은 고정 -->
+      <form onsubmit="handleSaveRecord(event)" class="flex-1 min-h-0 flex flex-col">
+        <div class="modal-fixed px-5 pt-5 pb-3 space-y-4 text-xs border-b border-slate-800/70">
         
         <!-- Player & Event Display Badge -->
         <div class="flex items-center gap-2">
           <span id="badge-modal-player" class="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30">선수</span>
-          <select id="form-record-event" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 font-bold border border-slate-700 focus:outline-none focus:border-blue-500 text-xs">
+          <select id="form-record-event" onchange="onRecordEventSelectChange(this.value)" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 font-bold border border-slate-700 focus:outline-none focus:border-blue-500 text-xs">
           </select>
         </div>
 
@@ -689,6 +719,9 @@
             </div>
           </div>
         </div>
+        </div>
+
+        <div class="modal-scroll px-5 pb-5 pt-4 space-y-4 text-xs">
 
         <!-- Round / Stage (Smart Switched) -->
         <div>
@@ -795,8 +828,10 @@
           <input type="text" id="input-note" placeholder="" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
         </div>
 
-        <!-- Modal Submit Actions -->
-        <div class="pt-2 flex gap-2">
+        </div>
+
+        <!-- Modal Submit Actions (고정) -->
+        <div class="modal-fixed px-5 py-4 border-t border-slate-800 bg-slate-900 flex gap-2">
           <button type="button" onclick="saveRecord(true)" class="flex-1 py-3 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center gap-1.5 transition active:scale-95">
             <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             <span>추가 후 계속 입력</span>
@@ -813,9 +848,9 @@
 
   <!-- Modal 2: Player Management Modal (User's Hand-drawn Layout) -->
   <div id="modal-players" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-      <!-- Modal Header -->
-      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <!-- Modal Header (고정) -->
+      <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="text-blue-400 text-lg"><span class="ui-ic" data-ic="users"></span></span>
           <h3 class="text-base font-bold text-white">선수 관리 명단</h3>
@@ -825,8 +860,10 @@
         </button>
       </div>
 
-      <!-- Filters Section -->
-      <div class="p-4 bg-slate-950/60 border-b border-slate-800/80 space-y-2.5">
+      <!-- 가운데: 검색창·필터·선수 명단·삭제된 선수 아코디언까지 모두 스크롤 -->
+      <div class="modal-scroll p-4 space-y-3">
+        <!-- Filters Section -->
+        <div class="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2.5">
         <!-- Search bar -->
         <div class="relative">
           <input type="text" id="player-filter-search" oninput="renderPlayerCards()" placeholder="선수 이름 또는 종목 검색..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
@@ -852,12 +889,25 @@
       </div>
 
       <!-- Player Cards List -->
-      <div class="flex-1 overflow-y-auto p-4 space-y-3" id="player-cards-container">
+      <div class="space-y-3" id="player-cards-container">
         <!-- Rendered dynamically -->
       </div>
 
-      <!-- Add New Player Button -->
-      <div class="p-4 border-t border-slate-800 bg-slate-900 flex gap-2">
+      <!-- 삭제된 선수 복구 아코디언 (복구 가능한 선수가 있을 때만 표시 · 새 선수 등록하기 버튼 바로 위) -->
+      <div id="deleted-players-accordion" class="hidden rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden">
+        <button type="button" id="deleted-players-accordion-head" onclick="toggleDeletedPlayersAccordion()" class="w-full flex items-center justify-between gap-2 px-3.5 py-3 text-left transition active:scale-[0.99]">
+          <span class="flex items-center gap-2 min-w-0">
+            <span class="text-slate-400 shrink-0"><span class="ui-ic" data-ic="hourglass"></span></span>
+            <span id="deleted-players-accordion-title" class="text-xs font-bold text-slate-200 truncate">삭제된 선수(0명)</span>
+          </span>
+          <span id="deleted-players-accordion-chevron" class="shrink-0 text-slate-400 text-xs">▸</span>
+        </button>
+        <div id="deleted-players-list" class="hidden px-3.5 pb-3 space-y-2"></div>
+      </div>
+      </div>
+
+      <!-- Add New Player Button (고정) -->
+      <div class="modal-fixed p-4 border-t border-slate-800 bg-slate-900 flex gap-2">
         <button type="button" onclick="openAddEditPlayerModal()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 transition">
           <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           새 선수 등록하기
@@ -868,15 +918,16 @@
 
   <!-- Modal 3: Add/Edit Player Profile (With Events Add/Delete Management) -->
   <div id="modal-player-form" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-2xl p-5">
-      <div class="flex items-center justify-between mb-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <div class="modal-fixed flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-800">
         <h3 id="modal-player-form-title" class="text-base font-bold text-white">선수 프로필 등록</h3>
         <button type="button" onclick="closeAddEditPlayerModal()" class="text-slate-400 hover:text-white p-1">
           <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <form onsubmit="handleSavePlayer(event)" class="space-y-3.5 text-xs">
+      <form onsubmit="handleSavePlayer(event)" class="flex-1 min-h-0 flex flex-col text-xs">
+        <div class="modal-scroll px-5 py-4 space-y-3.5">
         <input type="hidden" id="form-player-id">
         <div>
           <label class="block font-semibold text-slate-400 mb-1">선수 이름 *</label>
@@ -965,7 +1016,9 @@
           </div>
         </div>
 
-        <div class="pt-2 flex gap-2">
+        </div>
+
+        <div class="modal-fixed px-5 py-4 border-t border-slate-800 bg-slate-900 flex gap-2">
           <button type="button" onclick="closeAddEditPlayerModal()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700">취소</button>
           <button type="submit" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 shadow-lg shadow-blue-500/20">저장 완료</button>
         </div>
@@ -975,8 +1028,8 @@
 
   <!-- Modal 4: Settings & Backup Modal -->
   <div id="modal-settings" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm max-h-[90vh] overflow-y-auto shadow-2xl p-5 space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <div class="modal-fixed flex items-center justify-between border-b border-slate-800 px-5 pt-4 pb-3">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span><span class="ui-ic" data-ic="settings"></span></span>
           <span>설정 및 데이터 백업</span>
@@ -986,17 +1039,14 @@
         </button>
       </div>
 
-      <div class="space-y-2 text-xs">
+      <div class="modal-scroll px-5 py-4 space-y-2 text-xs">
         <!-- Mode / Authentication Card -->
         <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
           <div class="flex items-center justify-between text-xs">
             <span class="text-slate-400">현재 모드:</span>
             <span id="label-current-mode" class="role-badge shrink-0 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold text-[11px]"><span class="ui-ic" data-ic="crown"></span><span>최고 관리자</span></span>
           </div>
-          <!-- Viewer Only: Add Player Button (지혜 님 지침 완벽 반영!) -->
-          <button type="button" id="btn-viewer-add-player" onclick="openViewerAddPlayerModal()" class="w-full py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-bold text-xs border border-blue-500/30 transition active:scale-95 flex items-center justify-center gap-1.5 hidden">
-            <span><span class="ui-ic" data-ic="plus"></span> 열람 선수 추가 신청</span>
-          </button>
+          <!-- 뷰어의 [열람 선수 추가 신청]은 메인 화면 선수 선택 드롭다운 옆으로 옮겼다. -->
         </div>
 
         
@@ -1063,7 +1113,7 @@
 
       </div>
 
-      <div class="text-[10px] text-slate-500 text-center pt-2 border-t border-slate-800/80">
+      <div class="modal-fixed text-[10px] text-slate-500 text-center px-5 py-2.5 border-t border-slate-800/80">
         선수 성장노트 v2026.11.21.40
       </div>
     </div>
@@ -1071,8 +1121,8 @@
 
   <!-- Modal: Viewer Add Player Modal (뷰어 모드: 선수 조회 후 열람 신청) -->
   <div id="modal-viewer-add-player" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-5 space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl p-5">
+      <div class="modal-fixed flex items-center justify-between border-b border-slate-800 pb-3">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span><span class="ui-ic" data-ic="eye"></span></span>
           <span>열람할 선수 조회 및 신청</span>
@@ -1082,7 +1132,7 @@
         </button>
       </div>
 
-      <div class="space-y-3 text-xs">
+      <div class="modal-scroll space-y-3 text-xs py-3">
         <div class="space-y-1">
           <label class="block font-semibold text-slate-300">선수 이름 조회</label>
           <div class="flex gap-2">
@@ -1099,7 +1149,7 @@
           </div>
         </div>
 
-        <div class="pt-2 flex gap-2">
+        <div class="modal-fixed flex gap-2 pt-3">
           <button type="button" onclick="closeViewerAddPlayerModal()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700">취소</button>
           <button type="button" id="btn-submit-viewer-add" onclick="submitViewerAddPlayer()" disabled class="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-500 font-bold cursor-not-allowed transition">열람 신청하기</button>
         </div>
@@ -1109,7 +1159,7 @@
 
   <!-- Modal 5: Super Admin Center Modal (지혜 님 최고관리자 전용) -->
   <div id="modal-super-admin-center" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
+    <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md modal-panel overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2">
           <span class="text-xl"><span class="ui-ic" data-ic="crown"></span></span>
@@ -1188,8 +1238,8 @@
 
   <!-- Modal 6: Admin Profile & Management Center (일반 관리자용) -->
   <div id="modal-admin-profile" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-indigo-500/40 rounded-3xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div class="bg-slate-900 border border-indigo-500/40 rounded-3xl w-full max-w-sm modal-panel overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
+      <div class="modal-fixed flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2">
           <span class="text-xl"><span class="ui-ic" data-ic="shield"></span></span>
           <div>
@@ -1202,7 +1252,7 @@
         </button>
       </div>
 
-      <div class="space-y-3 text-xs">
+      <div class="modal-scroll space-y-3 text-xs pr-0.5">
         <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
           <div class="text-[11px] font-bold text-indigo-300">내 관리 선수</div>
           <div id="admin-my-players-list" class="space-y-1.5">
@@ -2087,6 +2137,26 @@
 
     // 7. Event Tabs Navigation (Dynamic from Player's Events)
     function getPlayerEvents(playerId) {
+      // 선수 프로필에서 해제한 종목(disabledEvents)은 상단 탭·입력 목록에서 빠진다.
+      // 경기 기록·PB 계산용 원본 데이터는 그대로 남기므로 기록이 사라지지는 않는다.
+      return getAllPlayerEvents(playerId).filter(ev => !isEventDisabledInPlayer(playerId, ev));
+    }
+
+    function getPlayerDisabledEventNames(playerId) {
+      const p = playersData.find(x => x.id === playerId);
+      const list = (p && Array.isArray(p.disabledEvents)) ? p.disabledEvents : [];
+      return list.map(n => String(n || '').trim()).filter(Boolean);
+    }
+
+    function isEventDisabledInPlayer(playerId, eventName) {
+      const name = String(eventName || '').trim();
+      if (!name) return false;
+      return getPlayerDisabledEventNames(playerId).some(d => d === name || isEventMatch(name, d));
+    }
+
+    // 기록까지 포함한 전체 종목 목록(프로필 해제 여부와 무관). 탭 구성이나 PB 접근처럼
+    // 원본 기록을 따라가는 곳에서만 쓴다.
+    function getAllPlayerEvents(playerId) {
       if (!playerId) return [];
       const p = playersData.find(x => x.id === playerId);
       let baseEvents;
@@ -2315,6 +2385,72 @@
       renderCurrentView();
     }
 
+    // 그래프 포인트·PB 카드에서 해당 경기 기록 카드로 이동한다.
+    //  - 검색·연도 필터에 가려져 있으면 필터를 풀어 이동한다.
+    //  - 접혀 있는 카드는 펼치고, 잠깐 강조해 위치를 알 수 있게 한다.
+    function goToRecordCard(recordId, eventName) {
+      const record = (appData[currentPlayer] || []).find(r => r && String(r.id) === String(recordId));
+      if (!record) {
+        showSyncNotice('원본 기록을 열람할 수 없습니다.', 'warn');
+        return;
+      }
+      const targetEvent = String(eventName || record.event || '').trim();
+      const hiddenByFilter = !doesRecordMatchFilters(record);
+      if (hiddenByFilter) {
+        filterKind = 'ALL';
+        filterYear = 'ALL';
+        filterPeriodYears = 'ALL';
+        searchMeet = '';
+      }
+      const prevEvent = currentEvent;
+      const prevMode = mainViewMode;
+      if (targetEvent) currentEvent = targetEvent;
+      mainViewMode = 'PB';
+      // 같은 종목 화면을 그대로 보고 있으면 다시 그리지 않고 카드만 찾아가 강조한다.
+      if (hiddenByFilter || prevEvent !== currentEvent || prevMode !== 'PB') {
+        renderEventTabs();
+        renderCurrentView();
+      }
+      requestAnimationFrame(function () { revealRecordCard(recordId); });
+    }
+
+    function revealRecordCard(recordId) {
+      const rows = Array.prototype.slice.call(document.querySelectorAll('#meet-groups-container [data-record-id]'));
+      const row = rows.find(el => el.getAttribute('data-record-id') === String(recordId));
+      if (!row) return false;
+      // 접혀 있는 카드가 있으면 자동으로 펼친다.
+      let node = row.parentElement;
+      while (node && node.id !== 'meet-groups-container') {
+        if (node.classList && node.classList.contains('is-collapsed')) node.classList.remove('is-collapsed');
+        const body = node.querySelector ? node.querySelector(':scope > .meet-card-body') : null;
+        if (body && body.classList.contains('hidden')) body.classList.remove('hidden');
+        node = node.parentElement;
+      }
+      try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { row.scrollIntoView(); }
+      row.classList.remove('record-row-flash');
+      void row.offsetWidth;
+      row.classList.add('record-row-flash');
+      setTimeout(function () { row.classList.remove('record-row-flash'); }, 2600);
+      return true;
+    }
+
+    // PB 카드 → 그 최고기록을 세운 경기 기록으로 이동한다.
+    function openPbSourceRecord(eventName) {
+      if (!currentPlayer) return;
+      const ev = String(eventName || '').trim();
+      if (!ev) return;
+      const records = appData[currentPlayer] || [];
+      const recs = records.filter(r => isOfficialRecord(r) && isEventMatch(r.event, ev) && parseFloat(r.seconds) > 0);
+      if (recs.length === 0) {
+        // 보관기간 만료·삭제로 원본 기록이 없고 확정 PB만 남은 경우.
+        showSyncNotice('원본 기록을 열람할 수 없습니다.', 'warn');
+        return;
+      }
+      let best = recs[0];
+      recs.forEach(r => { if (parseFloat(r.seconds) < parseFloat(best.seconds)) best = r; });
+      goToRecordCard(best.id, ev);
+    }
+
     // 8. Render Current View: PB Overview or Event Detail
     function renderCurrentView() {
       const container = document.getElementById('view-container');
@@ -2448,12 +2584,13 @@
     // 종목·통계 아이콘은 앱(SVG)과 저장 이미지(Canvas)가 같은 도형 정의를 쓴다.
     const BODY_ICONS = {
       running: [
-        { t: 'c', cx: 15.4, cy: 4.9, r: 2.0, fill: true },
-        { t: 'p', pts: [[14.2, 8.7], [11.8, 13.0]] },
-        { t: 'p', pts: [[14.7, 10.0], [18.2, 8.4]] },
-        { t: 'p', pts: [[13.9, 10.4], [10.2, 9.2]] },
-        { t: 'p', pts: [[11.8, 13.0], [8.2, 17.4]] },
-        { t: 'p', pts: [[11.8, 13.0], [15.4, 17.0]] }
+        // 상체를 앞으로 기울이고 한 발은 앞으로 내딛고 다른 발은 뒤로 차는 달리기 동작
+        { t: 'c', cx: 16.6, cy: 4.0, r: 1.95, fill: true },
+        { t: 'p', pts: [[15.8, 6.3], [12.3, 11.7]] },
+        { t: 'p', pts: [[15.2, 8.2], [18.6, 10.2], [20.2, 8.3]] },
+        { t: 'p', pts: [[14.8, 7.9], [10.8, 6.1], [8.3, 7.6]] },
+        { t: 'p', pts: [[12.3, 11.7], [16.5, 13.7], [14.6, 18.9]] },
+        { t: 'p', pts: [[12.3, 11.7], [8.7, 14.7], [4.9, 13.1]] }
       ],
       cycling: [
         { t: 'c', cx: 6.6, cy: 16.4, r: 3.5 },
@@ -2712,8 +2849,7 @@
         .body-stat-unit { font-size: ${S.statUnitSize}px; font-weight: 700; color: ${S.statLabelColor}; margin-left: 1px; }
         .body-stat-sub { margin-top: ${S.statSubMt}px; height: ${S.statSubH}px; line-height: ${S.statSubH}px; font-size: ${S.statSubSize}px; color: ${S.statSubColor}; white-space: nowrap; }
         .body-footnote { font-size: ${S.footnoteSize}px; color: ${S.footnoteColor}; line-height: 1.5; padding: 0 2px; margin-top: ${S.footnoteMt}px; }
-        .body-footnote-line { display: flex; align-items: flex-start; gap: ${S.noticeIconGap}px; font-weight: 500; }
-        .body-footnote-line .body-notice-ic { margin-top: 1px; }
+        .body-footnote-line { display: block; font-weight: 500; }
         .body-empty { padding: ${S.emptyPadY}px 16px; text-align: center; font-size: ${S.emptyFontSize}px; color: #94a3b8; line-height: 1.6; }
       `;
       const style = document.createElement('style');
@@ -2887,7 +3023,12 @@
       const heroName = player ? String(player.name || '') : '';
       const personal = [];
       const team = [];
-      getPlayerEvents(playerId).forEach(ev => {
+      // 프로필에서 해제한 종목도 기록이 남아 있으면 PB 카드는 계속 열어 볼 수 있게 둔다(상단 탭에는 올리지 않는다).
+      const cardEvents = getPlayerEvents(playerId).slice();
+      getPlayerDisabledEventNames(playerId).forEach(ev => {
+        if (!cardEvents.some(x => isEventMatch(x, ev) || isEventMatch(ev, x))) cardEvents.push(ev);
+      });
+      cardEvents.forEach(ev => {
         // 표시 선택을 해제한 종목은 카드를 만들지 않는다(원본 기록·PB 계산은 그대로).
         if (!isEventVisible(playerId, ev)) return;
         // 공식기록만 PB 후보. 비공식만 있는 종목은 카드를 만들지 않는다.
@@ -2937,7 +3078,7 @@
         : '';
       const badges = `${card.renewal ? '<span class="pb-badge badge-renewal">PB갱신</span>' : ''}<span class="pb-badge badge-date">${bodyEsc(card.date || '-')}</span>`;
       return `
-        <div class="body-card pb-card" role="button" tabindex="0" onclick="selectEventTab('${bodyEsc(card.event).replace(/'/g, "\\'")}')">
+        <div class="body-card pb-card" role="button" tabindex="0" data-event="${bodyEsc(card.event)}" onclick="openPbSourceRecord(this.getAttribute('data-event'))" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPbSourceRecord(this.getAttribute('data-event'));}">
           <div class="pb-head">
             <span class="pb-title">${bodyEsc(card.event)}</span>
             <span class="pb-badges">${badges}</span>
@@ -3266,6 +3407,19 @@
       if (anBtn) anBtn.className = mainViewMode === 'ANNUAL' ? activeCls : idleCls;
       // 전환·저장·공유는 ' 최고기록 요약'을 보는 동안에만 표시하고, 개별 종목 상세에서는 숨긴다.
       if (bar) bar.classList.toggle('hidden', currentEvent !== 'ALL_PB');
+      syncAddRecordButtonVisibility();
+    }
+
+    // [기록 추가]는 개별 종목 상세에서만 쓴다. 최고기록 요약(PB 기록·연간 종합노트)에서는
+    // 버튼을 숨기고 그 버튼을 위해 비워 두었던 하단 여백도 함께 걷어낸다.
+    function syncAddRecordButtonVisibility() {
+      const btn = document.getElementById('btn-add-record-fixed');
+      const isSummary = currentEvent === 'ALL_PB';
+      let manageable = false;
+      try { manageable = canManageRecords(); } catch (e) { manageable = false; }
+      if (btn) btn.classList.toggle('hidden', isSummary || !manageable || bulkDeleteMode);
+      document.body.classList.toggle('pb-24', !isSummary);
+      document.body.classList.toggle('pb-6', isSummary);
     }
 
     // ============================================================
@@ -3397,7 +3551,7 @@
           <div class="body-stats">${statsHtml}</div>
           ${emptyHtml}
           ${sectionsHtml}
-          <div class="body-footnote">${model.footnoteLines.map(l => `<div class="body-footnote-line"><span class="body-notice-ic">${uiIconSvg('alertCircle', S.noticeIcon)}</span><span>${bodyEsc(l)}</span></div>`).join('')}</div>
+          <div class="body-footnote">${model.footnoteLines.map(l => `<div class="body-footnote-line">· ${bodyEsc(l)}</div>`).join('')}</div>
         </div>`;
     }
 
@@ -3415,8 +3569,7 @@
           <div class="flex items-center justify-between mb-3">
             <button type="button" ${year <= bounds.min ? 'disabled' : ''} onclick="stepAnnualYear(-1)" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-lg font-bold flex items-center justify-center transition active:scale-95 disabled:opacity-30 disabled:cursor-default">‹</button>
             <div class="text-center min-w-0">
-              <div class="text-base font-extrabold text-white leading-tight">${year}년</div>
-              <div class="text-[10px] text-slate-500 truncate">${bodyEsc(playerName)} · ${bodyEsc(sportText)}</div>
+              <div class="text-2xl font-extrabold text-white leading-tight">${year}년</div>
             </div>
             <button type="button" ${year >= bounds.max ? 'disabled' : ''} onclick="stepAnnualYear(1)" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-lg font-bold flex items-center justify-center transition active:scale-95 disabled:opacity-30 disabled:cursor-default">›</button>
           </div>
@@ -3867,12 +4020,10 @@
           y += S.sectionBlockMb - S.cardGap + (si === model.sections.length - 1 ? 0 : S.sectionGapExtra);
         });
         y += S.footnoteMt;
-        const footIcon = 10;
-        const footTextX = x + 2 + footIcon + S.noticeIconGap;
+        // 하단 안내는 원형 느낌표 없이 중점(·) 문구로만 표시한다(앱 화면과 저장 이미지 동일).
         (model.footnoteLines || []).forEach((line, i) => {
           const rowY = y + i * S.footnoteH;
-          capAlertCircle(ctx, x + 2, rowY + (S.footnoteH - footIcon) / 2, footIcon, S.footnoteColor);
-          capMid(ctx, line, footTextX, rowY + S.footnoteH / 2, capFont(500, S.footnoteSize), S.footnoteColor, { maxWidth: w - (footTextX - x) - 2 });
+          capMid(ctx, '· ' + line, x + 2, rowY + S.footnoteH / 2, capFont(500, S.footnoteSize), S.footnoteColor, { maxWidth: w - 4 });
         });
         y += S.footnoteH * (model.footnoteLines ? model.footnoteLines.length : 1);
         return y;
@@ -4222,7 +4373,6 @@
     function renderChart() {
       const canvas = document.getElementById('growthChart');
       if (!canvas) return;
-
       const records = (appData[currentPlayer] || []).filter(r => isEventMatch(r.event, currentEvent) && parseFloat(r.seconds) > 0);
       
       let filtered = records.filter(doesRecordMatchFilters);
@@ -4256,9 +4406,11 @@
             tension: 0.2,
             pointRadius: 4.5,
             pointHoverRadius: 7,
+            // 포인트는 테두리 없이 한 색으로 꽉 찬 원(일반 기록 파란색 · PB 노란색).
             pointBackgroundColor: dataPoints.map(v => v === minVal ? '#fbbf24' : '#3b82f6'),
-            pointBorderColor: dataPoints.map(v => v === minVal ? '#f59e0b' : '#1d4ed8'),
-            pointBorderWidth: 2
+            pointBorderColor: 'transparent',
+            pointBorderWidth: 0,
+            pointHitRadius: 12
           }]
         },
         plugins: [ChartDataLabels],
@@ -4266,6 +4418,13 @@
           responsive: true,
           maintainAspectRatio: false,
           onResize: function () { syncChartHitTestScale(); },
+          // 포인트를 누르면 그 기록이 있는 카드로 이동한다(PC 클릭·모바일 터치 공통).
+          onClick: function (evt, elements) {
+            if (!elements || elements.length === 0) return;
+            const hit = filtered[elements[0].index];
+            if (!hit) return;
+            goToRecordCard(hit.id, currentEvent);
+          },
           layout: { padding: { top: 25, right: 10, left: 5, bottom: 5 } },
           plugins: {
             legend: { display: false },
@@ -4331,8 +4490,7 @@
       if (!canManageRecords()) return;
       bulkDeleteMode = true;
       bulkDeleteSelected = new Set();
-      const addBtn = document.getElementById('btn-add-record-fixed');
-      if (addBtn) addBtn.classList.add('hidden');
+      syncAddRecordButtonVisibility();
       const bar = document.getElementById('bulk-delete-bar');
       if (bar) bar.classList.remove('hidden');
       renderMeetGroupedList();
@@ -4342,8 +4500,7 @@
     function exitBulkDeleteMode() {
       bulkDeleteMode = false;
       bulkDeleteSelected = new Set();
-      const addBtn = document.getElementById('btn-add-record-fixed');
-      if (addBtn) addBtn.classList.remove('hidden');
+      syncAddRecordButtonVisibility();
       const bar = document.getElementById('bulk-delete-bar');
       if (bar) bar.classList.add('hidden');
       renderMeetGroupedList();
@@ -4531,6 +4688,7 @@
         sortedRecords.forEach(r => {
           const row = document.createElement('div');
           row.className = 'px-4 py-3 hover:bg-slate-800/30 transition';
+          row.setAttribute('data-record-id', String(r.id || ''));
 
           let roundBadge = '';
           if (r.round) {
@@ -4690,16 +4848,21 @@
       document.getElementById('preview-formatted-time').textContent = '미리보기: 0.00초';
     }
 
-    function updateFormChips() {
+    function updateFormChips(desiredEvent) {
       const p = playersData.find(x => x.id === currentPlayer);
       document.getElementById('badge-modal-player').textContent = p ? p.name : '선수';
       const evSelect = document.getElementById('form-record-event');
       if (evSelect) {
+        const prev = String(desiredEvent || evSelect.value || '').trim();
         const evList = getPlayerEvents(currentPlayer);
+        // 해제된 종목의 기존 기록을 수정할 때는 그 종목도 목록에 넣어 준다(수정 저장 때 종목이 바뀌지 않게).
+        if (prev && evList.indexOf(prev) < 0) evList.push(prev);
         evSelect.innerHTML = evList.map(ev => `<option value="${ev}">${ev}</option>`).join('');
-        if (currentEvent && currentEvent !== 'ALL_PB' && evList.includes(currentEvent)) {
-          evSelect.value = currentEvent;
-        }
+        let wanted = '';
+        if (prev && evList.indexOf(prev) >= 0) wanted = prev;
+        else if (currentEvent && currentEvent !== 'ALL_PB' && evList.indexOf(currentEvent) >= 0) wanted = currentEvent;
+        else if (evList.length > 0) wanted = evList[0];
+        if (wanted) evSelect.value = wanted;
       }
       populateMeetNameOptions();
     }
@@ -4892,7 +5055,8 @@
     }
 
     function checkRelayVisibility() {
-      const isRelay = (currentEvent && (currentEvent.includes('mR') || currentEvent.includes('릴레이') || currentEvent.includes('단체')));
+      // 최초에 열었던 종목이 아니라 '지금 드롭다운에 선택된 종목'으로 개인·단체를 판단한다.
+      const isRelay = isTeamEventName(getRecordFormEventName());
       const container = document.getElementById('field-relay-container');
       if (container) {
         if (isRelay) {
@@ -4902,6 +5066,25 @@
           container.classList.add('hidden');
         }
       }
+    }
+
+    // 기록 등록·수정창에서 지금 고른 종목(드롭다운의 현재 값).
+    function getRecordFormEventName() {
+      const sel = document.getElementById('form-record-event');
+      const picked = sel ? String(sel.value || '').trim() : '';
+      if (picked) return picked;
+      return (currentEvent && currentEvent !== 'ALL_PB') ? String(currentEvent) : '';
+    }
+
+    // 종목을 바꾸면 그 자리에서 개인·단체 입력 양식을 다시 맞춘다(날짜·대회명 등 공통값은 건드리지 않는다).
+    function onRecordEventSelectChange(eventName) {
+      const next = String(eventName || '').trim();
+      if (next && next !== currentEvent) {
+        // 종목이 달라지면 기존 대회명 후보만 새 기록 목록 기준으로 다시 채운다.
+        populateMeetNameOptions();
+      }
+      checkRelayVisibility();
+      updateTimePreview();
     }
 
     document.addEventListener('focusin', (e) => {
@@ -5016,7 +5199,7 @@
       }
 
       updateTimePreview();
-      updateFormChips();
+      updateFormChips(record.event || '');
       checkRelayVisibility();
       document.getElementById('modal-record').classList.remove('hidden');
     }
@@ -5153,7 +5336,7 @@
         return;
       }
       const total = parseFloat((h * 3600 + m * 60 + s).toFixed(3));
-      el.textContent = `미리보기: ${formatTimeDisplay(total, currentEvent)}`;
+      el.textContent = `미리보기: ${formatTimeDisplay(total, getRecordFormEventName() || currentEvent)}`;
     }
 
     ['time-h', 'time-m', 'time-s'].forEach(id => {
@@ -5180,6 +5363,8 @@
 
       const selectedModalEvent = document.getElementById('form-record-event')?.value;
       const targetEvent = selectedModalEvent || (currentEvent === 'ALL_PB' ? (getPlayerEvents(currentPlayer)[0] || '100m') : currentEvent);
+      // 개인 종목으로 저장할 때는 단체전 주자·릴레이 값이 따라붙지 않게 여기서 막는다.
+      const targetIsTeam = isTeamEventName(targetEvent);
 
       const check = validateRecordInput({
         meetVal,
@@ -5204,7 +5389,7 @@
       const r2 = document.getElementById('relay-runner-2').value.trim();
       const r3 = document.getElementById('relay-runner-3').value.trim();
       const r4 = document.getElementById('relay-runner-4').value.trim();
-      const runnersList = [r1, r2, r3, r4].filter(Boolean);
+      const runnersList = targetIsTeam ? [r1, r2, r3, r4].filter(Boolean) : [];
       const relayStr = runnersList.join('/');
 
       // Auto learn new teammate names into quick chips
@@ -5326,6 +5511,8 @@
     function renderPlayerCards() {
       const container = document.getElementById('player-cards-container');
       if (!container) return;
+      // 복구 가능한 선수 아코디언은 선수가 0명이 되어도 계속 접근할 수 있어야 하므로 먼저 그린다.
+      renderDeletedPlayersAccordion();
       const searchInput = document.getElementById('player-filter-search');
       const search = (searchInput && searchInput.value ? searchInput.value : '').trim().toLowerCase();
 
@@ -5761,6 +5948,23 @@
       if (modal) modal.classList.add('hidden');
     }
 
+    // 저장할 세부 종목 순서: 개인 종목 → 단체 종목, 같은 분류 안에서는 종목 목록 순서,
+    // 목록에 없는 직접 추가 종목은 그 분류의 맨 뒤에 둔다(재등록한 400m가 단체 종목 뒤로 밀리지 않게).
+    function sortPlayerEventsForSave(events, sport) {
+      const catalog = getSportCatalog(sport || '육상');
+      const orderOf = (name, isTeam) => {
+        const found = catalog.findIndex(c => c.name === name && !!c.isTeam === !!isTeam);
+        return found < 0 ? 999 : found;
+      };
+      events.sort((a, b) => {
+        const aTeam = isFormEventTeam(a) ? 1 : 0;
+        const bTeam = isFormEventTeam(b) ? 1 : 0;
+        if (aTeam !== bTeam) return aTeam - bTeam;
+        return orderOf(getFormEventName(a), aTeam === 1) - orderOf(getFormEventName(b), bTeam === 1);
+      });
+      return events;
+    }
+
     function handleSavePlayer(e) {
       e.preventDefault();
       const id = document.getElementById('form-player-id').value;
@@ -5774,7 +5978,8 @@
 
       if (!name) return;
 
-      // 세부 종목은 이름 중복 없이 { name, isTeam } 형태로 정리해 저장한다.
+      // 세부 종목은 이름 중복 없이 { name, isTeam } 형태로 정리하고, 순서는 개인 → 단체,
+      // 같은 분류 안에서는 종목 목록 순서로 맞춘다(해제 후 다시 등록한 종목이 단체 뒤로 밀리지 않게).
       const cleanEvents = [];
       formCurrentEvents.forEach(ev => {
         const evName = getFormEventName(ev);
@@ -5782,6 +5987,7 @@
         if (cleanEvents.some(x => getFormEventName(x) === evName)) return;
         cleanEvents.push({ name: evName, isTeam: isFormEventTeam(ev) });
       });
+      sortPlayerEventsForSave(cleanEvents, sport);
 
       // 사진 기능은 사용하지 않는다. 기존 저장 데이터의 photo 값은 건드리지 않는다.
       const prevAppData = JSON.parse(JSON.stringify(appData));
@@ -5844,8 +6050,8 @@
           body.innerHTML = `
             <div><strong class="text-white">${bodyEsc(name)}</strong> 선수를 삭제하시겠습니까?</div>
             <div class="mt-1">함께 처리되는 경기 기록: <strong class="text-rose-300">${recordCount}건</strong></div>
-            <div class="mt-1 text-[11px] text-slate-400">선수 프로필과 경기 기록이 함께 삭제됩니다. 취소하면 아무 데이터도 바뀌지 않습니다.</div>
-            <div class="mt-1 text-[11px] text-amber-300">선수 삭제 유예(72시간) 정책은 그대로 적용됩니다.</div>`;
+            <div class="mt-1 text-[11px] text-slate-400">선수 프로필과 경기 기록이 함께 삭제됩니다.</div>
+            <div class="mt-1 text-[11px] text-amber-300">삭제 후 72시간 이내에는 복구할 수 있으며, 72시간이 지나면 영구 삭제되어 복구할 수 없습니다.</div>`;
         }
         pushModalHistory('modal-player-delete');
         document.getElementById('modal-player-delete')?.classList.remove('hidden');
@@ -5883,6 +6089,8 @@
       const prevAppData = JSON.parse(JSON.stringify(appData));
       const prevPlayersData = JSON.parse(JSON.stringify(playersData));
       const prevCurrentPlayer = currentPlayer;
+      // 지금 지우는 선수는 72시간 동안 보관해 두었다가 [복구]로 되살릴 수 있게 한다.
+      addDeletedPlayerToTrash(p, appData[id] || []);
       playersData = playersData.filter(x => x.id !== id);
       delete appData[id];
 
@@ -5899,6 +6107,230 @@
       renderPlayerCards();
       renderEventTabs();
       renderCurrentView();
+    }
+
+    // ------------------------------------------------------------
+    // 선수 삭제 유예(72시간) · 복구
+    //  - 삭제할 때 선수 프로필·경기 기록·뷰어 열람 권한을 통째로 보관하고
+    //    남은 시간 안에 [복구]를 누르면 그대로 되살린다.
+    //  - 72시간이 지난 보관분은 앱을 열 때 정리한다(이후에는 복구 불가).
+    //  - 지금은 검수용 로컬(localStorage) 구현이다. 실제 서버(RLS·배치) 연동은 별도 작업이다.
+    // ------------------------------------------------------------
+    const PLAYER_TRASH_PREFIX = 'STAGING_DELETED_PLAYER_TRASH_v1_';
+    const PLAYER_RESTORE_MS = 72 * 60 * 60 * 1000;
+    let deletedPlayersAccordionOpen = false;
+
+    function getPlayerTrashOwnerKey() {
+      try {
+        const raw = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
+        const u = raw ? JSON.parse(raw) : null;
+        if (!u) return 'guest';
+        if (u.role === 'super_admin') return 'super';
+        return getStableAdminId(u.email, u.name);
+      } catch (e) { return 'guest'; }
+    }
+
+    function getPlayerTrashKey() {
+      return PLAYER_TRASH_PREFIX + getPlayerTrashOwnerKey();
+    }
+
+    function readPlayerTrash() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(getPlayerTrashKey()) || '[]');
+        return Array.isArray(parsed) ? parsed.filter(x => x && x.id && x.player) : [];
+      } catch (e) { return []; }
+    }
+
+    function writePlayerTrash(list) {
+      try { localStorage.setItem(getPlayerTrashKey(), JSON.stringify(Array.isArray(list) ? list : [])); } catch (e) {}
+    }
+
+    // 72시간이 지난 보관분을 정리한다. 정리된 선수는 서버 데이터에서도 완전히 빠진다(로컬 기준).
+    function purgeExpiredPlayerTrash() {
+      const now = Date.now();
+      const list = readPlayerTrash();
+      const alive = list.filter(item => {
+        const expires = Number(item.expiresAt || (Number(item.deletedAt) + PLAYER_RESTORE_MS));
+        return Number.isFinite(expires) && expires > now;
+      });
+      if (alive.length !== list.length) writePlayerTrash(alive);
+      return alive;
+    }
+
+    function getRestorablePlayers() {
+      return purgeExpiredPlayerTrash().sort((a, b) => Number(b.deletedAt || 0) - Number(a.deletedAt || 0));
+    }
+
+    function formatRestoreRemaining(expiresAt) {
+      const left = Math.max(0, Number(expiresAt || 0) - Date.now());
+      const hours = Math.floor(left / 3600000);
+      const minutes = Math.floor((left % 3600000) / 60000);
+      if (left <= 0) return '복구 가능 시간 만료';
+      return '복구 가능 시간 ' + hours + '시간 ' + minutes + '분 남음';
+    }
+
+    // 삭제되는 선수에 대한 뷰어 열람 권한을 그대로 보관해 둔다(복구 때 같이 되살린다).
+    function snapshotViewerGrantsForPlayer(playerId) {
+      const grants = [];
+      try {
+        const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{}') || {};
+        Object.keys(cloud).forEach(key => {
+          if (key.indexOf('_') === 0) return;
+          const item = cloud[key];
+          if (!item || typeof item !== 'object') return;
+          const allowedPlayers = Array.isArray(item.allowedPlayers) ? item.allowedPlayers : [];
+          const allowedSources = Array.isArray(item.allowedSources) ? item.allowedSources : [];
+          const touches = allowedPlayers.indexOf(playerId) >= 0
+            || item.targetPlayer === playerId
+            || allowedSources.some(s => s && s.playerId === playerId);
+          if (!touches) return;
+          grants.push({
+            key: key,
+            allowedPlayers: allowedPlayers.slice(),
+            allowedSources: JSON.parse(JSON.stringify(allowedSources))
+          });
+        });
+      } catch (e) {}
+      return grants;
+    }
+
+    function addDeletedPlayerToTrash(player, records) {
+      if (!player || !player.id) return;
+      const now = Date.now();
+      const list = readPlayerTrash().filter(x => x && x.id !== player.id);
+      list.push({
+        id: player.id,
+        player: JSON.parse(JSON.stringify(player)),
+        records: JSON.parse(JSON.stringify(Array.isArray(records) ? records : [])),
+        deletedAt: now,
+        expiresAt: now + PLAYER_RESTORE_MS,
+        viewerGrants: snapshotViewerGrantsForPlayer(player.id)
+      });
+      writePlayerTrash(list);
+    }
+
+    function removeDeletedPlayerFromTrash(playerId) {
+      writePlayerTrash(readPlayerTrash().filter(x => x && x.id !== playerId));
+    }
+
+    // 복구하면 삭제 표시(무덤)도 같이 지워야 동기화 때 다시 지워지지 않는다.
+    function clearTombstonesForRestoredPlayer(ownerKey, playerId, records) {
+      try {
+        const tomb = getAdminTombstones(ownerKey);
+        if (tomb.deletedPlayers && tomb.deletedPlayers[playerId]) delete tomb.deletedPlayers[playerId];
+        (Array.isArray(records) ? records : []).forEach(r => {
+          if (r && r.id && tomb.deletedRecords && tomb.deletedRecords[r.id]) delete tomb.deletedRecords[r.id];
+        });
+        saveAdminTombstones(ownerKey, tomb);
+      } catch (e) {}
+    }
+
+    function restoreViewerGrants(grants, playerId) {
+      if (!Array.isArray(grants) || grants.length === 0) return;
+      try {
+        const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{}') || {};
+        let touched = false;
+        grants.forEach(g => {
+          const item = cloud[g.key];
+          if (!item || typeof item !== 'object') return;
+          const allowedPlayers = Array.isArray(item.allowedPlayers) ? item.allowedPlayers.slice() : [];
+          if (allowedPlayers.indexOf(playerId) < 0) allowedPlayers.push(playerId);
+          item.allowedPlayers = allowedPlayers;
+          const sources = Array.isArray(item.allowedSources) ? item.allowedSources.slice() : [];
+          (g.allowedSources || []).forEach(src => {
+            if (src && !sources.some(x => x && x.playerId === src.playerId && x.ownerAdminId === src.ownerAdminId)) sources.push(src);
+          });
+          item.allowedSources = sources;
+          if (item.status !== 'approved' && (allowedPlayers.length > 0 || sources.length > 0)) item.status = 'approved';
+          if (Array.isArray(item.allowedPlayers) && item.allowedPlayers.length > 0) item.approved = true;
+          touched = true;
+        });
+        if (touched) saveStagingCloud(cloud);
+      } catch (e) {}
+    }
+
+    function toggleDeletedPlayersAccordion() {
+      deletedPlayersAccordionOpen = !deletedPlayersAccordionOpen;
+      const listEl = document.getElementById('deleted-players-list');
+      const chev = document.getElementById('deleted-players-accordion-chevron');
+      if (listEl) listEl.classList.toggle('hidden', !deletedPlayersAccordionOpen);
+      if (chev) chev.textContent = deletedPlayersAccordionOpen ? '▾' : '▸';
+    }
+
+    function renderDeletedPlayersAccordion() {
+      const wrap = document.getElementById('deleted-players-accordion');
+      const listEl = document.getElementById('deleted-players-list');
+      const titleEl = document.getElementById('deleted-players-accordion-title');
+      const chev = document.getElementById('deleted-players-accordion-chevron');
+      if (!wrap || !listEl) return;
+      const items = getRestorablePlayers();
+      if (titleEl) titleEl.textContent = '삭제된 선수(' + items.length + '명)';
+      if (items.length === 0) {
+        wrap.classList.add('hidden');
+        listEl.innerHTML = '';
+        deletedPlayersAccordionOpen = false;
+        if (chev) chev.textContent = '▸';
+        return;
+      }
+      wrap.classList.remove('hidden');
+      listEl.classList.toggle('hidden', !deletedPlayersAccordionOpen);
+      if (chev) chev.textContent = deletedPlayersAccordionOpen ? '▾' : '▸';
+      listEl.innerHTML = items.map(item => {
+        const recordCount = Array.isArray(item.records) ? item.records.length : 0;
+        const name = item.player && item.player.name ? item.player.name : '선수';
+        return `
+          <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold text-slate-200 truncate">${bodyEsc(name)}</span>
+              <button type="button" onclick="restoreDeletedPlayer('${bodyEsc(item.id).replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold whitespace-nowrap active:scale-95 transition">복구</button>
+            </div>
+            <div class="text-[10px] text-slate-400">경기 기록 ${recordCount}건</div>
+            <div class="text-[10px] text-amber-300">${bodyEsc(formatRestoreRemaining(item.expiresAt))}</div>
+          </div>`;
+      }).join('');
+    }
+
+    async function restoreDeletedPlayer(playerId) {
+      const entry = readPlayerTrash().find(x => x && x.id === playerId);
+      if (!entry) { alert('복구할 수 있는 선수가 아닙니다.'); renderDeletedPlayersAccordion(); return; }
+      if (Number(entry.expiresAt || 0) <= Date.now()) {
+        purgeExpiredPlayerTrash();
+        renderDeletedPlayersAccordion();
+        alert('복구 가능 시간(72시간)이 지나 영구 삭제된 선수입니다.');
+        return;
+      }
+      if (playersData.some(p => p && p.id === playerId)) {
+        removeDeletedPlayerFromTrash(playerId);
+        renderDeletedPlayersAccordion();
+        renderPlayerCards();
+        alert('이미 명단에 있는 선수입니다.');
+        return;
+      }
+
+      const prevAppData = JSON.parse(JSON.stringify(appData));
+      const prevPlayersData = JSON.parse(JSON.stringify(playersData));
+      const prevCurrentPlayer = currentPlayer;
+
+      playersData.push(JSON.parse(JSON.stringify(entry.player)));
+      appData[playerId] = JSON.parse(JSON.stringify(entry.records || []));
+      if (!currentPlayer) currentPlayer = playerId;
+
+      if (!saveChangeOrRevert(prevAppData, prevPlayersData)) {
+        currentPlayer = prevCurrentPlayer;
+        renderPlayerCards();
+        return;
+      }
+
+      clearTombstonesForRestoredPlayer(getPlayerTrashOwnerKey(), playerId, entry.records || []);
+      restoreViewerGrants(entry.viewerGrants || [], playerId);
+      removeDeletedPlayerFromTrash(playerId);
+
+      deletedPlayersAccordionOpen = false;
+      initPlayerSelectDropdown();
+      renderEventTabs();
+      renderCurrentView();
+      renderPlayerCards();
+      alert((entry.player && entry.player.name ? entry.player.name : '선수') + ' 선수와 경기 기록 ' + ((entry.records || []).length) + '건을 복구했습니다.');
     }
 
     // 11. Teammate Multi-Select & Batch Delete
@@ -6047,6 +6479,26 @@
       document.documentElement.style.zoom = String(scale);
       updateUiScaleUI(scale);
       syncChartHitTestScale();
+      syncAppViewportHeight();
+    }
+
+    // 팝업 최대 높이 기준: 지금 보이는 화면 높이(모바일 키보드·주소창 포함) ÷ 화면 배율.
+    // 배율 130%에서도 팝업 아래 버튼이 화면 밖으로 나가지 않게 한다.
+    function syncAppViewportHeight() {
+      try {
+        const vv = window.visualViewport;
+        const visibleH = (vv && vv.height ? vv.height : window.innerHeight) || 0;
+        const zoom = parseFloat(document.documentElement.style.zoom || '1') || 1;
+        const px = Math.max(220, Math.round(visibleH / zoom));
+        document.documentElement.style.setProperty('--app-vh', px + 'px');
+      } catch (e) {}
+    }
+    syncAppViewportHeight();
+    window.addEventListener('resize', syncAppViewportHeight);
+    window.addEventListener('orientationchange', syncAppViewportHeight);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncAppViewportHeight);
+      window.visualViewport.addEventListener('scroll', syncAppViewportHeight);
     }
 
     // CSS zoom 상태에서 Chart.js는 마우스 좌표를 배율만큼 크게 읽어 툴팁·클릭이 어긋난다.
@@ -6093,7 +6545,7 @@
       const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
       const authUser = authUserStr ? JSON.parse(authUserStr) : null;
       const modeLabel = document.getElementById('label-current-mode');
-      const btnAddPlayer = document.getElementById('btn-viewer-add-player');
+      const btnAddPlayerTop = document.getElementById('btn-viewer-add-player-top');
       const backupSec = document.getElementById('section-admin-backup');
 
       const role = authUser?.role || 'viewer';
@@ -6111,9 +6563,9 @@
         }
       }
 
-      if (btnAddPlayer) {
-        if (role === 'viewer') btnAddPlayer.classList.remove('hidden');
-        else btnAddPlayer.classList.add('hidden');
+      if (btnAddPlayerTop) {
+        if (role === 'viewer') btnAddPlayerTop.classList.remove('hidden');
+        else btnAddPlayerTop.classList.add('hidden');
       }
 
       if (backupSec) {
@@ -7604,6 +8056,7 @@
 
       const btnAddRecord = document.getElementById('btn-add-record-fixed');
       const btnManagePlayers = document.getElementById('btn-manage-players-top');
+      const btnViewerAddPlayerTop = document.getElementById('btn-viewer-add-player-top');
 
       if (currentRole === 'super_admin') {
         if (btnSuperAdmin) btnSuperAdmin.classList.remove('hidden'); //  왕관 아이콘 지혜 님만 노출!
@@ -7612,6 +8065,7 @@
         if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
         if (btnAddRecord) btnAddRecord.classList.remove('hidden');
         if (btnManagePlayers) btnManagePlayers.classList.remove('hidden');
+        if (btnViewerAddPlayerTop) btnViewerAddPlayerTop.classList.add('hidden');
         if (typeof startAdminPendingPoller === 'function') startAdminPendingPoller();
       } else if (currentRole === 'admin') {
         if (btnSuperAdmin) btnSuperAdmin.classList.add('hidden'); // 왕관 완전 숨김!
@@ -7620,6 +8074,7 @@
         if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
         if (btnAddRecord) btnAddRecord.classList.remove('hidden');
         if (btnManagePlayers) btnManagePlayers.classList.remove('hidden');
+        if (btnViewerAddPlayerTop) btnViewerAddPlayerTop.classList.add('hidden');
         if (typeof startAdminPendingPoller === 'function') startAdminPendingPoller();
       } else {
         // Viewer: 종(알림) + 톱니바퀴만 노출!
@@ -7629,8 +8084,10 @@
         if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
         if (btnAddRecord) btnAddRecord.classList.add('hidden');
         if (btnManagePlayers) btnManagePlayers.classList.add('hidden');
+        if (btnViewerAddPlayerTop) btnViewerAddPlayerTop.classList.remove('hidden');
         if (typeof stopAdminPendingPoller === 'function') stopAdminPendingPoller();
       }
+      syncAddRecordButtonVisibility();
       if (typeof startVersionCheckPoller === 'function') startVersionCheckPoller();
     }
 
@@ -7960,7 +8417,11 @@
       const inviteUrl = `${window.location.origin}${window.location.pathname}`;
       const shareTitle = '선수 성장노트 — 선수 기록 열람 초대';
       const shareText = `[선수 성장노트]\n선수 경기 기록 열람에 초대합니다!\n아래 링크로 접속해 열람을 신청해 주세요.\n${inviteUrl}`;
+      shareInviteUrl(inviteUrl, shareTitle, shareText);
+    }
 
+    // 초대 링크는 기존 공유 방식(모바일 공유창 → 안 되면 클립보드 복사)을 그대로 쓴다.
+    function shareInviteUrl(inviteUrl, shareTitle, shareText) {
       if (navigator.share) {
         navigator.share({
           title: shareTitle,
@@ -7972,6 +8433,90 @@
       } else {
         copyInviteUrlFallback(inviteUrl);
       }
+    }
+
+    // ------------------------------------------------------------
+    // SVIP 앱초대 (최고관리자 전용)
+    //  - 누를 때마다 일회용 코드를 새로 만들고, 그 코드가 담긴 링크를 기존 공유 방식으로 전달한다.
+    //  - 링크(?svip=코드)로 관리자 회원가입을 마치면 그 계정이 SVIP로 지정된다.
+    //  - 성공적으로 쓰인 코드는 다시 쓸 수 없다. 같은 이메일로 다시 가입해도 SVIP는 자동 복원되지 않는다.
+    //  - 지금은 검수용(이 브라우저 저장) 구현이고, 서버 검증·중복 사용 방지는 서버 연동 단계 몫이다.
+    // ------------------------------------------------------------
+    const SVIP_INVITES_KEY = 'STAGING_SVIP_INVITES_v1';
+    const SVIP_PRESET_KEY = 'STAGING_ATHLETE_PRESET_SVIP_CODE';
+
+    function readSvipInvites() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(SVIP_INVITES_KEY) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) { return []; }
+    }
+
+    function writeSvipInvites(list) {
+      try { localStorage.setItem(SVIP_INVITES_KEY, JSON.stringify(Array.isArray(list) ? list : [])); } catch (e) {}
+    }
+
+    function createSvipInviteCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let body = '';
+      const buf = new Uint8Array(10);
+      try {
+        (window.crypto || window.msCrypto).getRandomValues(buf);
+        for (let i = 0; i < buf.length; i++) body += chars.charAt(buf[i] % chars.length);
+      } catch (e) {
+        for (let i = 0; i < 10; i++) body += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return 'SVIP-' + body;
+    }
+
+    function getCurrentAuthUserSafe() {
+      try {
+        const raw = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+
+    function isSuperAdminSession() {
+      const u = getCurrentAuthUserSafe();
+      return !!u && u.role === 'super_admin';
+    }
+
+    function getPresetSvipCode() {
+      try { return String(localStorage.getItem(SVIP_PRESET_KEY) || '').trim(); } catch (e) { return ''; }
+    }
+
+    function clearPresetSvipCode() {
+      try { localStorage.removeItem(SVIP_PRESET_KEY); } catch (e) {}
+    }
+
+    // 코드 확인 후 사용 처리까지 한 번에 한다(같은 코드 재사용 불가).
+    function consumeSvipInvite(code, email) {
+      const target = String(code || '').trim().toUpperCase();
+      if (!target) return { ok: false, reason: 'empty' };
+      const list = readSvipInvites();
+      const idx = list.findIndex(x => x && String(x.code || '').toUpperCase() === target);
+      if (idx < 0) return { ok: false, reason: 'unknown' };
+      if (list[idx].used) return { ok: false, reason: 'used' };
+      list[idx].used = true;
+      list[idx].usedAt = Date.now();
+      list[idx].usedByEmail = String(email || '');
+      writeSvipInvites(list);
+      return { ok: true };
+    }
+
+    function shareSvipInviteLink() {
+      if (!isSuperAdminSession()) {
+        alert('SVIP 앱초대는 최고관리자만 발급할 수 있습니다.');
+        return;
+      }
+      const me = getCurrentAuthUserSafe() || {};
+      const code = createSvipInviteCode();
+      const list = readSvipInvites();
+      list.push({ code: code, createdAt: Date.now(), createdBy: me.email || me.name || '', used: false, usedAt: 0, usedByEmail: '' });
+      writeSvipInvites(list);
+      const url = window.location.origin + window.location.pathname + '?svip=' + encodeURIComponent(code);
+      const text = `[선수 성장노트] SVIP 관리자 초대입니다.\n아래 링크로 접속해 관리자 회원가입을 마치면 SVIP로 지정됩니다.\n이 링크는 한 번만 사용할 수 있습니다.\n${url}`;
+      shareInviteUrl(url, '선수 성장노트 — SVIP 관리자 초대', text);
     }
 
     function copyInviteUrlFallback(url) {
@@ -7989,6 +8534,21 @@
     function checkInviteParamOnLoad() {
       try {
         const params = new URLSearchParams(window.location.search);
+        // SVIP 초대 링크(?svip=코드): 가입을 마칠 때 쓰일 때까지 이 기기에 보관한다.
+        const svipCode = params.get('svip');
+        if (svipCode) {
+          try { localStorage.setItem(SVIP_PRESET_KEY, String(svipCode).trim()); } catch (e) {}
+          // SVIP 초대는 관리자 가입 흐름이므로, 로그인 전이면 관리자 가입 탭을 미리 열어 둔다.
+          setTimeout(function () {
+            try {
+              const gate = document.getElementById('gate-login-screen');
+              const signupPane = document.getElementById('auth-view-signup');
+              if (gate && !gate.classList.contains('hidden') && signupPane && !signupPane.classList.contains('hidden')) {
+                switchSignupRole('admin');
+              }
+            } catch (e) {}
+          }, 350);
+        }
         let inviteCode = params.get('invite');
         if (inviteCode) {
           localStorage.setItem('STAGING_ATHLETE_PRESET_INVITE', inviteCode);
@@ -8584,6 +9144,8 @@
       pushModalHistory('modal-viewer-approvals');
       const modal = document.getElementById('modal-viewer-approvals');
       if (modal) modal.classList.remove('hidden');
+      const svipBtn = document.getElementById('btn-notif-svip-invite');
+      if (svipBtn) svipBtn.classList.toggle('hidden', !isSuperAdminSession());
       switchNotifTab('general');
       loadRealtimeApprovals();
       updateNoticeDot();
@@ -8689,6 +9251,7 @@
       renderCurrentView();
       initGoogleOneTap();
       checkInviteParamOnLoad();
+      purgeExpiredPlayerTrash();
     });
   
     // =========================================================================
@@ -8880,17 +9443,31 @@
         if (accounts[email] && accounts[email].status === 'active') throw new Error('이미 가입된 이메일입니다.');
         const role = currentSignupRole === 'viewer' ? 'viewer' : 'admin';
         const id = role === 'admin' ? getStableAdminId(email, name) : 'viewer_' + getStableAdminId(email, name);
-        accounts[email] = { id, email, name, role, status: 'active', pwHash: simpleDemoHash(p1) };
+        // SVIP 초대 링크(?svip=코드)로 가입을 마치면 이 계정을 SVIP로 지정한다.
+        // 코드는 한 번만 쓸 수 있고, 같은 이메일로 다시 가입해도 SVIP는 자동으로 돌아오지 않는다.
+        let svipGranted = false;
+        let svipNote = '';
+        if (role === 'admin') {
+          const presetSvip = getPresetSvipCode();
+          if (presetSvip) {
+            const svipRes = consumeSvipInvite(presetSvip, email);
+            if (svipRes.ok) svipGranted = true;
+            else if (svipRes.reason === 'used') svipNote = '\n\n안내: 이미 사용된 SVIP 초대 링크여서 SVIP 없이 일반 관리자로 가입되었습니다.';
+            else svipNote = '\n\n안내: SVIP 초대 코드를 확인하지 못해 일반 관리자로 가입되었습니다.';
+            clearPresetSvipCode();
+          }
+        }
+        accounts[email] = { id, email, name, role, status: 'active', pwHash: simpleDemoHash(p1), tier: svipGranted ? 'svip' : 'basic' };
         saveStagingAccounts(accounts);
         if (role === 'admin') {
           const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
           cloud._admins = cloud._admins || {};
-          cloud._admins[id] = { id, email, name, role: 'admin', players: [], records: {}, deletedPlayers: {}, deletedRecords: {} };
+          cloud._admins[id] = { id, email, name, role: 'admin', tier: svipGranted ? 'svip' : 'basic', players: [], records: {}, deletedPlayers: {}, deletedRecords: {} };
           saveStagingCloud(cloud);
         }
         // 가입이 끝나면 그대로 로그인되어 메인 화면으로 이동한다.
         const user = {
-          id, name, email, role,
+          id, name, email, role, tier: svipGranted ? 'svip' : 'basic',
           approved: role === 'admin',
           allowedPlayers: [], requestedPlayers: [], targetPlayer: ''
         };
@@ -8902,7 +9479,7 @@
           initPlayerSelectDropdown();
           renderEventTabs();
           renderCurrentView();
-          alert(`${name} 관리자님, 회원가입이 완료되었습니다.\n상단 [선수관리]에서 첫 선수를 등록해 보세요.`);
+          alert(`${name} 관리자님, 회원가입이 완료되었습니다.` + (svipGranted ? '\nSVIP 관리자로 지정되었습니다.' : '') + svipNote + '\n상단 [선수관리]에서 첫 선수를 등록해 보세요.');
         } else {
           openViewerAddPlayerModal(true);
           alert(`${name} 뷰어님, 회원가입이 완료되었습니다.\n이제 열람할 선수를 조회해 관리자에게 승인을 신청하세요.`);
@@ -9629,7 +10206,13 @@
       delete cloud._admins[authUser.id];
       saveStagingCloud(cloud);
       const accounts = getStagingAccounts();
-      if (accounts[authUser.email.toLowerCase()]) { accounts[authUser.email.toLowerCase()].status = 'withdrawn'; saveStagingAccounts(accounts); }
+      const accKey = String(authUser.email || '').toLowerCase();
+      if (accounts[accKey]) {
+        accounts[accKey].status = 'withdrawn';
+        // 탈퇴하면 SVIP 자격도 함께 사라진다(같은 이메일 재가입해도 자동 복원되지 않는다).
+        delete accounts[accKey].tier;
+        saveStagingAccounts(accounts);
+      }
       localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
       localStorage.removeItem('STAGING_CUSTOM_PLAYERS_v2_' + authUser.id);
       localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + authUser.id);
@@ -9645,7 +10228,13 @@
       Object.keys(cloud).forEach(k => { if (!k.startsWith('_') && cloud[k] && cloud[k].ownerAdminId === authUser.id) delete cloud[k]; });
       saveStagingCloud(cloud);
       const accounts = getStagingAccounts();
-      if (accounts[authUser.email.toLowerCase()]) { accounts[authUser.email.toLowerCase()].status = 'withdrawn'; saveStagingAccounts(accounts); }
+      const accKey = String(authUser.email || '').toLowerCase();
+      if (accounts[accKey]) {
+        accounts[accKey].status = 'withdrawn';
+        // 탈퇴하면 SVIP 자격도 함께 사라진다(같은 이메일 재가입해도 자동 복원되지 않는다).
+        delete accounts[accKey].tier;
+        saveStagingAccounts(accounts);
+      }
       localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
       localStorage.removeItem('STAGING_CUSTOM_PLAYERS_v2_' + authUser.id);
       localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + authUser.id);
@@ -10800,7 +11389,7 @@
 
   <!-- Exit Confirm Modal -->
   <div id="modal-app-exit" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xs p-5 text-center space-y-4 shadow-2xl">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xs p-5 text-center space-y-4 shadow-2xl modal-panel overflow-y-auto">
       <div class="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-xl text-amber-400 mx-auto">
         <span class="ui-ic" data-ic="door" data-size="22"></span>
       </div>
@@ -10822,7 +11411,7 @@
 
   <!-- Modal: Data Responsibility Notice -->
   <div id="modal-data-notice" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl modal-panel overflow-y-auto">
       <h3 class="text-base font-bold text-white flex items-center gap-2"><span><span class="ui-ic" data-ic="megaphone"></span></span><span>데이터 보관 책임 안내</span></h3>
       <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 leading-relaxed space-y-2">
         <p>이 앱은 선수 데이터를 장기 보관하거나 별도로 백업해 주는 서비스를 제공하지 않습니다.</p>
@@ -10837,7 +11426,7 @@
 
   <!-- Modal: Admin Withdraw Policy (Transfer vs Permanent Delete) -->
   <div id="modal-admin-withdraw" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl text-xs">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm modal-panel overflow-y-auto p-5 space-y-4 shadow-2xl text-xs">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <h3 class="text-base font-bold text-white"><span class="ui-ic" data-ic="alertTri"></span> 관리자 회원 탈퇴 <span class="text-[10px] text-amber-300 font-normal">(로컬 시뮬레이션)</span></h3>
         <button type="button" onclick="document.getElementById('modal-admin-withdraw').classList.add('hidden')" class="text-slate-400 hover:text-white"><span class="ui-ic" data-ic="x"></span></button>
