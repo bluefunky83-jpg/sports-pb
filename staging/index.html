@@ -43,7 +43,7 @@
     .role-badge > .ui-ic { align-self: center; }
     /* 대회명 자동완성 목록: 입력란 바로 아래, 앱 남색 테마. 목록 내부에서만 스크롤한다. */
     .meet-ac-list { position: absolute; left: 0; right: 36px; top: 100%; margin-top: 6px; max-height: 220px; overflow-y: auto; background: #0b1220; border: 1px solid #334155; border-radius: 14px; box-shadow: 0 18px 40px rgba(2,6,23,0.7); z-index: 60; padding: 4px; }
-    .meet-ac-item { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 10px; color: #cbd5e1; font-size: 11px; line-height: 1.4; font-weight: 500; word-break: break-word; }
+    .meet-ac-item { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 10px; color: #cbd5e1; font-size: 11px; line-height: 1.4; font-weight: 500; word-break: keep-all; overflow-wrap: anywhere; }
     .meet-ac-item:hover, .meet-ac-item:active { background: rgba(37,99,235,0.28); color: #ffffff; }
     .meet-ac-empty { padding: 10px; text-align: center; font-size: 10px; color: #64748b; font-weight: 500; }
     .ui-ic { display: inline-flex; align-items: center; justify-content: center; width: 1em; height: 1em; flex: 0 0 auto; line-height: 1; vertical-align: -0.14em; }
@@ -59,14 +59,14 @@
     .notice-head-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
     .notice-title-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
     .notice-unread-dot { width: 7px; height: 7px; border-radius: 50%; background: #f43f5e; flex: 0 0 auto; }
-    .notice-title { font-size: 12px; font-weight: 700; color: #ffffff; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+    .notice-title { font-size: 12px; font-weight: 700; color: #ffffff; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: keep-all; overflow-wrap: anywhere; }
     .notice-meta { font-size: 10px; color: #64748b; }
     .notice-chevron { color: #64748b; font-size: 14px; transition: transform 240ms ease; flex: 0 0 auto; }
     .notice-item.open .notice-chevron { transform: rotate(180deg); }
     .notice-body-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 260ms cubic-bezier(0.22, 0.61, 0.36, 1); }
     .notice-item.open .notice-body-wrap { grid-template-rows: 1fr; }
     .notice-body-inner { overflow: hidden; min-height: 0; }
-    .notice-body { padding: 10px 13px 12px; border-top: 1px solid #1e293b; font-size: 11px; line-height: 1.65; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
+    .notice-body { padding: 10px 13px 12px; border-top: 1px solid #1e293b; font-size: 11px; line-height: 1.65; color: #cbd5e1; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
     /* 생년월일 달력 버튼: 브라우저 기본 달력 아이콘은 숨기고 단색 SVG 하나만 보이게 한다. */
     .birth-picker-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
     .birth-picker-wrap .birth-picker-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; color: #64748b; }
@@ -82,12 +82,44 @@
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+    /* 경기 날짜 입력칸: 130% 확대에서도 '2026. 11. 27.'이 말줄임·겹침 없이 다 보이도록
+       여백과 달력 버튼 폭만 줄인다(글자 크기 일괄 축소 아님). */
+    #input-date { padding-left: 0.5rem; padding-right: 0.4rem; font-variant-numeric: tabular-nums; }
+    #input-date::-webkit-datetime-edit { padding: 0; }
+    #input-date::-webkit-calendar-picker-indicator { margin: 0; padding: 0; width: 15px; height: 15px; opacity: 0.85; }
     /* 공통 팝업 구조: 위 제목·닫기 고정 / 가운데 내용만 스크롤 / 아래 버튼 고정.
        화면 배율(100~130%)과 모바일 키보드로 보이는 높이가 줄어도 버튼이 잘리지 않도록
-       --app-vh(지금 보이는 높이 ÷ 배율)를 기준으로 최대 높이를 잡는다. */
-    .modal-panel { max-height: calc(var(--app-vh, 100dvh) - 2rem); transition: max-height 160ms ease-out; }
+       --app-vh(지금 보이는 높이 ÷ 배율)를 기준으로 최대 높이를 잡는다.
+       높이 전환 애니메이션은 쓰지 않는다(키보드가 움직일 때마다 팝업이 따라 흔들리던 원인). */
+    .modal-panel { max-height: calc(var(--app-vh, 100dvh) - 2rem); }
     .modal-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     .modal-fixed { flex: 0 0 auto; }
+    /* 키보드가 올라온 상태(body.kb-open): 가운데 정렬 대신 보이는 화면(visualViewport) 위쪽에 붙이고,
+       팝업 높이를 남은 화면 높이에 꼭 맞춰 아래 버튼이 키보드 바로 위에 오게 한다(빈 여백 없음). */
+    body.kb-open .modal-overlay {
+      align-items: flex-start !important;
+      padding: 0 !important;
+      top: var(--app-vv-top, 0px);
+      bottom: auto;
+      height: var(--app-vh, 100dvh);
+    }
+    body.kb-open .modal-overlay .modal-panel {
+      max-height: var(--app-vh, 100dvh);
+      border-radius: 0 0 1.5rem 1.5rem;
+    }
+    /* 모달이 열려 있는 동안은 배경 화면이 따라 움직이지 않게 잠근다(모달 안쪽 스크롤은 그대로). */
+    body.modal-open { overflow: hidden; overscroll-behavior: none; }
+    body.modal-open .modal-overlay { overscroll-behavior: contain; }
+    /* 한글 단어 중간 잘림 방지: 단어 단위로 줄바꿈하고, 띄어쓰기 없는 긴 영문·이메일만 필요할 때 끊는다. */
+    html, body { word-break: keep-all; }
+    body { overflow-wrap: break-word; }
+    /* 관리자 센터 제목 아이콘: 제목 + 부제(또는 이메일) 두 줄 전체 높이에 맞추고 세로 가운데 정렬한다.
+       실제 높이는 화면을 열 때 글자 영역을 재서 넣고(배율이 바뀌어도 같은 비율 유지), 이 값은 기본값이다. */
+    .center-head-icon { display: flex; align-items: center; justify-content: center; align-self: center; width: 2.6rem; height: 2.6rem; flex: 0 0 auto; }
+    .center-head-icon .ui-ic { width: 100%; height: 100%; }
+    .center-head-icon .ui-ic svg { width: 100%; height: 100%; }
+    /* 최고관리자 센터 공지 카드 확성기: 제목 + 설명 두 줄 높이에 맞춘다(배경·카드 디자인 유지). */
+    .center-card-icon { display: flex; align-items: center; justify-content: center; align-self: center; width: 2.25rem; height: 2.25rem; flex: 0 0 auto; }
     /* 그래프 포인트에서 찾아온 경기 기록 카드: 카드 라운딩(16px) 안쪽에 맞춘 둥근 강조판으로 표시한다.
        (행 전체에 사각 배경·테두리를 그리면 카드의 둥근 모서리와 겹쳐 보이므로, 안쪽에 14px 라운딩 판을 깐다.) */
     .record-row-flash { position: relative; }
@@ -452,7 +484,7 @@
   </div>
 
   <!-- 가져오기 확인 (예 / 아니오) -->
-  <div id="modal-import-confirm" class="fixed inset-0 z-[90] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-import-confirm" class="modal-overlay fixed inset-0 z-[90] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 pt-4 modal-panel flex flex-col overflow-hidden shadow-2xl">
       <h3 id="import-confirm-title" class="modal-fixed text-base font-bold text-white pb-2">가져오기 확인</h3>
       <div id="import-confirm-body" class="modal-scroll text-xs text-slate-300 leading-relaxed space-y-1 py-1"></div>
@@ -464,7 +496,7 @@
   </div>
 
   <!-- 기존 엑셀 양식(선수 정보 없음) 가져오기: 대상 선수 선택 -->
-  <div id="modal-import-target" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-import-target" class="modal-overlay fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 pt-4 modal-panel flex flex-col overflow-hidden shadow-2xl">
       <h3 class="modal-fixed text-base font-bold text-white pb-2">기존 엑셀 양식 가져오기</h3>
       <div class="modal-scroll space-y-3 pb-1">
@@ -488,7 +520,7 @@
   </div>
 
   <!-- 선수 삭제 확인창 -->
-  <div id="modal-player-delete" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-player-delete" class="modal-overlay fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-rose-500/40 rounded-3xl w-full max-w-sm p-5 pt-4 modal-panel flex flex-col overflow-hidden shadow-2xl">
       <h3 class="modal-fixed text-base font-bold text-white flex items-center gap-2 pb-2">
         <span class="text-rose-400 shrink-0"><span class="ui-ic" data-ic="alertTri"></span></span>
@@ -503,7 +535,7 @@
   </div>
 
   <!-- 개별 선수 양도 (관리자 계정 유지) -->
-  <div id="modal-player-transfer" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-player-transfer" class="modal-overlay fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
       <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
@@ -541,7 +573,7 @@
   </div>
 
   <!-- 최고관리자 공지 작성 및 관리 -->
-  <div id="modal-notice-admin" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-notice-admin" class="modal-overlay fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md modal-panel flex flex-col overflow-hidden shadow-2xl">
       <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
@@ -578,7 +610,7 @@
   </div>
 
   <!-- 표시할 종목 선택 (PB 기록 / 연간 종합노트 공통) -->
-  <div id="modal-event-select" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-event-select" class="modal-overlay fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
       <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
@@ -612,7 +644,7 @@
 
 
   <!-- Modal: Viewer Approval Management (Realtime Cloud) -->
-  <div id="modal-viewer-approvals" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-viewer-approvals" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
       <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <div class="flex items-center gap-1.5 min-w-0 flex-wrap">
@@ -683,7 +715,7 @@
   </div>
 
   <!-- Modal 1: Add/Edit Record Modal -->
-  <div id="modal-record" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-record" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md modal-panel flex flex-col overflow-hidden shadow-2xl">
       <!-- Modal Header (고정) -->
       <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
@@ -707,29 +739,27 @@
           </select>
         </div>
 
-        <!-- Date & 기록 구분(공식 / 비공식) -->
-        <div class="grid grid-cols-2 gap-3">
-          <div>
+        <!-- Date & 기록 구분(공식 / 비공식): 130% 확대에서도 날짜가 잘리지 않도록 날짜 칸을 조금 넓게 준다. -->
+        <div class="grid grid-cols-[1.12fr_0.88fr] gap-2.5">
+          <div class="min-w-0">
             <label class="block font-semibold text-slate-400 mb-1">경기 날짜 *</label>
-            <input type="date" id="input-date" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <input type="date" id="input-date" required class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-white focus:outline-none focus:border-blue-500">
           </div>
-          <div>
+          <div class="min-w-0">
             <label class="block font-semibold text-slate-400 mb-1">기록 구분 *</label>
             <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-              <button type="button" id="btn-kind-official" onclick="setFormKind('공식')" class="py-1.5 rounded-lg font-bold text-center transition">공식</button>
-              <button type="button" id="btn-kind-practice" onclick="setFormKind('비공식')" class="py-1.5 rounded-lg font-medium text-center transition">비공식</button>
+              <button type="button" id="btn-kind-official" onclick="setFormKind('공식')" class="py-1.5 rounded-lg font-bold text-center transition whitespace-nowrap">공식</button>
+              <button type="button" id="btn-kind-practice" onclick="setFormKind('비공식')" class="py-1.5 rounded-lg font-medium text-center transition whitespace-nowrap">비공식</button>
             </div>
           </div>
         </div>
 
-        <!-- Meet Name + Round -->
+        <!-- Meet Name + Round: 회차 칸은 숫자만 들어가도록 좁게, 남은 너비는 대회명 칸에 준다.
+             안내 문구는 대회명 칸이 아니라 입력 영역 전체의 왼쪽 끝에서 시작한다. -->
         <div>
           <label class="block font-semibold text-slate-400 mb-1">대회명 / 경기명 *</label>
-          <div class="flex items-start gap-2">
-            <div class="w-[5.5rem] shrink-0">
-              <input type="number" id="input-meet-round" min="1" step="1" inputmode="numeric" placeholder="회차" title="대회 회차(선택)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-center text-white focus:outline-none focus:border-blue-500">
-              <div class="text-[9px] text-slate-500 mt-1 text-center">회차 (선택)</div>
-            </div>
+          <div class="flex items-center gap-2">
+            <input type="number" id="input-meet-round" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="회차" title="대회 회차(선택)" class="w-[3.4rem] shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-1.5 py-2 text-center text-white focus:outline-none focus:border-blue-500">
             <div class="flex-1 min-w-0 relative">
               <div class="flex items-center gap-1">
                 <input type="text" id="input-meet" required autocomplete="off" placeholder="대회명 입력 또는 선택" oninput="onMeetInput()" oncompositionend="onMeetInput()" onchange="onMeetNameChanged()" onfocus="onMeetInput()" class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
@@ -738,9 +768,9 @@
                 </button>
               </div>
               <div id="meet-name-list" class="meet-ac-list hidden" role="listbox" aria-label="저장된 대회명 목록"></div>
-              <div class="text-[9px] text-slate-500 mt-1 leading-tight">기존 대회명 검색·선택 가능 · 회차 입력 시 ‘제53회 대회명’으로 저장</div>
             </div>
           </div>
+          <div class="text-[9px] text-slate-500 mt-1 leading-tight">기존 대회명 검색·선택 가능 · 회차 입력 시 ‘제53회 대회명’으로 저장</div>
         </div>
         </div>
 
@@ -756,26 +786,26 @@
 
         <!-- Relay Runners Input (Conditional: Only for Relay/Team Events) -->
         <div id="field-relay-container" class="hidden bg-slate-900/80 border border-blue-500/30 rounded-xl p-3 space-y-2">
-          <label class="block font-semibold text-blue-400 text-xs flex items-center justify-between">
-            <span><span class="ui-ic" data-ic="running"></span> 릴레이 / 단체전 주자 명단 (1~4번)</span>
+          <label class="block font-semibold text-blue-400 text-xs flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+            <span class="min-w-0">릴레이 / 단체전 주자 명단 (1~4번)</span>
             <span class="text-[10px] text-slate-400 font-normal">순서대로 입력 또는 아래 칩 터치</span>
           </label>
           <div class="grid grid-cols-2 gap-2">
-            <div>
+            <div class="min-w-0">
               <span class="text-[10px] text-slate-400">1주자</span>
-              <input type="text" id="relay-runner-1" placeholder="1주자 이름" class="relay-input w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+              <input type="text" id="relay-runner-1" placeholder="1주자 이름" class="relay-input w-full min-w-0 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
             </div>
-            <div>
+            <div class="min-w-0">
               <span class="text-[10px] text-slate-400">2주자</span>
-              <input type="text" id="relay-runner-2" placeholder="2주자 이름" class="relay-input w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+              <input type="text" id="relay-runner-2" placeholder="2주자 이름" class="relay-input w-full min-w-0 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
             </div>
-            <div>
+            <div class="min-w-0">
               <span class="text-[10px] text-slate-400">3주자</span>
-              <input type="text" id="relay-runner-3" placeholder="3주자 이름" class="relay-input w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+              <input type="text" id="relay-runner-3" placeholder="3주자 이름" class="relay-input w-full min-w-0 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
             </div>
-            <div>
-              <span class="text-[10px] text-slate-400">4주자 (앵커)</span>
-              <input type="text" id="relay-runner-4" placeholder="4주자 이름" class="relay-input w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+            <div class="min-w-0">
+              <span class="text-[10px] text-slate-400 whitespace-nowrap">4주자 (앵커)</span>
+              <input type="text" id="relay-runner-4" placeholder="4주자 이름" class="relay-input w-full min-w-0 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
             </div>
           </div>
           
@@ -812,15 +842,15 @@
           <div class="grid grid-cols-3 gap-2 text-center">
             <div>
               <span class="text-[10px] text-slate-400 block mb-1">시 (Hour)</span>
-              <input type="number" id="time-h" min="0" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500">
+              <input type="number" id="time-h" min="0" autocomplete="off" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500">
             </div>
             <div>
               <span class="text-[10px] text-slate-400 block mb-1">분 (Min)</span>
-              <input type="number" id="time-m" min="0" max="59" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500">
+              <input type="number" id="time-m" min="0" max="59" autocomplete="off" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500">
             </div>
             <div>
               <span class="text-[10px] text-slate-400 block mb-1">초 (Sec.00)</span>
-              <input type="number" step="0.01" id="time-s" placeholder="0.00" class="w-full bg-slate-900 border border-blue-500/80 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-400 bg-blue-500/5">
+              <input type="number" step="0.01" id="time-s" autocomplete="off" placeholder="0.00" class="w-full bg-slate-900 border border-blue-500/80 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-400 bg-blue-500/5">
             </div>
           </div>
           <div class="mt-2 text-right text-[11px] text-blue-400 font-mono font-semibold" id="preview-formatted-time">
@@ -832,7 +862,7 @@
         <div class="grid grid-cols-2 gap-2.5 items-start">
           <div>
             <label class="block font-semibold text-slate-400 mb-1">순위</label>
-            <input type="number" id="input-rank" inputmode="numeric" placeholder="등수 (숫자만)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <input type="number" id="input-rank" inputmode="numeric" autocomplete="off" placeholder="" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
           </div>
           <div id="field-wind-container">
             <label class="block font-semibold text-slate-400 mb-1">풍속 (m/s)</label>
@@ -840,7 +870,7 @@
               <button type="button" id="btn-wind-sign" onclick="toggleWindSign()" class="px-3 py-2 rounded-xl bg-blue-600/30 text-blue-300 border border-blue-500/40 font-mono font-bold text-sm shrink-0 active:scale-95 transition">
                 +
               </button>
-              <input type="number" step="0.1" id="input-wind-val" inputmode="decimal" placeholder="0.0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-blue-500">
+              <input type="number" step="0.1" id="input-wind-val" inputmode="decimal" autocomplete="off" placeholder="0.0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-blue-500">
             </div>
           </div>
         </div>
@@ -853,15 +883,15 @@
 
         </div>
 
-        <!-- Modal Submit Actions (고정) -->
+        <!-- Modal Submit Actions (고정): 두 버튼 높이 통일 · 문구는 배율과 상관없이 한 줄 -->
         <div class="modal-fixed px-5 py-4 border-t border-slate-800 bg-slate-900 flex gap-2">
-          <button type="button" onclick="saveRecord(true)" class="flex-1 py-3 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center gap-1.5 transition active:scale-95">
-            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            <span>추가 후 계속 입력</span>
+          <button type="button" onclick="saveRecord(true)" class="flex-1 h-12 py-0 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center gap-1.5 transition active:scale-95 whitespace-nowrap">
+            <svg class="w-4 h-4 shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span class="whitespace-nowrap">추가</span>
           </button>
-          <button type="submit" class="flex-1 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 flex items-center justify-center gap-1.5 transition active:scale-95">
-            <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-            <span>저장 완료</span>
+          <button type="submit" class="flex-1 h-12 py-0 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 flex items-center justify-center gap-1.5 transition active:scale-95 whitespace-nowrap">
+            <svg width="16" height="16" class="w-4 h-4 shrink-0" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            <span class="whitespace-nowrap">저장</span>
           </button>
         </div>
 
@@ -870,7 +900,7 @@
   </div>
 
   <!-- Modal 2: Player Management Modal (User's Hand-drawn Layout) -->
-  <div id="modal-players" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-players" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md modal-panel flex flex-col overflow-hidden shadow-2xl">
       <!-- Modal Header (고정) -->
       <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
@@ -950,7 +980,7 @@
   </div>
 
   <!-- Modal 3: Add/Edit Player Profile (With Events Add/Delete Management) -->
-  <div id="modal-player-form" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-player-form" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
       <div class="modal-fixed flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-800">
         <h3 id="modal-player-form-title" class="text-base font-bold text-white">선수 프로필 등록</h3>
@@ -999,7 +1029,7 @@
             </select>
           </div>
           <div class="min-w-0">
-            <label class="block font-semibold text-slate-400 mb-1">주종목 *</label>
+            <label class="block font-semibold text-slate-400 mb-1">주종목</label>
             <select id="form-player-event" onchange="onMainEventSelectChange(this.value)" class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
               <!-- 등록된 세부 종목만 동적으로 표시 -->
             </select>
@@ -1011,7 +1041,7 @@
              분류와 개인/단체 카드를 모두 따로 펼칠 수 있다. -->
         <div class="space-y-2">
           <div class="flex items-center justify-between gap-2">
-            <label class="block font-semibold text-blue-400 text-xs"><span class="ui-ic ic-run-name" data-ic="running" style="font-size:17px"></span> 출전 세부 종목</label>
+            <label class="block font-semibold text-blue-400 text-xs">출전 세부 종목</label>
             <span class="text-[10px] text-slate-500 shrink-0">카드를 눌러 펼치기</span>
           </div>
           <div id="event-acc-groups" class="space-y-2"></div>
@@ -1042,7 +1072,7 @@
   </div>
 
   <!-- Modal 4: Settings & Backup Modal -->
-  <div id="modal-settings" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-settings" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
       <div class="modal-fixed flex items-center justify-between border-b border-slate-800 px-5 pt-4 pb-3">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
@@ -1147,7 +1177,7 @@
   </div>
 
   <!-- Modal: Viewer Add Player Modal (뷰어 모드: 선수 조회 후 열람 신청) -->
-  <div id="modal-viewer-add-player" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-viewer-add-player" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl p-5">
       <div class="modal-fixed flex items-center justify-between border-b border-slate-800 pb-3">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
@@ -1185,17 +1215,17 @@
   </div>
 
   <!-- Modal 5: Super Admin Center Modal (지혜 님 최고관리자 전용) -->
-  <div id="modal-super-admin-center" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-super-admin-center" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md modal-panel overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center gap-2">
-          <span class="text-xl"><span class="ui-ic" data-ic="crown"></span></span>
-          <div>
-            <h3 class="text-base font-extrabold text-white flex items-center gap-1.5">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="center-head-icon text-slate-100" id="sa-head-icon"><span class="ui-ic" data-ic="crown"></span></span>
+          <div class="min-w-0" id="sa-head-text">
+            <h3 class="text-base font-extrabold text-white flex items-center gap-1.5 flex-wrap leading-tight">
               최고관리자 센터
               <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">지혜 님</span>
             </h3>
-            <p class="text-[11px] text-slate-400">전체 사용자 및 서비스 통합 관제</p>
+            <p class="text-[11px] text-slate-400 leading-tight">전체 사용자 및 서비스 통합 관제</p>
           </div>
         </div>
         <button type="button" onclick="closeSuperAdminModal()" class="text-slate-400 hover:text-white p-1">
@@ -1225,11 +1255,11 @@
 
         <!-- 공지 작성 및 관리 (최고관리자 전용) -->
         <button type="button" onclick="openNoticeAdminModal()" class="w-full p-3 rounded-2xl bg-slate-950 border border-purple-500/30 hover:border-purple-400/60 flex items-center justify-between gap-2 text-left transition active:scale-[0.99]">
-          <span class="flex items-center gap-2 min-w-0">
-            <span class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center shrink-0"><span class="ui-ic" data-ic="megaphone"></span></span>
-            <span class="min-w-0">
-              <span class="block text-xs font-bold text-slate-100">공지 작성 및 관리</span>
-              <span class="block text-[10px] text-slate-400">관리자·뷰어 구분 없이 모든 회원에게 공개됩니다</span>
+          <span class="flex items-center gap-2.5 min-w-0">
+            <span class="center-card-icon rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30" id="sa-notice-icon"><span class="ui-ic" data-ic="megaphone"></span></span>
+            <span class="min-w-0" id="sa-notice-text">
+              <span class="block text-xs font-bold text-slate-100 leading-tight">공지 작성 및 관리</span>
+              <span class="block text-[10px] text-slate-400 leading-tight mt-0.5">관리자·뷰어 구분 없이 모든 회원에게 공개됩니다</span>
             </span>
           </span>
           <span class="text-slate-500 shrink-0"><span class="ui-ic" data-ic="chevronRight"></span></span>
@@ -1264,14 +1294,14 @@
   </div>
 
   <!-- Modal 6: Admin Profile & Management Center (일반 관리자용) -->
-  <div id="modal-admin-profile" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-admin-profile" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-indigo-500/40 rounded-3xl w-full max-w-sm modal-panel overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
       <div class="modal-fixed flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center gap-2">
-          <span class="text-xl"><span class="ui-ic" data-ic="shield"></span></span>
-          <div>
-            <h3 class="text-base font-bold text-white">선수기록 관리자 센터</h3>
-            <p class="text-[11px] text-slate-400" id="admin-center-email-display">관리자 모드</p>
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="center-head-icon text-slate-100" id="admin-center-head-icon"><span class="ui-ic" data-ic="shield"></span></span>
+          <div class="min-w-0" id="admin-center-head-text">
+            <h3 class="text-base font-bold text-white leading-tight">선수기록 관리자 센터</h3>
+            <p class="text-[11px] text-slate-400 leading-tight" id="admin-center-email-display">관리자 모드</p>
           </div>
         </div>
         <button type="button" onclick="closeAdminProfileModal()" class="text-slate-400 hover:text-white p-1">
@@ -1317,7 +1347,7 @@
   </div>
 
   <!-- Modal 7: Google Sign-in Popup UI -->
-  <div id="modal-google-auth-popup" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-google-auth-popup" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-white text-slate-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-6 space-y-5">
       <!-- Google Header -->
       <div class="text-center space-y-2">
@@ -2090,10 +2120,8 @@
 
       playersData.forEach(p => {
         const sportText = p.sport || '';
-        const iconHtml = sportText.includes('육상') ? '<span class="ui-ic ic-run-name" data-ic="running"></span>'
-          : (sportText.includes('사이클') ? '<span class="ui-ic" data-ic="cycling" style="font-size:16px"></span>' : '<span class="ui-ic" data-ic="medal" style="font-size:16px"></span>');
-        const plainText = `${p.name || ''} (${sportText}) - ${p.mainEvent || ''}`;
-        const fullText = `${iconHtml} ${plainText}`;
+        // 종목 아이콘(달리기·사이클·메달)은 쓰지 않는다. 이름과 종목은 글자로만 보여 준다.
+        const fullText = `${p.name || ''} (${sportText}) - ${p.mainEvent || ''}`;
         const opt = document.createElement('option');
         opt.value = p.id;
         opt.textContent = plainText;
@@ -2203,7 +2231,9 @@
       if (!playerId) return [];
       const p = playersData.find(x => x.id === playerId);
       let baseEvents;
-      if (p && Array.isArray(p.events) && p.events.length > 0) {
+      // events 필드가 있으면 빈 배열([])도 그대로 존중한다(프로필에서 전부 해제한 상태 = 탭도 비움).
+      // events 필드가 아예 없는 예전 저장본만 종목 기본 목록을 쓴다.
+      if (p && Array.isArray(p.events)) {
         baseEvents = p.events.map(ev => typeof ev === 'object' ? ev.name : ev);
       } else if (p && p.sport === '육상') {
         baseEvents = ['100m', '200m', '400m', '4x100mR', '4x400mR', '4x400mR(Mixed)'];
@@ -2539,7 +2569,6 @@
         }
         container.innerHTML = `
           <div class="py-16 text-center space-y-4 my-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-            <div class="w-14 h-14 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center text-3xl mx-auto shadow-lg"><span class="ui-ic" data-ic="running" data-size="30"></span></div>
             <div class="space-y-1">
               <h3 class="text-base font-bold text-white">등록된 선수가 없습니다</h3>
               <p class="text-xs text-slate-400 leading-relaxed">
@@ -3023,7 +3052,7 @@
           ${g.items.map(ev => `
             <label class="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer">
               <input type="checkbox" class="evt-visible-chk" data-event="${bodyEsc(ev)}" ${visible.indexOf(ev) >= 0 ? 'checked' : ''} onchange="onEventVisibilityChange(this)" class="rounded border-slate-700 bg-slate-900 text-blue-600">
-              <span class="text-slate-200 font-medium break-all">${bodyEsc(ev)}</span>
+              <span class="text-slate-200 font-medium break-words">${bodyEsc(ev)}</span>
             </label>`).join('')}
         </div>`).join('');
     }
@@ -3516,7 +3545,7 @@
         stats: [
           { label: '출전 대회', value: getAnnualMeetCount(playerId, year), sub: '', icon: 'flag' },
           { label: '총 경기', value: getAnnualGameCount(playerId, year), sub: '', icon: 'list' },
-          { label: 'PB 경신', value: countPbRenewalsInYear(playerId, year), sub: '이 해 기록', icon: 'arrow' }
+          { label: 'PB 경신', value: countPbRenewalsInYear(playerId, year), sub: '', icon: 'arrow' }
         ],
         sections: [
           { title: '개인 종목 PB 변화', cards: personal },
@@ -3544,7 +3573,6 @@
       return `
         <div class="body-card an-card">
           <div class="an-head">
-            <span class="body-icon an-icon">${bodyIconSvg(card.icon, S.anIconGlyph)}</span>
             <span class="an-title">${bodyEsc(card.event)}</span>
             <span class="an-badge ${card.badge.cls}">${bodyEsc(card.badge.text)}</span>
           </div>
@@ -3584,7 +3612,7 @@
           <span class="body-icon stat-icon">${bodyIconSvg(s.icon, S.statIconGlyph)}</span>
           <div class="body-stat-label">${bodyEsc(s.label)}</div>
           <div class="body-stat-value">${s.value}<span class="body-stat-unit">회</span></div>
-          <div class="body-stat-sub">${bodyEsc(s.sub)}</div>
+          ${s.sub ? `<div class="body-stat-sub">${bodyEsc(s.sub)}</div>` : ''}
         </div>`).join('');
       const sectionsHtml = model.sections.map((sec, i) => bodySectionHtml(sec, i === model.sections.length - 1, annualCardHtml)).join('');
       const emptyHtml = model.isEmpty ? `<div class="body-card body-empty">${model.emptyText}</div>` : '';
@@ -3960,7 +3988,6 @@
       const padX = S.pbPadX;
       const headTop = y + S.annualPadTop;
       const headCenterY = headTop + S.annualHeadH / 2;
-      if (!measureOnly) capCircleIconBody(ctx, x + padX, headTop, S.anIconTile, card.icon, S.anIconGlyph, S.iconColor);
 
       const badgeFont = capFont(700, S.annualBadgeSize);
       const rightX = x + w - padX;
@@ -3968,7 +3995,8 @@
         capPill(ctx, card.badge.text, rightX, headCenterY, S.annualBadgeH, S.annualBadgePadX, card.badge.cls === 'badge-reduce' ? S.badgeReduceBg : (card.badge.cls === 'badge-single' ? S.badgeSingleBg : S.badgeFlatBg), card.badge.cls === 'badge-reduce' ? S.badgeReduceBorder : (card.badge.cls === 'badge-single' ? S.badgeSingleBorder : S.badgeFlatBorder), card.badge.cls === 'badge-reduce' ? S.badgeReduceColor : (card.badge.cls === 'badge-single' ? S.badgeSingleColor : S.badgeFlatColor), badgeFont);
       }
       const badgeW = capTextWidth(ctx, card.badge.text, badgeFont) + S.annualBadgePadX * 2;
-      const titleX = x + padX + S.annualHeadH + S.annualHeadGapX;
+      // 종목 아이콘은 쓰지 않는다(앱 화면과 같은 규칙). 제목은 카드 왼쪽 끝에서 시작한다.
+      const titleX = x + padX;
       capMid(ctx, card.event, titleX, headCenterY, capFont(S.annualEventWeight, S.annualEventSize), S.annualEventColor, { maxWidth: rightX - badgeW - 8 - titleX });
 
       // 이전 PB → 현재 PB
@@ -4034,7 +4062,7 @@
         const valueMid = labelMid + S.statLabelH / 2 + S.statValueMt + S.statValueH / 2;
         capMid(ctx, String(s.value) + '회', cx0 + cw / 2, valueMid, capFont(S.statValueWeight, S.statValueSize), S.statValueColor, { align: 'center' });
         const subMid = valueMid + S.statValueH / 2 + S.statSubMt + S.statSubH / 2;
-        capMid(ctx, s.sub, cx0 + cw / 2, subMid, capFont(500, S.statSubSize), S.statSubColor, { align: 'center' });
+        if (s.sub) capMid(ctx, s.sub, cx0 + cw / 2, subMid, capFont(500, S.statSubSize), S.statSubColor, { align: 'center' });
       });
       return S.statH;
     }
@@ -4447,8 +4475,8 @@
             borderWidth: 1.25,
             fill: true,
             tension: 0.2,
-            pointRadius: 4.5,
-            pointHoverRadius: 7,
+            pointRadius: 3.6,
+            pointHoverRadius: 5.6,
             // 포인트는 테두리 없이 한 색으로 꽉 찬 원(일반 기록 파란색 · PB 노란색).
             pointBackgroundColor: dataPoints.map(v => v === minVal ? '#fbbf24' : '#3b82f6'),
             pointBorderColor: 'transparent',
@@ -4897,7 +4925,16 @@
       const evSelect = document.getElementById('form-record-event');
       if (evSelect) {
         const prev = String(desiredEvent || evSelect.value || '').trim();
-        const evList = getPlayerEvents(currentPlayer);
+        let evList = getPlayerEvents(currentPlayer);
+        // 등록된 세부 종목이 하나도 없는 선수도 기록은 넣을 수 있어야 하므로,
+        // 그때만 이 종목(육상·사이클)의 기본 종목 목록을 입력 후보로 쓴다(프로필 선택 상태는 건드리지 않는다).
+        if (evList.length === 0) {
+          const pp = playersData.find(x => x.id === currentPlayer) || null;
+          evList = sortEventNameListForDisplay(
+            getDefaultEventsForSport(pp ? (pp.sport || '육상') : '육상', pp ? (pp.birth || '') : '', pp ? (pp.gender || '남') : '남')
+              .map(getFormEventName)
+          );
+        }
         // 해제된 종목의 기존 기록을 수정할 때는 그 종목도 목록에 넣어 준다(수정 저장 때 종목이 바뀌지 않게).
         if (prev && evList.indexOf(prev) < 0) evList.push(prev);
         evSelect.innerHTML = evList.map(ev => `<option value="${ev}">${ev}</option>`).join('');
@@ -5405,7 +5442,7 @@
       const noteVal = document.getElementById('input-note').value.trim();
 
       const selectedModalEvent = document.getElementById('form-record-event')?.value;
-      const targetEvent = selectedModalEvent || (currentEvent === 'ALL_PB' ? (getPlayerEvents(currentPlayer)[0] || '100m') : currentEvent);
+      const targetEvent = selectedModalEvent || (currentEvent === 'ALL_PB' ? (getPlayerEvents(currentPlayer)[0] || (getRecordFormEventName() || '100m')) : currentEvent);
       // 개인 종목으로 저장할 때는 단체전 주자·릴레이 값이 따라붙지 않게 여기서 막는다.
       const targetIsTeam = isTeamEventName(targetEvent);
 
@@ -5906,13 +5943,15 @@
     }
 
     // 모달을 열 때: 이 선수가 실제로 등록한 종목이 있는 카드를 펼쳐 둔다(나머지도 눌러서 펼칠 수 있다).
+    // collapseAll이면 신규 선수 화면처럼 분류·개인/단체 카드를 모두 접힌 상태로 시작한다.
+    let formAccordionCollapseAll = false;
     function resetFormAccordionForEvents() {
       const next = {};
       (formCatalogGroups || []).forEach((grp, gi) => {
-        next[eventGroupDomKey(gi)] = true;
+        next[eventGroupDomKey(gi)] = !formAccordionCollapseAll;
         ['personal', 'team'].forEach(type => {
           const has = formCurrentEvents.some(ev => getFormEventType(ev) === type && resolveEventGroupIndexFor(ev) === gi);
-          next[eventCardDomKey(gi, type)] = has || type === 'personal';
+          next[eventCardDomKey(gi, type)] = !formAccordionCollapseAll && (has || type === 'personal');
         });
       });
       formAccordionOpen = next;
@@ -5964,7 +6003,7 @@
       const currentValue = select ? select.value : '';
       const names = getRegisteredEventNames(formCurrentEvents);
       if (names.length === 0) {
-        el.textContent = '세부 종목을 먼저 추가하면 주종목을 고를 수 있습니다.';
+        el.textContent = '세부 종목을 하나도 고르지 않으면 주종목은 미지정으로 저장됩니다(나중에 언제든 고를 수 있어요).';
         el.classList.remove('hidden');
         return;
       }
@@ -6001,7 +6040,7 @@
       const resolved = resolveMainEventForEvents(formCurrentEvents, current);
 
       if (names.length === 0) {
-        select.innerHTML = '<option value="">세부 종목 먼저 추가</option>';
+        select.innerHTML = '<option value="">주종목 미지정</option>';
         select.disabled = true;
       } else {
         select.disabled = false;
@@ -6110,7 +6149,7 @@
             chip.appendChild(mark);
 
             const label = document.createElement('span');
-            label.className = 'min-w-0 break-all text-left';
+            label.className = 'min-w-0 break-words text-left';
             label.textContent = name;
             chip.appendChild(label);
 
@@ -6224,13 +6263,17 @@
         // 기록에는 있는데 프로필 종목에 빠진 종목(예: 300m)을 먼저 정상화한 뒤 연다.
         ensurePlayerEventsForRecords(p.id, true);
         // 예전 저장본은 단체 종목도 문자열로 들어 있을 수 있어, 이름으로 개인/단체를 다시 판정한다.
-        formCurrentEvents = (Array.isArray(p.events) && p.events.length > 0
+        // 저장된 빈 배열([])은 '모든 종목을 일부러 해제했다'는 뜻이므로 기본 종목으로 되돌리지 않는다.
+        // (events 필드 자체가 없는 예전 선수만 기본 목록을 쓴다.)
+        const hasExplicitEvents = Array.isArray(p.events);
+        formCurrentEvents = (hasExplicitEvents
           ? [...p.events]
           : getDefaultEventsForSport(p.sport || '육상', p.birth || '', p.gender || '남'))
           .map(ev => {
             const evName = getFormEventName(ev);
             return { name: evName, isTeam: isFormEventTeam(ev) || isTeamEventName(evName) };
           });
+        formAccordionCollapseAll = false;
         resetFormAccordionForEvents();
         formOriginalMainEvent = String(p.mainEvent || '');
         setFormPlayerSport(p.sport || '육상', false, p.mainEvent || '');
@@ -6241,10 +6284,13 @@
         nameInput.value = '';
         setFormPlayerGender('남');
         birthInput.value = '';
-        formCurrentEvents = getDefaultEventsForSport('육상', '', '남');
+        // 신규 선수는 모든 세부 종목을 고르지 않은 상태(0개)로 시작하고, 분류·개인/단체 카드는 접힌 채로 둔다.
+        formCurrentEvents = [];
+        formAccordionCollapseAll = true;
         resetFormAccordionForEvents();
         formOriginalMainEvent = '';
-        setFormPlayerSport('육상', true, '');
+        setFormPlayerSport('육상', false, '');
+        formAccordionCollapseAll = false;
         setFormPlayerLocked(false);
       }
 
@@ -6324,11 +6370,8 @@
           sport: sport,
           mainEvent: mainEvent,
           events: cleanEvents,
-          // 새 선수 등록 화면은 기본 종목이 선택된 상태로 열린다. 그중 사용자가 뺀 종목은
-          // '명시적으로 선택 해제'로 기록해 두고, 가져오기에서 임의로 다시 켜지 않는다.
-          disabledEvents: getDefaultEventsForSport(sport, birth, gender)
-            .map(getFormEventName)
-            .filter(n => n && !cleanEvents.some(ev => getFormEventName(ev) === n)),
+          // 새로 만든 선수는 '일부러 해제한 종목'이 아직 없다. (모두 해제해 두었다면 records에서 온 종목만 나중에 더해진다)
+          disabledEvents: [],
           locked: !!formPlayerLocked,
           updatedAt: Date.now()
         });
@@ -6508,9 +6551,30 @@
         records: JSON.parse(JSON.stringify(Array.isArray(records) ? records : [])),
         deletedAt: now,
         expiresAt: now + PLAYER_RESTORE_MS,
-        viewerGrants: snapshotViewerGrantsForPlayer(player.id)
+        viewerGrants: snapshotViewerGrantsForPlayer(player.id),
+        // 삭제 전 표시 순서를 함께 보관한다. 복구할 때 이 순서를 기준으로 원래 자리에 돌려놓는다.
+        // (여러 명을 한 번에 지워도 같은 기준 목록을 쓰므로 서로의 상대 순서가 유지된다)
+        orderSnapshot: (playersData || []).map(p => (p && p.id) || '').filter(Boolean),
+        orderIndex: (playersData || []).findIndex(p => p && p.id === player.id)
       });
       writePlayerTrash(list);
+    }
+
+    // 복구할 선수를 삭제 전 순서에 맞는 자리에 넣기 위한 위치를 계산한다.
+    // 보관 당시 목록(orderSnapshot)에서 이 선수보다 뒤에 있던 첫 선수를 찾아 그 앞에 넣는다.
+    function computeTrashRestoreIndex(entry) {
+      const snap = Array.isArray(entry && entry.orderSnapshot) ? entry.orderSnapshot : [];
+      const selfIdx = snap.indexOf(entry.id);
+      if (selfIdx < 0) {
+        const saved = Number(entry.orderIndex);
+        if (Number.isFinite(saved) && saved >= 0) return Math.min(saved, playersData.length);
+        return playersData.length;
+      }
+      for (let i = 0; i < playersData.length; i++) {
+        const idx = snap.indexOf(playersData[i] && playersData[i].id);
+        if (idx > selfIdx) return i;
+      }
+      return playersData.length;
     }
 
     function removeDeletedPlayerFromTrash(playerId) {
@@ -6615,7 +6679,8 @@
       const prevPlayersData = JSON.parse(JSON.stringify(playersData));
       const prevCurrentPlayer = currentPlayer;
 
-      playersData.push(JSON.parse(JSON.stringify(entry.player)));
+      const restoreAt = computeTrashRestoreIndex(entry);
+      playersData.splice(restoreAt, 0, JSON.parse(JSON.stringify(entry.player)));
       appData[playerId] = JSON.parse(JSON.stringify(entry.records || []));
       if (!currentPlayer) currentPlayer = playerId;
 
@@ -6787,38 +6852,115 @@
       updateUiScaleUI(scale);
       syncChartHitTestScale();
       syncAppViewportHeight(true);
+      applyAdminCenterIconSizes();
     }
 
     // 팝업 최대 높이 기준: 지금 보이는 화면 높이(모바일 키보드·주소창 포함) ÷ 화면 배율.
     // 배율 130%에서도 팝업 아래 버튼이 화면 밖으로 나가지 않게 한다.
-    // 모바일에서 키보드가 올라오거나 입력란 사이를 옮길 때 visualViewport가 조금씩 흔들리는데,
-    // 그때마다 --app-vh를 다시 쓰면 팝업 높이(위치)가 계속 바뀌어 "재로딩처럼 깜박"인다.
-    // 그래서 24px 이상 차이가 날 때만, 한 프레임에 한 번만 반영한다.
+    //
+    // [팝업 흔들림 방지]
+    // 모바일 키보드가 올라올 때 visualViewport는 애니메이션 때문에 여러 번(수십 px씩) 바뀐다.
+    // 그 값을 그대로 따라가면 팝업 높이·위치가 연속으로 바뀌어 흔들린다. 그래서
+    //  1) 값이 잠잠해진 뒤(마지막 변화 후 120ms) 한 번만 반영하고,
+    //  2) 키보드가 올라온 것으로 보이면(보이는 높이가 화면 높이의 78% 미만) 팝업을 중앙 정렬에서
+    //     위쪽 고정으로 바꾸고(body.kb-open), 팝업 높이를 남은 화면 높이에 꼭 맞춘다.
+    //  3) 반영 후 입력 중에 생기는 작은 흔들림(24px 미만)은 무시한다(포커스·입력값·스크롤 유지).
+    // 실제 기기 키보드에서의 최종 확인은 필요하다(브라우저 창 크기 조절만으로는 시뮬레이션이다).
     let lastAppVhPx = null;
-    function syncAppViewportHeight(force) {
+    let lastKbOpen = null;
+    let viewportSyncTimer = 0;
+    function readVisualViewportMetrics() {
+      const vv = window.visualViewport;
+      const zoom = parseFloat(document.documentElement.style.zoom || '1') || 1;
+      const visibleH = (vv && vv.height ? vv.height : window.innerHeight) || 0;
+      const visibleTop = (vv && typeof vv.offsetTop === 'number' ? vv.offsetTop : 0) || 0;
+      const layoutH = window.innerHeight || 0;
+      return {
+        px: Math.max(220, Math.round(visibleH / zoom)),
+        topPx: Math.max(0, Math.round(visibleTop / zoom)),
+        kbOpen: !!(layoutH > 0 && visibleH > 0 && visibleH < layoutH * 0.78)
+      };
+    }
+    function applyViewportMetrics(force) {
       try {
-        const vv = window.visualViewport;
-        const visibleH = (vv && vv.height ? vv.height : window.innerHeight) || 0;
-        const zoom = parseFloat(document.documentElement.style.zoom || '1') || 1;
-        const px = Math.max(220, Math.round(visibleH / zoom));
-        if (!force && lastAppVhPx !== null && Math.abs(px - lastAppVhPx) < 24) return;
-        if (lastAppVhPx === px) return;
-        lastAppVhPx = px;
-        document.documentElement.style.setProperty('--app-vh', px + 'px');
+        const m = readVisualViewportMetrics();
+        const kbChanged = (lastKbOpen !== m.kbOpen);
+        const diff = lastAppVhPx === null ? Infinity : Math.abs(m.px - lastAppVhPx);
+        if (!force && !kbChanged) {
+          if (diff < 24) return;                 // 입력 중 미세 흔들림은 무시
+          if (diff < 96 && m.kbOpen && lastKbOpen) return; // 키보드가 열린 채 자리만 살짝 움직일 때
+        }
+        lastKbOpen = m.kbOpen;
+        if (lastAppVhPx !== m.px) {
+          lastAppVhPx = m.px;
+          document.documentElement.style.setProperty('--app-vh', m.px + 'px');
+        }
+        document.documentElement.style.setProperty('--app-vv-top', m.topPx + 'px');
+        document.body.classList.toggle('kb-open', m.kbOpen);
       } catch (e) {}
     }
-    syncAppViewportHeight(true);
-    let appVhRaf = 0;
-    function queueAppViewportHeight() {
-      if (appVhRaf) return;
-      appVhRaf = requestAnimationFrame(function () { appVhRaf = 0; syncAppViewportHeight(false); });
+    function syncAppViewportHeight(force) {
+      if (force) {
+        if (viewportSyncTimer) { clearTimeout(viewportSyncTimer); viewportSyncTimer = 0; }
+        applyViewportMetrics(true);
+        return;
+      }
+      // 마지막 변화 뒤 120ms 동안 값이 잠잠하면 그때 한 번만 반영한다.
+      if (viewportSyncTimer) clearTimeout(viewportSyncTimer);
+      viewportSyncTimer = setTimeout(function () {
+        viewportSyncTimer = 0;
+        applyViewportMetrics(false);
+      }, 120);
     }
-    window.addEventListener('resize', queueAppViewportHeight);
+    syncAppViewportHeight(true);
+    window.addEventListener('resize', function () { syncAppViewportHeight(false); });
     window.addEventListener('orientationchange', function () { syncAppViewportHeight(true); });
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', queueAppViewportHeight);
-      window.visualViewport.addEventListener('scroll', queueAppViewportHeight);
+      window.visualViewport.addEventListener('resize', function () { syncAppViewportHeight(false); });
+      window.visualViewport.addEventListener('scroll', function () { syncAppViewportHeight(false); });
     }
+    // 팝업을 열 때는 지금 보이는 화면 기준으로 한 번 정확히 맞춰 둔다.
+    document.addEventListener('focusin', function (e) {
+      const t = e.target;
+      if (t && t.tagName && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
+        syncAppViewportHeight(false);
+      }
+    });
+
+    // ---------------- 모달 배경 스크롤 잠금 ----------------
+    // 모달이 하나라도 열려 있으면 body 스크롤을 잠그고, 모두 닫히면 풀면서 보던 위치로 돌려놓는다.
+    // (팝업 안쪽 .modal-scroll 은 그대로 스크롤된다. 터치 스크롤 체이닝도 막혀 배경이 따라 움직이지 않는다.)
+    let modalLockScrollY = 0;
+    function hasOpenModalOverlay() {
+      const list = document.querySelectorAll('.modal-overlay');
+      for (let i = 0; i < list.length; i++) {
+        if (!list[i].classList.contains('hidden')) return true;
+      }
+      return false;
+    }
+    function syncModalScrollLock() {
+      const body = document.body;
+      if (!body) return;
+      const open = hasOpenModalOverlay();
+      const locked = body.classList.contains('modal-open');
+      if (open === locked) return;
+      if (open) {
+        modalLockScrollY = window.scrollY || window.pageYOffset || 0;
+        body.classList.add('modal-open');
+      } else {
+        body.classList.remove('modal-open');
+        const y = modalLockScrollY;
+        if (y) requestAnimationFrame(function () { window.scrollTo(0, y); });
+      }
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      const overlays = document.querySelectorAll('.modal-overlay');
+      try {
+        const mo = new MutationObserver(function () { syncModalScrollLock(); });
+        overlays.forEach(el => mo.observe(el, { attributes: true, attributeFilter: ['class', 'style'] }));
+      } catch (e) {}
+      syncModalScrollLock();
+    });
 
     // CSS zoom 상태에서 Chart.js는 마우스 좌표를 배율만큼 크게 읽어 툴팁·클릭이 어긋난다.
     // Chart.js가 좌표를 나눌 때 쓰는 currentDevicePixelRatio에 배율을 곱해 두면 원래 위치로 돌아온다.
@@ -6850,6 +6992,23 @@
       const v = UI_SCALE_VALUES.indexOf(setting) >= 0 ? setting : 'auto';
       try { localStorage.setItem(UI_SCALE_KEY, v); } catch (e) {}
       applyUiScale();
+    }
+
+    // 관리자 센터 제목·카드 아이콘: 제목 + 부제(설명) 두 줄 전체 높이에 맞춘다.
+    // 글자 영역 높이를 직접 재서 넣으므로 화면 배율(100~130%)이 바뀌어도 아이콘과 글자의
+    // 크기 관계가 같게 유지되고, 아이콘이 위로 뜨거나 아래로 처지지 않는다(원본 비율 유지).
+    function fitCenterIcon(iconEl, textEl) {
+      if (!iconEl || !textEl) return;
+      const h = textEl.offsetHeight;
+      if (!h) return;
+      const size = Math.max(24, Math.round(h));
+      iconEl.style.width = size + 'px';
+      iconEl.style.height = size + 'px';
+    }
+    function applyAdminCenterIconSizes() {
+      fitCenterIcon(document.getElementById('sa-head-icon'), document.getElementById('sa-head-text'));
+      fitCenterIcon(document.getElementById('sa-notice-icon'), document.getElementById('sa-notice-text'));
+      fitCenterIcon(document.getElementById('admin-center-head-icon'), document.getElementById('admin-center-head-text'));
     }
 
     // '자동'은 창 너비가 바뀌면(회전·창 크기) 다시 계산한다. 직접 고른 배율은 그대로 유지.
@@ -7959,6 +8118,7 @@
       document.getElementById('modal-super-admin-center').classList.remove('hidden');
       await updateSuperAdminStats();
       renderSuperAdminViewersTree();
+      applyAdminCenterIconSizes();
     }
     function closeSuperAdminModal() {
       document.getElementById('modal-super-admin-center').classList.add('hidden');
@@ -8081,7 +8241,7 @@
               <!-- 1. Managed Athletes & Record Usage Stats -->
               <div class="space-y-1.5 pt-2">
                 <div class="text-[10px] font-bold text-slate-400 flex items-center justify-between">
-                  <span><span class="ui-ic" data-ic="running"></span> 관리 선수 및 경기기록 사용내역</span>
+                  <span>관리 선수 및 경기기록 사용내역</span>
                   <span class="text-[10px] text-emerald-400 font-bold">총 ${totalRecs}건</span>
                 </div>
                 
@@ -8089,7 +8249,7 @@
                   <!-- Yusin -->
                   <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
                     <div class="font-bold text-slate-200 text-xs flex items-center justify-between">
-                      <span class="flex items-baseline gap-1"><span><span class="ui-ic ic-run-name" data-ic="running"></span></span><span>김유신</span></span>
+                      <span>김유신</span>
                       <span class="text-[9px] text-blue-300 bg-blue-500/20 px-1.5 py-0.2 rounded">육상</span>
                     </div>
                     <div class="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-0.5">
@@ -8107,7 +8267,7 @@
                   <!-- Byeolha -->
                   <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
                     <div class="font-bold text-slate-200 text-xs flex items-center justify-between">
-                      <span class="flex items-center gap-1"><span><span class="ui-ic" data-ic="cycling"></span></span><span>김별하</span></span>
+                      <span class="flex items-center gap-1"><span>김별하</span></span>
                       <span class="text-[9px] text-pink-300 bg-pink-500/20 px-1.5 py-0.2 rounded">사이클</span>
                     </div>
                     <div class="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-0.5">
@@ -8256,6 +8416,7 @@
       renderAdminMyPlayers();
       renderAdminApprovedViewers();
       document.getElementById('modal-admin-profile').classList.remove('hidden');
+      applyAdminCenterIconSizes();
 
       try {
         const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
@@ -8644,9 +8805,11 @@
         return isViewerOwnedByCurrentAdmin(v, scopeId) && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
       });
       const hasViewerNotif = !isAdmin && viewerApprovalNotifs.length > 0;
+      // 뷰어에게 온 '특별 뷰어 초대(수락 대기)'도 알림이다. 이게 빠져 있어 학부모 뷰어에게 레드닷이 안 떴다.
+      const hasSpecialOffer = !isAdmin && getMySpecialOffers().length > 0;
       const hasTransferRequest = isAdmin && getTransferRequests().some(r => r.status === 'pending' && r.toAdminId === authUser.id);
       const hasUnreadNotice = getUnreadNoticeCount() > 0;
-      if (hasPending || hasNewVersionUpdate || hasViewerNotif || hasTransferRequest || hasUnreadNotice) badge.classList.remove('hidden');
+      if (hasPending || hasNewVersionUpdate || hasViewerNotif || hasSpecialOffer || hasTransferRequest || hasUnreadNotice) badge.classList.remove('hidden');
       else badge.classList.add('hidden');
       updateNoticeDot();
     }
@@ -8918,7 +9081,6 @@
           <input type="radio" name="viewer-search-target-radio" value="${p.id}" ${(!approved && firstPick && firstPick.id === p.id) ? 'checked' : ''} ${approved ? 'disabled' : ''} onchange="onViewerSelectSearchTarget('${p.id}', '${p.ownerAdminId || 'super_admin'}')" class="text-blue-600">
           <div class="min-w-0">
             <div class="font-bold text-slate-200 flex items-center gap-1.5 flex-wrap">
-              <span>${(p.sport || '').includes('육상') ? '<span class="ui-ic ic-run-name" data-ic="running"></span>' : '<span class="ui-ic" data-ic="cycling"></span>'}</span>
               <span>${bodyEsc(p.name)}</span>
               <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">${bodyEsc(p.sport)}</span>
               ${approved ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">승인됨</span>' : ''}
@@ -9342,6 +9504,10 @@
         const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
         const json = await res.json();
         if (json && json.data) realtimeAuthData = { ...json.data };
+        // 특별 뷰어 초대·열람 승인 등이 바뀌었을 수 있으므로 매 주기마다 종 레드닷을 다시 계산한다.
+        updatePendingBadge();
+        const notifModal = document.getElementById('modal-viewer-approvals');
+        if (notifModal && !notifModal.classList.contains('hidden')) renderApprovalList();
         const entries = findAllViewerCloudEntries(json?.data, authUser);
         if (entries.length === 0) return;
 
@@ -9385,7 +9551,7 @@
         if (document.visibilityState === 'visible') {
           syncViewerLatestPermissionsOnce();
         }
-      }, 8000);
+      }, 5000);
     }
 
     // --- Account Delete (회원 탈퇴: 지혜 님 필수 지침 반영) ---
@@ -10691,19 +10857,12 @@
 
       c.innerHTML = `
         <div class="space-y-3 font-sans">
-          <div class="rounded-2xl bg-slate-900 border border-purple-500/30 p-3.5 space-y-2">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center text-sm font-black"><span class="ui-ic" data-ic="crown"></span></div>
-                <div>
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-bold text-slate-100 text-xs">${superAcc.name}</span>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">최고관리자 (별도 구분)</span>
-                  </div>
-                  <div class="text-[10px] text-slate-400">${superAcc.email} · 김유신(${yusinRecs}건)·김별하(${byeolhaRecs}건) · 소속 뷰어 ${superViewers.length}명</div>
-                </div>
-              </div>
-            </div>
+          <!-- 최고관리자 정보: 왕관 아이콘·배지 없이 정보만 줄을 나눠 보여 준다(불필요한 여백 없음). -->
+          <div class="rounded-2xl bg-slate-900 border border-purple-500/30 px-3.5 py-3 space-y-0.5">
+            <div class="font-bold text-slate-100 text-xs">${bodyEsc(superAcc.name)}</div>
+            <div class="text-[10px] text-blue-300 break-all">${bodyEsc(superAcc.email)}</div>
+            <div class="text-[10px] text-slate-300">김유신(${yusinRecs}건) · 김별하(${byeolhaRecs}건)</div>
+            <div class="text-[10px] text-slate-400">소속 뷰어 ${superViewers.length}명</div>
           </div>
 
           <div class="text-[11px] font-bold text-slate-300 px-1 flex items-center justify-between">
@@ -11155,7 +11314,7 @@
       c.innerHTML = list.map(n => `
         <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
           <div class="flex items-center justify-between gap-2">
-            <span class="text-[11px] font-bold text-white break-all">${bodyEsc(n.title)}</span>
+            <span class="text-[11px] font-bold text-white break-words">${bodyEsc(n.title)}</span>
             <span class="text-[10px] text-slate-500 shrink-0">${new Date(n.createdAt).toLocaleString('ko-KR')}</span>
           </div>
           <div class="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words">${bodyEsc(n.body)}</div>
@@ -12127,6 +12286,7 @@
         renderCurrentView();
       }
       renderApprovalList();
+      updatePendingBadge();
       alert(accept
         ? '특별 뷰어 자동 열람을 수락했습니다. 해당 관리자의 잠금 해제된 선수 기록을 볼 수 있습니다.'
         : '특별 뷰어 제안을 거절했습니다.');
@@ -12381,7 +12541,7 @@
   </div>
 
   <!-- Exit Confirm Modal -->
-  <div id="modal-app-exit" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-app-exit" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xs p-5 text-center space-y-4 shadow-2xl modal-panel overflow-y-auto">
       <div class="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-xl text-amber-400 mx-auto">
         <span class="ui-ic" data-ic="door" data-size="22"></span>
@@ -12403,7 +12563,7 @@
 
 
   <!-- Modal: Data Responsibility Notice -->
-  <div id="modal-data-notice" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-data-notice" class="modal-overlay fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl modal-panel overflow-y-auto">
       <h3 class="text-base font-bold text-white flex items-center gap-2"><span><span class="ui-ic" data-ic="megaphone"></span></span><span>데이터 보관 책임 안내</span></h3>
       <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 leading-relaxed space-y-2">
@@ -12418,7 +12578,7 @@
   </div>
 
   <!-- Modal: Admin Withdraw Policy (Transfer vs Permanent Delete) -->
-  <div id="modal-admin-withdraw" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-admin-withdraw" class="modal-overlay fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm modal-panel overflow-y-auto p-5 space-y-4 shadow-2xl text-xs">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <h3 class="text-base font-bold text-white"><span class="ui-ic" data-ic="alertTri"></span> 관리자 회원 탈퇴 <span class="text-[10px] text-amber-300 font-normal">(로컬 시뮬레이션)</span></h3>
