@@ -6078,14 +6078,24 @@
         // 소유 목록에 살아 있는 선수라면 그 삭제 이력은 더 이상 유효하지 않으므로 정리한다.
         if (cloudAdmin && Array.isArray(cloudAdmin.players)) {
           const liveIds = new Set(cloudAdmin.players.map(p => p && p.id).filter(Boolean));
-          let tombCleared = false;
+          let localTombCleared = false;
           liveIds.forEach(pid => {
             if (localTomb.deletedPlayers && localTomb.deletedPlayers[pid]) {
               delete localTomb.deletedPlayers[pid];
-              tombCleared = true;
+              localTombCleared = true;
             }
           });
-          if (tombCleared) saveAdminTombstones(stableKey, localTomb);
+          if (localTombCleared) saveAdminTombstones(stableKey, localTomb);
+          let cloudTombCleared = false;
+          if (cloudAdmin.deletedPlayers) {
+            liveIds.forEach(pid => {
+              if (cloudAdmin.deletedPlayers[pid]) { delete cloudAdmin.deletedPlayers[pid]; cloudTombCleared = true; }
+            });
+          }
+          if (cloudTombCleared && realtimeAuthData && realtimeAuthData._admins) {
+            realtimeAuthData._admins[stableKey] = cloudAdmin;
+            saveStagingCloud(realtimeAuthData);
+          }
         }
 
         if (cloudAdmin && (Array.isArray(cloudAdmin.players) || (cloudAdmin.records && typeof cloudAdmin.records === 'object'))) {
