@@ -2188,6 +2188,63 @@
       initPlayerSelectDropdown();
       renderEventTabs();
       renderCurrentView();
+      saveViewState();
+    }
+
+    // ------------------------------------------------------------
+    // 보던 화면 기억(새로고침 복원)
+    //  - 현재 선수·종목 탭·최고기록/연간노트 상태를 같은 탭의 sessionStorage에 저장한다.
+    //  - 계정별로 키를 나눠 다른 계정 로그인 시 남의 화면 상태를 쓰지 않는다.
+    //  - 복원한 선수가 지금 권한에서 없거나(삭제·미승인) 종목 탭이 사라졌때만 기본 화면으로 돌아간다.
+    // ------------------------------------------------------------
+    const VIEW_STATE_KEY_PREFIX = 'STAGING_VIEW_STATE_v1_';
+    function getViewStateKey() {
+      try {
+        const raw = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
+        const u = raw ? JSON.parse(raw) : null;
+        const id = (u && (u.email || u.id)) || 'guest';
+        return VIEW_STATE_KEY_PREFIX + String(id).toLowerCase();
+      } catch (e) { return VIEW_STATE_KEY_PREFIX + 'guest'; }
+    }
+    function saveViewState() {
+      try {
+        sessionStorage.setItem(getViewStateKey(), JSON.stringify({
+          player: currentPlayer || '',
+          event: currentEvent || 'ALL_PB',
+          mode: mainViewMode === 'ANNUAL' ? 'ANNUAL' : 'PB'
+        }));
+      } catch (e) {}
+    }
+    function restoreViewState() {
+      try {
+        const raw = sessionStorage.getItem(getViewStateKey());
+        if (!raw) return false;
+        const st = JSON.parse(raw);
+        if (!st || typeof st !== 'object') return false;
+        let changed = false;
+        // 저장된 선수가 지금 명단(권한)에 있으면 그 선수로 돌아간다.
+        if (st.player && playersData.some(p => p && p.id === st.player) && st.player !== currentPlayer) {
+          currentPlayer = st.player;
+          changed = true;
+        }
+        if (!currentPlayer || !playersData.some(p => p && p.id === currentPlayer)) {
+          // 권한이 없거나 삭제된 선수면 기본 선수·기본 탭으로.
+          if (!playersData.some(p => p && p.id === currentPlayer)) {
+            currentPlayer = playersData.length > 0 ? playersData[0].id : '';
+          }
+          if (currentEvent !== 'ALL_PB') { currentEvent = 'ALL_PB'; changed = true; }
+          if (mainViewMode !== 'PB') { mainViewMode = 'PB'; changed = true; }
+          return changed;
+        }
+        const ev = ('event' in st) ? String(st.event || 'ALL_PB') : 'ALL_PB';
+        const nextEvent = (ev === 'ALL_PB' || getPlayerEvents(currentPlayer).indexOf(ev) >= 0) ? ev : 'ALL_PB';
+        if (nextEvent !== currentEvent) { currentEvent = nextEvent; changed = true; }
+        const nextMode = (st.mode === 'ANNUAL' && currentEvent === 'ALL_PB') ? 'ANNUAL' : 'PB';
+        if (nextMode !== mainViewMode) { mainViewMode = nextMode; changed = true; }
+        const sel = document.getElementById('select-player');
+        if (sel && sel.value !== currentPlayer) sel.value = currentPlayer;
+        return changed;
+      } catch (e) { return false; }
     }
 
     // 7. Event Tabs Navigation (Dynamic from Player's Events)
@@ -2456,6 +2513,7 @@
       if (eventId !== 'ALL_PB') mainViewMode = 'PB';
       renderEventTabs();
       renderCurrentView();
+      saveViewState();
     }
 
     // 그래프 포인트·PB 카드에서 해당 경기 기록 카드로 이동한다.
@@ -3458,6 +3516,7 @@
       syncMainViewModeUI();
       renderEventTabs();
       renderCurrentView();
+      saveViewState();
     }
 
     function stepAnnualYear(delta) {
@@ -7211,6 +7270,8 @@
       }
       // 역할과 무관하게, 공식기록 기준과 맞지 않는 예전 PB 갱신 배지를 한 번 정리한다.
       reconcilePbBadgeTimestamps();
+      // 새로고침 직전에 보던 선수·종목 탭이 있으면 그 화면으로 돌려놓는다(권한·삭제 여부는 restore 에서 확인).
+      if (typeof restoreViewState === 'function') restoreViewState();
       // 새 공지·양도 요청·승인 대기가 있으면 종 아이콘에 바로 표시한다.
       if (typeof updatePendingBadge === 'function') updatePendingBadge();
     }
@@ -9709,12 +9770,19 @@
       applyAuthModeUI();
       checkForUpdates();
       loadRealtimeApprovals();
+      // 새로고침해도 방금 보던 선수·종목 탭으로 돌아간다(불가능하면 기본 화면).
+      restoreViewState();
       initPlayerSelectDropdown();
       renderEventTabs();
       renderCurrentView();
       initGoogleOneTap();
       checkInviteParamOnLoad();
       purgeExpiredPlayerTrash();
+    });
+    // 탭을 닫거나 백그라운드로 갈 때도 현재 화면을 남겨 둔다.
+    window.addEventListener('pagehide', function () { if (typeof saveViewState === 'function') saveViewState(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden' && typeof saveViewState === 'function') saveViewState();
     });
   
     // =========================================================================
