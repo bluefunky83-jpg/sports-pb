@@ -6074,6 +6074,20 @@
           ? (realtimeAuthData._admins[stableKey] || realtimeAuthData._admins[user.id] || null)
           : null;
 
+        // 양도로 다시 넘어온 선수는 이전 관리자 시절의 삭제 이력이 남아 있을 수 있다.
+        // 소유 목록에 살아 있는 선수라면 그 삭제 이력은 더 이상 유효하지 않으므로 정리한다.
+        if (cloudAdmin && Array.isArray(cloudAdmin.players)) {
+          const liveIds = new Set(cloudAdmin.players.map(p => p && p.id).filter(Boolean));
+          let tombCleared = false;
+          liveIds.forEach(pid => {
+            if (localTomb.deletedPlayers && localTomb.deletedPlayers[pid]) {
+              delete localTomb.deletedPlayers[pid];
+              tombCleared = true;
+            }
+          });
+          if (tombCleared) saveAdminTombstones(stableKey, localTomb);
+        }
+
         if (cloudAdmin && (Array.isArray(cloudAdmin.players) || (cloudAdmin.records && typeof cloudAdmin.records === 'object'))) {
           const merged = mergeAdminDatasets(
             stableKey,
@@ -10063,7 +10077,7 @@
       if (!from || !to) { alert('관리자 정보를 찾을 수 없어 양도를 진행하지 않았습니다.'); return; }
       const idx = (from.players || []).findIndex(p => p.id === req.playerId);
       if (idx < 0) { alert('양도할 선수가 이미 없습니다. 요청을 종료합니다.'); req.status = 'canceled'; saveTransferRequests(list); renderTransferRequests(); return; }
-      const player = from.players.splice(idx, 1)[0];
+      const player = Object.assign({}, from.players.splice(idx, 1)[0], { transferReceivedAt: Date.now() });
       const recs = (from.records && Array.isArray(from.records[req.playerId])) ? from.records[req.playerId] : [];
       if (from.records) delete from.records[req.playerId];
       from.deletedPlayers = from.deletedPlayers || {};
@@ -10072,6 +10086,7 @@
       to.players.push(player);
       to.records = to.records || {};
       to.records[req.playerId] = recs;
+      if (to.deletedPlayers && to.deletedPlayers[req.playerId]) delete to.deletedPlayers[req.playerId];
       // 연결된 뷰어 열람 권한도 함께 옮긴다(같은 선수에 대한 승인만).
       Object.entries(cloud).forEach(([k, v]) => {
         if (k.startsWith('_') || !v) return;
