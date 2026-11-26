@@ -85,16 +85,30 @@
     /* 공통 팝업 구조: 위 제목·닫기 고정 / 가운데 내용만 스크롤 / 아래 버튼 고정.
        화면 배율(100~130%)과 모바일 키보드로 보이는 높이가 줄어도 버튼이 잘리지 않도록
        --app-vh(지금 보이는 높이 ÷ 배율)를 기준으로 최대 높이를 잡는다. */
-    .modal-panel { max-height: calc(var(--app-vh, 100dvh) - 2rem); }
+    .modal-panel { max-height: calc(var(--app-vh, 100dvh) - 2rem); transition: max-height 160ms ease-out; }
     .modal-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     .modal-fixed { flex: 0 0 auto; }
-    /* 그래프 포인트에서 찾아온 경기 기록 카드: 잠깐 강조해 위치를 알려 준다. */
-    .record-row-flash { animation: recordRowFlash 2.4s ease-out 1; }
+    /* 그래프 포인트에서 찾아온 경기 기록 카드: 카드 라운딩(16px) 안쪽에 맞춘 둥근 강조판으로 표시한다.
+       (행 전체에 사각 배경·테두리를 그리면 카드의 둥근 모서리와 겹쳐 보이므로, 안쪽에 14px 라운딩 판을 깐다.) */
+    .record-row-flash { position: relative; }
+    .record-row-flash::before {
+      content: '';
+      position: absolute;
+      inset: 2px 6px;
+      border-radius: 14px;
+      pointer-events: none;
+      animation: recordRowFlash 2.4s ease-out 1;
+    }
     @keyframes recordRowFlash {
-      0% { background-color: rgba(59,130,246,0.40); box-shadow: inset 0 0 0 1px rgba(96,165,250,0.9); }
-      65% { background-color: rgba(59,130,246,0.22); box-shadow: inset 0 0 0 1px rgba(96,165,250,0.6); }
+      0% { background-color: rgba(59,130,246,0.38); box-shadow: inset 0 0 0 1px rgba(96,165,250,0.9); }
+      65% { background-color: rgba(59,130,246,0.20); box-shadow: inset 0 0 0 1px rgba(96,165,250,0.6); }
       100% { background-color: transparent; box-shadow: none; }
     }
+    /* 선수 이름 옆 육상 아이콘: 이름 글자와 하단 기준선을 맞추고 조금 키운다. */
+    .name-with-icon { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; }
+    .ic-run-name { font-size: 18px; vertical-align: baseline; align-self: flex-end; }
+    /* 관리자 센터: 선수 50명 기준에서도 가로로 넘치지 않도록 하는 목록 상자 */
+    .player-pick-list { max-height: 15rem; overflow-y: auto; overscroll-behavior: contain; }
   </style>
   <script>
     /* 화면 크기(배율): 첫 화면이 그려지기 전에 적용해 깜빡임을 막는다. 설정 모달과 같은 규칙을 쓴다. */
@@ -109,7 +123,15 @@
         var n = parseFloat(v);
         return (n >= 0.5 && n <= 3) ? n : 1.0;
       }
-      function applyUiScaleEarly() { document.documentElement.style.zoom = String(resolveUiScale()); }
+      var lastApplied = null;
+      function applyUiScaleEarly() {
+        var next = String(resolveUiScale());
+        // 값이 바뀜지 않았는데 다시 쓰면(모바일 키보드 열림/닫힘의 resize마다) 화면 전체가
+        // 다시 그려져 팝업이 깜박이므로, 실제로 바뀔 때만 적용한다.
+        if (next === lastApplied) return;
+        lastApplied = next;
+        document.documentElement.style.zoom = next;
+      }
       applyUiScaleEarly();
       window.addEventListener('resize', applyUiScaleEarly);
       window.addEventListener('orientationchange', applyUiScaleEarly);
@@ -675,7 +697,7 @@
 
       <!-- Form Body: 위쪽 기본 입력(선수·종목·날짜·구분·회차·대회명)은 고정, 가운데만 스크롤, 아래 버튼은 고정 -->
       <form onsubmit="handleSaveRecord(event)" class="flex-1 min-h-0 flex flex-col">
-        <div class="modal-fixed px-5 pt-5 pb-3 space-y-4 text-xs border-b border-slate-800/70">
+        <div class="modal-fixed px-5 pt-4 pb-3 space-y-[0.67rem] text-xs border-b border-slate-800/70">
         
         <!-- Player & Event Display Badge -->
         <div class="flex items-center gap-2">
@@ -862,6 +884,11 @@
 
       <!-- 가운데: 검색창·필터·선수 명단·삭제된 선수 아코디언까지 모두 스크롤 -->
       <div class="modal-scroll p-4 space-y-3">
+        <!-- 선수 일괄 삭제: 선택 모드 진입 버튼(목록 상단) -->
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] text-slate-400">등록 선수 <b id="player-list-count" class="text-slate-200">0</b>명</span>
+          <button type="button" id="btn-player-bulk-enter" onclick="enterPlayerBulkMode()" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-rose-500/60 text-[11px] font-bold text-slate-300 hover:text-rose-300 whitespace-nowrap active:scale-95 transition">선수 일괄 삭제</button>
+        </div>
         <!-- Filters Section -->
         <div class="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2.5">
         <!-- Search bar -->
@@ -906,9 +933,14 @@
       </div>
       </div>
 
-      <!-- Add New Player Button (고정) -->
-      <div class="modal-fixed p-4 border-t border-slate-800 bg-slate-900 flex gap-2">
-        <button type="button" onclick="openAddEditPlayerModal()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 transition">
+      <!-- 하단(고정): 기본은 [새 선수 등록하기], 일괄 삭제 모드에서는 [전체 선택][취소][선택 N명 삭제] -->
+      <div class="modal-fixed p-4 border-t border-slate-800 bg-slate-900 space-y-2">
+        <div id="player-bulk-bar" class="hidden items-center gap-1.5">
+          <button type="button" id="btn-player-bulk-all" onclick="togglePlayerBulkAll()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-200 text-xs font-bold whitespace-nowrap active:scale-95 transition">전체 선택</button>
+          <button type="button" onclick="exitPlayerBulkMode()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 text-xs font-bold whitespace-nowrap active:scale-95 transition">취소</button>
+          <button type="button" id="btn-player-bulk-confirm" onclick="askBulkPlayerDelete()" disabled class="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-500 border border-slate-700 text-xs font-bold whitespace-nowrap cursor-not-allowed transition">선택 0명 삭제</button>
+        </div>
+        <button type="button" id="btn-player-add-new" onclick="openAddEditPlayerModal()" class="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 transition">
           <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           새 선수 등록하기
         </button>
@@ -927,12 +959,14 @@
       </div>
 
       <form onsubmit="handleSavePlayer(event)" class="flex-1 min-h-0 flex flex-col text-xs">
-        <div class="modal-scroll px-5 py-4 space-y-3.5">
-        <input type="hidden" id="form-player-id">
-        <div>
-          <label class="block font-semibold text-slate-400 mb-1">선수 이름 *</label>
+        <!-- 상단 고정: 제목(모달 헤더) + 선수 이름 입력란까지 -->
+        <div class="modal-fixed px-5 pt-3 pb-3 border-b border-slate-800/70 space-y-1">
+          <input type="hidden" id="form-player-id">
+          <label class="block font-semibold text-slate-400">선수 이름 *</label>
           <input type="text" id="form-player-name" required placeholder="선수 이름 입력" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
         </div>
+        <!-- 가운데: 성별·생년월일·종목·출전 세부 종목·프로필 잠금 (내용이 길면 여기만 스크롤) -->
+        <div class="modal-scroll px-5 py-4 space-y-3.5">
 
         <div class="grid grid-cols-2 gap-2">
           <div class="min-w-0">
@@ -946,7 +980,7 @@
           <div class="min-w-0">
             <label class="block font-semibold text-slate-400 mb-1">생년월일 *</label>
             <div class="flex gap-1 items-center">
-              <input type="text" id="form-player-birth" required placeholder="0000-00-00" maxlength="10" inputmode="numeric" oninput="formatBirthInput(this)" class="flex-1 min-w-0 w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              <input type="text" id="form-player-birth" required placeholder="0000-00-00" maxlength="10" inputmode="numeric" oninput="formatBirthInput(this)" onchange="onFormPlayerBirthChange()" class="flex-1 min-w-0 w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
               <span class="birth-picker-wrap">
                 <input type="date" id="form-player-birth-picker" onchange="if(this.value){ document.getElementById('form-player-birth').value = this.value; }" onclick="if (this.showPicker) { try { this.showPicker(); } catch (e) {} }" aria-label="달력에서 날짜 선택" title="달력에서 날짜 선택" class="w-8 h-[34px] bg-slate-800 border border-slate-700 rounded-xl px-1 text-xs text-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer flex-shrink-0">
                 <span class="birth-picker-icon"><span class="ui-ic" data-ic="calendar" data-size="15"></span></span>
@@ -972,48 +1006,28 @@
         </div>
         <p id="main-event-notice" class="hidden text-[10px] leading-relaxed text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl px-2.5 py-1.5 break-words"></p>
 
-        <!-- Event Categories: 개인·단체 아코디언 카드 (동시 펼침 허용) -->
+        <!-- 출전 세부 종목: 분류(단거리·장거리 / 15세이하 개인·단체 / 트랙·도로)별 아코디언.
+             분류와 개인/단체 카드를 모두 따로 펼칠 수 있다. -->
         <div class="space-y-2">
           <div class="flex items-center justify-between gap-2">
-            <label class="block font-semibold text-blue-400 text-xs"><span class="ui-ic" data-ic="running"></span> 출전 세부 종목</label>
+            <label class="block font-semibold text-blue-400 text-xs"><span class="ui-ic ic-run-name" data-ic="running" style="font-size:17px"></span> 출전 세부 종목</label>
             <span class="text-[10px] text-slate-500 shrink-0">카드를 눌러 펼치기</span>
           </div>
+          <div id="event-acc-groups" class="space-y-2"></div>
+        </div>
 
-          <div class="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden">
-            <button type="button" id="acc-header-personal" onclick="toggleEventAccordion('personal')" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left active:scale-[0.99] transition">
-              <span class="flex items-center gap-1.5 min-w-0">
-                <span class="text-sm shrink-0"><span class="ui-ic" data-ic="person"></span></span>
-                <span class="text-xs font-bold text-slate-200 truncate">개인 종목</span>
-                <span id="acc-count-personal" class="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-600/20 text-blue-300 border border-blue-500/30 font-bold">0</span>
-              </span>
-              <span id="acc-chevron-personal" class="shrink-0 text-slate-400 text-xs">▾</span>
+        <!-- 선수 프로필 잠금: 잠그면 특별 뷰어의 자동 열람 대상에서만 빠진다(개별 승인 열람은 그대로). -->
+        <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="flex items-center gap-1.5 min-w-0">
+              <span id="form-player-lock-icon" class="shrink-0 text-slate-400"><span class="ui-ic" data-ic="unlock"></span></span>
+              <span class="text-xs font-bold text-slate-200 truncate">선수 프로필 잠금</span>
+            </span>
+            <button type="button" id="btn-form-player-lock" onclick="toggleFormPlayerLock()" class="shrink-0 px-3 py-1.5 rounded-xl border text-[11px] font-bold bg-slate-900 text-slate-300 border-slate-700 active:scale-95 transition">
+              잠금 해제 상태
             </button>
-            <div id="acc-body-personal" class="px-3 pb-3 pt-2 space-y-2 border-t border-slate-900">
-              <div id="chips-personal" class="flex flex-wrap gap-1.5"></div>
-              <div class="flex gap-1.5">
-                <input type="text" id="input-new-event-personal" placeholder="새 개인 종목 (예: 800m)" class="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-                <button type="button" onclick="addEventToCurrentFormPlayer('personal')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs whitespace-nowrap shrink-0 active:scale-95 transition">+ 추가</button>
-              </div>
-            </div>
           </div>
-
-          <div class="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden">
-            <button type="button" id="acc-header-team" onclick="toggleEventAccordion('team')" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left active:scale-[0.99] transition">
-              <span class="flex items-center gap-1.5 min-w-0">
-                <span class="text-sm shrink-0"><span class="ui-ic" data-ic="users"></span></span>
-                <span class="text-xs font-bold text-slate-200 truncate">단체 종목</span>
-                <span id="acc-count-team" class="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold">0</span>
-              </span>
-              <span id="acc-chevron-team" class="shrink-0 text-slate-400 text-xs">▸</span>
-            </button>
-            <div id="acc-body-team" class="px-3 pb-3 pt-2 space-y-2 border-t border-slate-900 hidden">
-              <div id="chips-team" class="flex flex-wrap gap-1.5"></div>
-              <div class="flex gap-1.5">
-                <input type="text" id="input-new-event-team" placeholder="새 단체 종목 (예: 1600mR)" class="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-                <button type="button" onclick="addEventToCurrentFormPlayer('team')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs whitespace-nowrap shrink-0 active:scale-95 transition">+ 추가</button>
-              </div>
-            </div>
-          </div>
+          <p class="text-[10px] text-slate-500 leading-relaxed">잠그면 특별 뷰어의 자동 열람에서 빠집니다. 개별 신청 후 승인된 열람은 그대로 유지됩니다.</p>
         </div>
 
         </div>
@@ -2063,7 +2077,7 @@
 
       playersData.forEach(p => {
         const sportText = p.sport || '';
-        const iconHtml = sportText.includes('육상') ? '<span class="ui-ic" data-ic="running" style="font-size:16px"></span>'
+        const iconHtml = sportText.includes('육상') ? '<span class="ui-ic ic-run-name" data-ic="running"></span>'
           : (sportText.includes('사이클') ? '<span class="ui-ic" data-ic="cycling" style="font-size:16px"></span>' : '<span class="ui-ic" data-ic="medal" style="font-size:16px"></span>');
         const plainText = `${p.name || ''} (${sportText}) - ${p.mainEvent || ''}`;
         const fullText = `${iconHtml} ${plainText}`;
@@ -2081,7 +2095,7 @@
           itemBtn.type = 'button';
           const isSelected = p.id === currentPlayer;
           itemBtn.className = `w-full px-4 py-3 text-left text-sm font-bold flex items-center justify-between transition ${isSelected ? 'bg-blue-600/20 text-blue-300' : 'text-slate-200 hover:bg-slate-800'}`;
-          itemBtn.innerHTML = `<span class="truncate flex items-center gap-1.5">${fullText}</span>${isSelected ? '<span class="text-blue-400 text-xs ml-2"></span>' : ''}`;
+          itemBtn.innerHTML = `<span class="truncate name-with-icon">${fullText}</span>${isSelected ? '<span class="text-blue-400 text-xs ml-2"></span>' : ''}`;
           itemBtn.onclick = () => {
             closeCustomPlayerDropdown();
             if (p.id !== currentPlayer) switchPlayer(p.id);
@@ -2139,7 +2153,23 @@
     function getPlayerEvents(playerId) {
       // 선수 프로필에서 해제한 종목(disabledEvents)은 상단 탭·입력 목록에서 빠진다.
       // 경기 기록·PB 계산용 원본 데이터는 그대로 남기므로 기록이 사라지지는 않는다.
-      return getAllPlayerEvents(playerId).filter(ev => !isEventDisabledInPlayer(playerId, ev));
+      return sortEventNameListForDisplay(getAllPlayerEvents(playerId).filter(ev => !isEventDisabledInPlayer(playerId, ev)));
+    }
+
+    // 종목 정렬: 개인 종목이 단체 종목보다 앞, 같은 분류 안에서 '100m·200m·300m·400m'처럼
+    // 거리(m)로만 표기된 종목은 실제 거리 순서로 놓는다. 그 밖의 종목은 기존 순서를 그대로 둔다.
+    // (기록·PB·등록 데이터는 건드리지 않고 보여 주는 순서만 맞춘다.)
+    function compareEventOrder(aName, aTeam, bName, bTeam) {
+      if (!!aTeam !== !!bTeam) return aTeam ? 1 : -1;
+      const am = parsePlainMeterEvent(aName);
+      const bm = parsePlainMeterEvent(bName);
+      if (am !== null && bm !== null && am !== bm) return am - bm;
+      return 0;
+    }
+
+    function sortEventNameListForDisplay(names) {
+      const arr = (Array.isArray(names) ? names : []).slice();
+      return arr.sort((a, b) => compareEventOrder(a, isTeamEventName(a), b, isTeamEventName(b)));
     }
 
     function getPlayerDisabledEventNames(playerId) {
@@ -4401,7 +4431,7 @@
             data: dataPoints,
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            borderWidth: 2.5,
+            borderWidth: 1.25,
             fill: true,
             tension: 0.2,
             pointRadius: 4.5,
@@ -5522,6 +5552,7 @@
       if (!container) return;
       // 복구 가능한 선수 아코디언은 선수가 0명이 되어도 계속 접근할 수 있어야 하므로 먼저 그린다.
       renderDeletedPlayersAccordion();
+      syncPlayerBulkUi();
       const searchInput = document.getElementById('player-filter-search');
       const search = (searchInput && searchInput.value ? searchInput.value : '').trim().toLowerCase();
 
@@ -5559,28 +5590,43 @@
         const { gradeBadge } = calculateGradeAndAge(p.birth || '');
         const card = document.createElement('div');
         const isCurrent = p.id === currentPlayer;
-        card.className = `p-3.5 rounded-2xl bg-slate-800/80 border ${isCurrent ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700/80 hover:border-slate-600'} flex items-start justify-between gap-2 shadow-md transition`;
-        
+        const locked = !!p.locked;
+        const picked = playerBulkSelected.has(p.id);
+        const borderClass = playerBulkMode && picked
+          ? 'border-rose-500 ring-2 ring-rose-500/30'
+          : (isCurrent ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700/80 hover:border-slate-600');
+        card.className = `p-3.5 rounded-2xl bg-slate-800/80 border ${borderClass} flex items-start justify-between gap-2 shadow-md transition min-w-0`;
+
         const genderBadgeClass = p.gender === '남' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-pink-500/20 text-pink-300 border-pink-500/40';
+        const lockBtnClass = locked
+          ? 'p-1.5 rounded-lg text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition'
+          : 'p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition';
 
         card.innerHTML = `
-          <!-- Left: Info (종목 아이콘 박스 없이 2줄로 간결하게 · 선택 표시는 카드 테두리로만) -->
-          <div onclick="selectPlayerFromCard('${p.id}')" class="flex-1 min-w-0 cursor-pointer">
-            <!-- 1줄: 이름 · 생년월일 · [성별] · [학년] -->
-            <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
-              <span class="text-sm font-bold text-white truncate">${p.name || ''}</span>
-              <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
-              <span class="px-1.5 py-0.5 rounded border ${genderBadgeClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${p.gender || ''}</span>
-              <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${gradeBadge}</span>
-            </div>
-            <!-- 2줄: 종목 · 주종목 -->
-            <div class="mt-1 text-xs text-blue-400 font-medium truncate">
-              ${p.sport || '운동'} · ${p.mainEvent || '종목 미지정'}
+          <!-- Left: 이름·생년월일·성별·학년 / 종목 -->
+          <div ${playerBulkMode ? '' : `onclick="selectPlayerFromCard('${p.id}')"`} class="flex items-start gap-2 flex-1 min-w-0 ${playerBulkMode ? '' : 'cursor-pointer'}">
+            ${playerBulkMode ? `<input type="checkbox" class="mt-0.5 w-4 h-4 rounded border-slate-500 bg-slate-900 text-rose-500 shrink-0" ${picked ? 'checked' : ''} onchange="togglePlayerBulkSelect('${p.id}', this.checked); renderPlayerCards();" aria-label="${bodyEsc(p.name || '')} 선택">` : ''}
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
+                <span class="text-sm font-bold text-white truncate max-w-[9rem]">${bodyEsc(p.name || '')}</span>
+                <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
+                <span class="px-1.5 py-0.5 rounded border ${genderBadgeClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${p.gender || ''}</span>
+                <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${gradeBadge}</span>
+                ${locked ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">잠금</span>' : ''}
+              </div>
+              <div class="mt-1 text-xs text-blue-400 font-medium truncate">
+                ${bodyEsc(p.sport || '운동')} · ${bodyEsc(p.mainEvent || '종목 미지정')}
+              </div>
             </div>
           </div>
 
-          <!-- Actions: Edit / Delete (가로 한 줄 · 첫줄 오른쪽 끝) -->
-          <div class="flex items-center gap-0.5 shrink-0 -mr-1">
+          <!-- Actions: 잠금 → 수정 → 삭제 순서 -->
+          <div class="flex items-center gap-0.5 shrink-0 -mr-1 ${playerBulkMode ? 'hidden' : ''}">
+            <button type="button" onclick="togglePlayerLock('${p.id}')" class="${lockBtnClass}" title="${locked ? '프로필 잠금 해제' : '프로필 잠금'}" aria-label="${locked ? '프로필 잠금 해제' : '프로필 잠금'}">
+              ${locked
+                ? '<svg width="16" height="16" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 118 0v4"/></svg>'
+                : '<svg width="16" height="16" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 117.5-2"/></svg>'}
+            </button>
             <button type="button" onclick="openAddEditPlayerModal('${p.id}')" class="p-1.5 text-slate-400 hover:text-blue-400 rounded-lg hover:bg-slate-700/50 transition" title="프로필 수정">
               <svg width="16" height="16" class="w-4 h-4" style="max-width:20px;max-height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
             </button>
@@ -5591,6 +5637,7 @@
         `;
         container.appendChild(card);
       });
+      syncPlayerBulkUi();
     }
 
     function selectPlayerFromCard(id) {
@@ -5599,36 +5646,154 @@
     }
 
     // 10-1. Player Profile Form: Event Add/Delete & Catalog Toggle Management
-    const SPORT_MAIN_EVENTS = {
-      '육상': ['단거리'],
-      '사이클': ['트랙']
-    };
+    // ------------------------------------------------------------------
+    // 공식 종목 카탈로그 (2026-11 기준)
+    //  - 연령부(대한체육회 전국소년체육대회 · 대한육상연맹 · 대한자전거연맹 대회요강)와
+    //    성별에 맞는 실제 공식 경기 종목만 기본으로 제공한다.
+    //  - 육상: 단거리 / 장거리 분류. 사이클: 15세이하부는 개인·단체, 18세이하부부터는
+    //    트랙(개인·단체) · 도로(개인·단체) 분류.
+    //  - 거리(멀리뛰기·던지기 등)나 순위·점수로 겨루는 종목은 기록 입력 방식(초 단위)과
+    //    맞지 않아 카탈로그에 넣지 않았다(기록 처리 방식은 사용자 결정 사항).
+    //  - 여기에 없는 종목도 [직접 추가]로 등록해 기록할 수 있고, 그 기록·PB는 그대로 유지된다.
+    // ------------------------------------------------------------------
+    const EVENT_AGE_DIVISIONS = [
+      { key: '10세이하', label: '10세이하부', maxAge: 10 },
+      { key: '12세이하', label: '12세이하부', maxAge: 12 },
+      { key: '15세이하', label: '15세이하부', maxAge: 15 },
+      { key: '18세이하', label: '18세이하부', maxAge: 18 },
+      { key: '일반', label: '일반부', maxAge: 200 }
+    ];
 
-    const EVENT_CATALOG = {
-      '육상_단거리': [
-        { name: '100m', isTeam: false },
-        { name: '200m', isTeam: false },
-        { name: '400m', isTeam: false },
-        { name: '4x100mR', isTeam: true },
-        { name: '4x400mR', isTeam: true },
-        { name: '4x400mR(Mixed)', isTeam: true }
-      ],
-      '사이클_트랙': [
-        { name: '1Lap', isTeam: false },
-        { name: '500m독주', isTeam: false },
-        { name: '1km추발', isTeam: false },
-        { name: '2km단체추발', isTeam: true },
-        { name: '도로독주', isTeam: false },
-        { name: '개인도로', isTeam: false }
-      ]
-    };
+    // 생년월일 → 연령부. 생년이 없으면 15세이하부 기준으로 보여 준다.
+    function getEventAgeDivisionKey(birthStr) {
+      const m = String(birthStr || '').match(/^(\d{4})/);
+      if (!m) return '15세이하';
+      const birthYear = parseInt(m[1], 10);
+      if (!birthYear || birthYear < 1900) return '15세이하';
+      const year = (typeof getSystemYear === 'function' ? getSystemYear() : new Date().getFullYear());
+      const age = year - birthYear + 1;
+      for (let i = 0; i < EVENT_AGE_DIVISIONS.length; i++) {
+        if (age <= EVENT_AGE_DIVISIONS[i].maxAge) return EVENT_AGE_DIVISIONS[i].key;
+      }
+      return '일반';
+    }
 
-    // 개인/단체 아코디언 상태 (여러 카드를 동시에 펼칠 수 있다)
-    let formAccordionOpen = { personal: true, team: false };
+    function getEventAgeDivisionLabel(key) {
+      const found = EVENT_AGE_DIVISIONS.find(d => d.key === key);
+      return found ? found.label : '';
+    }
+
+    // 분류(단거리·장거리·트랙·도로)별 개인/단체 공식 종목
+    function getEventCatalogGroups(sport, divisionKey, gender) {
+      const isMale = String(gender || '남') !== '여';
+      const division = EVENT_AGE_DIVISIONS.some(d => d.key === divisionKey) ? divisionKey : '15세이하';
+
+      if (String(sport || '').indexOf('사이클') >= 0) {
+        if (division === '18세이하' || division === '일반') {
+          // 고등부(18세이하)·일반부: 트랙 / 도로
+          return [
+            {
+              key: '트랙', label: '트랙', source: '대한자전거연맹 트랙 종목(18세이하부)',
+              personal: ['1Lap', '스프린트', '1km독주', '3km개인추발', '스크래치', '제외경기', '포인트경기', '옴니엄'],
+              team: ['단체스프린트', '4km단체추발', '매디슨']
+            },
+            {
+              key: '도로', label: '도로', source: '대한자전거연맹 도로 종목',
+              personal: ['도로독주', '개인도로'],
+              team: []
+            }
+          ];
+        }
+        // 15세이하부(중등·초등): 기존처럼 개인·단체 분류
+        return [{
+          key: '', label: '', source: '전국소년체육대회 자전거 15세이하부',
+          personal: ['200m기록', '500m독주', isMale ? '2km개인추발' : '1km개인추발', '스크래치'],
+          team: ['단체스프린트', isMale ? '3km단체추발' : '2km단체추발']
+        }];
+      }
+
+      // 육상: 단거리 / 장거리
+      const hurdle = isMale ? '110mH' : '100mH';
+      if (division === '10세이하') {
+        return [{
+          key: '단거리', label: '단거리', source: '전국소년체육대회 육상 10세이하부',
+          personal: ['80m'], team: []
+        }];
+      }
+      if (division === '12세이하') {
+        return [
+          {
+            key: '단거리', label: '단거리', source: '전국소년체육대회 육상 12세이하부',
+            personal: ['100m', '200m'], team: ['4x100mR']
+          },
+          {
+            key: '장거리', label: '장거리', source: '전국소년체육대회 육상 12세이하부',
+            personal: ['800m'], team: []
+          }
+        ];
+      }
+      if (division === '15세이하') {
+        return [
+          {
+            key: '단거리', label: '단거리', source: '전국소년체육대회 육상 15세이하부',
+            personal: ['100m', '200m', '400m', hurdle],
+            team: ['4x100mR', '4x400mR', '4x400mR(Mixed)']
+          },
+          {
+            key: '장거리', label: '장거리', source: '전국소년체육대회 육상 15세이하부',
+            personal: ['800m', '1500m', '3000m', '5000mW'], team: []
+          }
+        ];
+      }
+      // 18세이하(고등부) · 일반부
+      return [
+        {
+          key: '단거리', label: '단거리', source: '대한육상연맹 고등부·일반부 종목',
+          personal: ['100m', '200m', '400m', hurdle, '400mH'],
+          team: ['4x100mR', '4x400mR']
+        },
+        {
+          key: '장거리', label: '장거리', source: '대한육상연맹 고등부·일반부 종목',
+          personal: isMale
+            ? ['800m', '1500m', '3000m', '5000m', '3000mSC', '5000mW']
+            : ['800m', '1500m', '3000m', '5000m', '5000mW'],
+          team: []
+        }
+      ];
+    }
+
+    // 모든 연령부의 종목을 이름으로 찾을 때 쓰는 통합 목록(정렬·그룹 판정용).
+    function getSportCatalog(sport) {
+      const seen = {};
+      const out = [];
+      EVENT_AGE_DIVISIONS.forEach(d => {
+        ['남', '여'].forEach(g => {
+          getEventCatalogGroups(sport, d.key, g).forEach(grp => {
+            grp.personal.forEach(name => {
+              if (seen[name]) return;
+              seen[name] = 1;
+              out.push({ name: name, isTeam: false, group: grp.key });
+            });
+            grp.team.forEach(name => {
+              if (seen[name]) return;
+              seen[name] = 1;
+              out.push({ name: name, isTeam: true, group: grp.key });
+            });
+          });
+        });
+      });
+      return out;
+    }
+
+    // ----- 화면 상태 -----
+    // 분류·개인/단체 아코디언은 모두 따로 열고 닫을 수 있고, 동시에 펼쳐 둘 수 있다.
+    let formAccordionOpen = {};
+    let formCatalogGroups = [];
+    let formCatalogDivisionKey = '';
     // 수정 모달을 열었을 때 저장되어 있던 주종목 (목록에 없으면 안내한다)
     let formOriginalMainEvent = '';
 
-    function escapeEventText(str) {
+        function escapeEventText(str) {
       return String(str == null ? '' : str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -5688,44 +5853,95 @@
       };
     }
 
-    function getSportCatalog(sport) {
-      const key = `${sport}_${(SPORT_MAIN_EVENTS[sport] || ['단거리'])[0]}`;
-      return EVENT_CATALOG[key] || EVENT_CATALOG['육상_단거리'];
+    // 새 선수 등록 시 기본으로 켜 두는 종목(그 연령부·성별의 공식 종목 전부).
+    // 기존 선수의 등록 종목은 이 함수로 덮어쓰지 않는다(연령부가 바뀌어도 삭제하지 않는다).
+    function getDefaultEventsForSport(sport, birthStr, gender) {
+      const division = getEventAgeDivisionKey(birthStr);
+      const groups = getEventCatalogGroups(sport || '육상', division, gender);
+      const out = [];
+      groups.forEach(grp => {
+        (grp.personal || []).forEach(name => out.push(name));
+        (grp.team || []).forEach(name => out.push({ name: name, isTeam: true }));
+      });
+      return out;
     }
 
-    function getDefaultEventsForSport(sport) {
-      return getSportCatalog(sport).map(c => (c.isTeam ? { name: c.name, isTeam: true } : c.name));
-    }
+    function eventGroupDomKey(index) { return 'g' + index; }
+    function eventCardDomKey(index, type) { return 'c' + index + (type === 'team' ? 't' : 'p'); }
 
-    function toggleEventAccordion(type) {
-      const key = type === 'team' ? 'team' : 'personal';
-      formAccordionOpen[key] = !formAccordionOpen[key];
+    // 분류(트랙·도로·단거리·장거리)와 개인/단체 아코디언은 서로 독립적이며 동시에 펼칠 수 있다.
+    function toggleEventAccordion(stateKey) {
+      formAccordionOpen[stateKey] = !formAccordionOpen[stateKey];
       applyEventAccordionState();
     }
 
     function applyEventAccordionState() {
-      ['personal', 'team'].forEach(type => {
-        const body = document.getElementById('acc-body-' + type);
-        const chevron = document.getElementById('acc-chevron-' + type);
-        const isOpen = !!formAccordionOpen[type];
-        if (body) body.classList.toggle('hidden', !isOpen);
-        if (chevron) chevron.textContent = isOpen ? '▾' : '▸';
+      (formCatalogGroups || []).forEach((grp, gi) => {
+        const gOpen = formAccordionOpen[eventGroupDomKey(gi)] !== false;
+        const gBody = document.getElementById('acc-gbody-' + gi);
+        const gChev = document.getElementById('acc-gchev-' + gi);
+        if (gBody) gBody.classList.toggle('hidden', !gOpen);
+        if (gChev) gChev.textContent = gOpen ? '▾' : '▸';
+        ['personal', 'team'].forEach(type => {
+          const isOpen = !!formAccordionOpen[eventCardDomKey(gi, type)];
+          const body = document.getElementById('acc-cbody-' + gi + '-' + type);
+          const chev = document.getElementById('acc-cchev-' + gi + '-' + type);
+          if (body) body.classList.toggle('hidden', !isOpen);
+          if (chev) chev.textContent = isOpen ? '▾' : '▸';
+        });
       });
     }
 
+    // 모달을 열 때: 이 선수가 실제로 등록한 종목이 있는 카드를 펼쳐 둔다(나머지도 눌러서 펼칠 수 있다).
     function resetFormAccordionForEvents() {
-      const hasTeam = formCurrentEvents.some(ev => getFormEventType(ev) === 'team');
-      const hasPersonal = formCurrentEvents.some(ev => getFormEventType(ev) === 'personal');
-      formAccordionOpen = { personal: hasPersonal || !hasTeam, team: hasTeam };
+      const next = {};
+      (formCatalogGroups || []).forEach((grp, gi) => {
+        next[eventGroupDomKey(gi)] = true;
+        ['personal', 'team'].forEach(type => {
+          const has = formCurrentEvents.some(ev => getFormEventType(ev) === type && resolveEventGroupIndexFor(ev) === gi);
+          next[eventCardDomKey(gi, type)] = has || type === 'personal';
+        });
+      });
+      formAccordionOpen = next;
     }
 
     function updateFormEventCounts() {
-      ['personal', 'team'].forEach(type => {
-        const badge = document.getElementById('acc-count-' + type);
-        if (!badge) return;
-        const count = formCurrentEvents.filter(ev => getFormEventType(ev) === type).length;
-        badge.textContent = String(count);
+      (formCatalogGroups || []).forEach((grp, gi) => {
+        let gTotal = 0;
+        ['personal', 'team'].forEach(type => {
+          const badge = document.getElementById('acc-ccount-' + gi + '-' + type);
+          const count = formCurrentEvents.filter(ev => getFormEventType(ev) === type && resolveEventGroupIndexFor(ev) === gi).length;
+          gTotal += count;
+          if (badge) badge.textContent = String(count);
+        });
+        const gBadge = document.getElementById('acc-gcount-' + gi);
+        if (gBadge) gBadge.textContent = String(gTotal);
       });
+    }
+
+    // 등록된 종목이 어느 분류(단거리·장거리·트랙·도로)에 속하는지 찾는다.
+    // 카탈로그에 없는 직접 추가 종목은 이름으로 추정하고, 그래도 모르면 첫 분류에 둔다.
+    function resolveEventGroupIndexFor(ev) {
+      const name = getFormEventName(ev);
+      const isTeam = isFormEventTeam(ev);
+      const groups = formCatalogGroups || [];
+      for (let i = 0; i < groups.length; i++) {
+        const list = isTeam ? (groups[i].team || []) : (groups[i].personal || []);
+        if (list.includes(name)) return i;
+      }
+      const sport = (document.getElementById('form-player-sport') || {}).value || '육상';
+      if (String(sport).indexOf('사이클') >= 0) {
+        if (name.indexOf('도로') >= 0) {
+          const di = groups.findIndex(g => g.key === '도로');
+          if (di >= 0) return di;
+        }
+        const ti = groups.findIndex(g => g.key === '트랙');
+        return ti >= 0 ? ti : 0;
+      }
+      const meters = parsePlainMeterEvent(name);
+      const longIdx = groups.findIndex(g => g.key === '장거리');
+      if (longIdx >= 0 && ((meters !== null && meters >= 800) || /800m|1500m|3000m|5000m/.test(name))) return longIdx;
+      return 0;
     }
 
     function showMainEventNotice(resolved) {
@@ -5790,75 +6006,139 @@
       if (sportSelect) sportSelect.value = sport;
 
       if (autoFillEvents) {
-        formCurrentEvents = getDefaultEventsForSport(sport);
+        const birthEl = document.getElementById('form-player-birth');
+        const genderEl = document.getElementById('form-player-gender');
+        formCurrentEvents = getDefaultEventsForSport(sport, birthEl ? birthEl.value : '', genderEl ? genderEl.value : '남');
       }
-      renderFormEventsChips(desiredMainEvent);
+      renderFormEventsChips(desiredMainEvent, true);
     }
 
-    function renderFormEventsChips(desiredMainEvent) {
+    function renderFormEventsChips(desiredMainEvent, resetAccordions) {
       const sportSelect = document.getElementById('form-player-sport');
       const sport = (sportSelect && sportSelect.value) || '육상';
-      const catalog = getSportCatalog(sport);
+      const birthEl = document.getElementById('form-player-birth');
+      const genderEl = document.getElementById('form-player-gender');
+      const divisionKey = getEventAgeDivisionKey(birthEl ? birthEl.value : '');
+      const gender = (genderEl && genderEl.value) ? genderEl.value : '남';
+      const groups = getEventCatalogGroups(sport, divisionKey, gender);
+      formCatalogGroups = groups;
+      formCatalogDivisionKey = divisionKey;
 
-      ['personal', 'team'].forEach(type => {
-        const container = document.getElementById('chips-' + type);
-        if (!container) return;
-        container.innerHTML = '';
-        const typeIsTeam = type === 'team';
+      if (resetAccordions) resetFormAccordionForEvents();
 
-        const buildChip = (name, nameIsTeam, isSelected) => {
-          const chip = document.createElement('div');
-          chip.className = 'inline-flex items-center gap-1 max-w-full px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ' +
-            (isSelected
-              ? (typeIsTeam
-                ? 'bg-indigo-600 border-indigo-400 text-white shadow-sm'
-                : 'bg-blue-600 border-blue-400 text-white shadow-sm')
-              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200');
-
-          const mark = document.createElement('span');
-          mark.className = 'shrink-0';
-          mark.textContent = isSelected ? '' : '+';
-          chip.appendChild(mark);
-
-          const label = document.createElement('span');
-          label.className = 'min-w-0 break-all text-left';
-          label.textContent = name;
-          chip.appendChild(label);
-
-          if (isSelected) {
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'shrink-0 w-4 h-4 ml-0.5 rounded-full flex items-center justify-center text-[11px] leading-none transition active:scale-90 ' +
-              (typeIsTeam ? 'bg-indigo-800 hover:bg-red-500 text-indigo-100 hover:text-white' : 'bg-blue-800 hover:bg-red-500 text-blue-100 hover:text-white');
-            removeBtn.textContent = '×';
-            removeBtn.onclick = () => toggleCatalogEvent(name, nameIsTeam);
-            chip.appendChild(removeBtn);
-          } else {
-            chip.classList.add('cursor-pointer', 'active:scale-95');
-            chip.onclick = () => toggleCatalogEvent(name, nameIsTeam);
+      const wrap = document.getElementById('event-acc-groups');
+      if (wrap) {
+        wrap.innerHTML = '';
+        groups.forEach((grp, gi) => {
+          const hasLabel = !!grp.label;
+          const outer = document.createElement('div');
+          outer.className = 'rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden';
+          let html = '';
+          if (hasLabel) {
+            html += '<button type="button" id="acc-ghead-' + gi + '" onclick="toggleEventAccordion(\'' + eventGroupDomKey(gi) + '\')" class="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left active:scale-[0.99] transition">'
+              + '<span class="flex items-center gap-1.5 min-w-0">'
+              + '<span class="text-xs font-bold text-slate-100 truncate">' + bodyEsc(grp.label) + '</span>'
+              + '<span id="acc-gcount-' + gi + '" class="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-bold">0</span>'
+              + '</span>'
+              + '<span id="acc-gchev-' + gi + '" class="shrink-0 text-slate-400 text-xs">▾</span>'
+              + '</button>';
           }
-          return chip;
-        };
-
-        // 1) 대분류 기본 카탈로그 (등록 여부를 칩으로 On/Off)
-        catalog.filter(c => !!c.isTeam === typeIsTeam).forEach(catItem => {
-          const isSelected = formCurrentEvents.some(ev => getFormEventName(ev) === catItem.name);
-          container.appendChild(buildChip(catItem.name, catItem.isTeam, isSelected));
+          html += '<div id="acc-gbody-' + gi + '" class="' + (hasLabel ? 'px-2 pb-2 pt-2 space-y-2 border-t border-slate-900' : 'p-2 space-y-2') + '">';
+          ['personal', 'team'].forEach(type => {
+            const isTeam = type === 'team';
+            html += '<div class="rounded-xl border border-slate-800/80 bg-slate-900/60 overflow-hidden">'
+              + '<button type="button" id="acc-chead-' + gi + '-' + type + '" onclick="toggleEventAccordion(\'' + eventCardDomKey(gi, type) + '\')" class="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left active:scale-[0.99] transition">'
+              + '<span class="flex items-center gap-1.5 min-w-0">'
+              + '<span class="text-[11px] font-bold ' + (isTeam ? 'text-indigo-300' : 'text-blue-300') + '">' + (isTeam ? '단체 종목' : '개인 종목') + '</span>'
+              + '<span id="acc-ccount-' + gi + '-' + type + '" class="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border font-bold ' + (isTeam ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : 'bg-blue-600/20 text-blue-300 border-blue-500/30') + '">0</span>'
+              + '</span>'
+              + '<span id="acc-cchev-' + gi + '-' + type + '" class="shrink-0 text-slate-400 text-[10px]">▾</span>'
+              + '</button>'
+              + '<div id="acc-cbody-' + gi + '-' + type + '" class="px-2.5 pb-2.5 pt-1 space-y-2 border-t border-slate-800/60">'
+              + '<div id="chips-' + gi + '-' + type + '" class="flex flex-wrap gap-1.5"></div>'
+              + '<div class="flex gap-1.5">'
+              + '<input type="text" id="input-new-event-' + gi + '-' + type + '" placeholder="' + (isTeam ? '새 단체 종목 (예: 1600mR)' : '새 개인 종목 (예: 800m)') + '" class="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">'
+              + '<button type="button" onclick="addEventToCurrentFormPlayer(\'' + type + '\', ' + gi + ')" class="px-3 py-1.5 ' + (isTeam ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-blue-600 hover:bg-blue-500') + ' text-white font-bold rounded-xl text-xs whitespace-nowrap shrink-0 active:scale-95 transition">+ 추가</button>'
+              + '</div>'
+              + '</div></div>';
+          });
+          html += '</div>';
+          outer.innerHTML = html;
+          wrap.appendChild(outer);
         });
+      }
 
-        // 2) 직접 추가한 종목 (카탈로그에 없는 것)
-        formCurrentEvents
-          .filter(ev => getFormEventType(ev) === type && !catalog.some(c => c.name === getFormEventName(ev)))
-          .forEach(ev => {
-            container.appendChild(buildChip(getFormEventName(ev), typeIsTeam, true));
+      // 카탈로그에 있는 기본 종목 이름(직접 추가 종목과 구분하기 위해)
+      const catalogKeys = {};
+      groups.forEach(grp => {
+        (grp.personal || []).forEach(n => { catalogKeys[n + '|p'] = 1; });
+        (grp.team || []).forEach(n => { catalogKeys[n + '|t'] = 1; });
+      });
+
+      groups.forEach((grp, gi) => {
+        ['personal', 'team'].forEach(type => {
+          const container = document.getElementById('chips-' + gi + '-' + type);
+          if (!container) return;
+          const typeIsTeam = type === 'team';
+          const keySuffix = typeIsTeam ? 't' : 'p';
+
+          const buildChip = (name, nameIsTeam, isSelected) => {
+            const chip = document.createElement('div');
+            chip.className = 'inline-flex items-center gap-1 max-w-full px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ' +
+              (isSelected
+                ? (nameIsTeam
+                  ? 'bg-indigo-600 border-indigo-400 text-white shadow-sm'
+                  : 'bg-blue-600 border-blue-400 text-white shadow-sm')
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200');
+
+            const mark = document.createElement('span');
+            mark.className = 'shrink-0';
+            mark.textContent = isSelected ? '' : '+';
+            chip.appendChild(mark);
+
+            const label = document.createElement('span');
+            label.className = 'min-w-0 break-all text-left';
+            label.textContent = name;
+            chip.appendChild(label);
+
+            if (isSelected) {
+              const removeBtn = document.createElement('button');
+              removeBtn.type = 'button';
+              removeBtn.className = 'shrink-0 w-4 h-4 ml-0.5 rounded-full flex items-center justify-center text-[11px] leading-none transition active:scale-90 ' +
+                (nameIsTeam ? 'bg-indigo-800 hover:bg-red-500 text-indigo-100 hover:text-white' : 'bg-blue-800 hover:bg-red-500 text-blue-100 hover:text-white');
+              removeBtn.textContent = '×';
+              removeBtn.onclick = () => toggleCatalogEvent(name, nameIsTeam);
+              chip.appendChild(removeBtn);
+            } else {
+              chip.classList.add('cursor-pointer', 'active:scale-95');
+              chip.onclick = () => toggleCatalogEvent(name, nameIsTeam);
+            }
+            return chip;
+          };
+
+          // 1) 그 분류의 기본 카탈로그 (등록 여부를 칩으로 On/Off)
+          const catalogNames = typeIsTeam ? (grp.team || []) : (grp.personal || []);
+          catalogNames.forEach(name => {
+            const isSelected = formCurrentEvents.some(ev => getFormEventName(ev) === name);
+            container.appendChild(buildChip(name, typeIsTeam, isSelected));
           });
 
-        if (container.children.length === 0) {
-          const empty = document.createElement('span');
-          empty.className = 'text-[10px] text-slate-500';
-          empty.textContent = '등록된 종목이 없습니다.';
-          container.appendChild(empty);
-        }
+          // 2) 직접 추가한 종목 (카탈로그에 없는 것) — 그 분류 안에 그대로 보여 준다.
+          formCurrentEvents
+            .filter(ev => getFormEventType(ev) === type)
+            .filter(ev => !catalogKeys[getFormEventName(ev) + '|' + keySuffix])
+            .filter(ev => resolveEventGroupIndexFor(ev) === gi)
+            .forEach(ev => {
+              container.appendChild(buildChip(getFormEventName(ev), typeIsTeam, true));
+            });
+
+          if (container.children.length === 0) {
+            const empty = document.createElement('span');
+            empty.className = 'text-[10px] text-slate-500';
+            empty.textContent = '공식 단체 종목이 없습니다. 필요하면 직접 추가하세요.';
+            container.appendChild(empty);
+          }
+        });
       });
 
       updateFormEventCounts();
@@ -5885,25 +6165,25 @@
       }
     }
 
-    // 카드(개인/단체) 안의 입력칸에서 새 세부 종목을 추가한다.
-    function addEventToCurrentFormPlayer(type) {
+    // 카드(분류 안 개인/단체)의 입력칸에서 새 세부 종목을 추가한다.
+    function addEventToCurrentFormPlayer(type, groupIndex) {
       const eventType = type === 'team' ? 'team' : 'personal';
-      const input = document.getElementById('input-new-event-' + eventType);
+      const gi = (typeof groupIndex === 'number' && groupIndex >= 0) ? groupIndex : 0;
+      const input = document.getElementById('input-new-event-' + gi + '-' + eventType);
       const val = (input && input.value ? input.value : '').trim();
       if (!val) return;
 
       const exists = formCurrentEvents.some(ev => getFormEventName(ev) === val);
       if (!exists) {
         formCurrentEvents.push({ name: val, isTeam: eventType === 'team' });
-        formAccordionOpen[eventType] = true;
       }
+      formAccordionOpen[eventCardDomKey(gi, eventType)] = true;
       if (input) {
         input.value = '';
         input.focus();
       }
       renderFormEventsChips();
     }
-
 
 
     function removeEventFromCurrentFormPlayer(idx) {
@@ -5932,20 +6212,22 @@
         ensurePlayerEventsForRecords(p.id, true);
         formCurrentEvents = Array.isArray(p.events) && p.events.length > 0
           ? [...p.events]
-          : getDefaultEventsForSport(p.sport || '육상');
+          : getDefaultEventsForSport(p.sport || '육상', p.birth || '', p.gender || '남');
         resetFormAccordionForEvents();
         formOriginalMainEvent = String(p.mainEvent || '');
         setFormPlayerSport(p.sport || '육상', false, p.mainEvent || '');
+        setFormPlayerLocked(!!p.locked);
       } else {
         title.textContent = '새 선수 등록';
         idInput.value = '';
         nameInput.value = '';
         setFormPlayerGender('남');
         birthInput.value = '';
-        formCurrentEvents = getDefaultEventsForSport('육상');
+        formCurrentEvents = getDefaultEventsForSport('육상', '', '남');
         resetFormAccordionForEvents();
         formOriginalMainEvent = '';
         setFormPlayerSport('육상', true, '');
+        setFormPlayerLocked(false);
       }
 
       renderFormEventsChips();
@@ -5957,20 +6239,13 @@
       if (modal) modal.classList.add('hidden');
     }
 
-    // 저장할 세부 종목 순서: 개인 종목 → 단체 종목, 같은 분류 안에서는 종목 목록 순서,
-    // 목록에 없는 직접 추가 종목은 그 분류의 맨 뒤에 둔다(재등록한 400m가 단체 종목 뒤로 밀리지 않게).
+    // 저장할 세부 종목 순서: 개인 종목 → 단체 종목, 거리형 종목은 거리 순서.
+    // 기본 제공/직접 추가를 구분해 뒤로 밀지 않고, 비교할 수 없는 종목은 지금 순서를 그대로 둔다.
     function sortPlayerEventsForSave(events, sport) {
-      const catalog = getSportCatalog(sport || '육상');
-      const orderOf = (name, isTeam) => {
-        const found = catalog.findIndex(c => c.name === name && !!c.isTeam === !!isTeam);
-        return found < 0 ? 999 : found;
-      };
-      events.sort((a, b) => {
-        const aTeam = isFormEventTeam(a) ? 1 : 0;
-        const bTeam = isFormEventTeam(b) ? 1 : 0;
-        if (aTeam !== bTeam) return aTeam - bTeam;
-        return orderOf(getFormEventName(a), aTeam === 1) - orderOf(getFormEventName(b), bTeam === 1);
-      });
+      events.sort((a, b) => compareEventOrder(
+        getFormEventName(a), isFormEventTeam(a),
+        getFormEventName(b), isFormEventTeam(b)
+      ));
       return events;
     }
 
@@ -6018,6 +6293,7 @@
           p.mainEvent = mainEvent;
           p.events = cleanEvents;
           p.disabledEvents = disabled;
+          p.locked = !!formPlayerLocked;
           p.updatedAt = Date.now();
         }
       } else {
@@ -6032,9 +6308,10 @@
           events: cleanEvents,
           // 새 선수 등록 화면은 기본 종목이 선택된 상태로 열린다. 그중 사용자가 뺀 종목은
           // '명시적으로 선택 해제'로 기록해 두고, 가져오기에서 임의로 다시 켜지 않는다.
-          disabledEvents: getDefaultEventsForSport(sport)
+          disabledEvents: getDefaultEventsForSport(sport, birth, gender)
             .map(getFormEventName)
             .filter(n => n && !cleanEvents.some(ev => getFormEventName(ev) === n)),
+          locked: !!formPlayerLocked,
           updatedAt: Date.now()
         });
         if (!appData[newId]) appData[newId] = [];
@@ -6485,29 +6762,44 @@
 
     function applyUiScale() {
       const scale = resolveUiScale();
-      document.documentElement.style.zoom = String(scale);
+      const nextZoom = String(scale);
+      if (document.documentElement.style.zoom !== nextZoom) {
+        document.documentElement.style.zoom = nextZoom;
+      }
       updateUiScaleUI(scale);
       syncChartHitTestScale();
-      syncAppViewportHeight();
+      syncAppViewportHeight(true);
     }
 
     // 팝업 최대 높이 기준: 지금 보이는 화면 높이(모바일 키보드·주소창 포함) ÷ 화면 배율.
     // 배율 130%에서도 팝업 아래 버튼이 화면 밖으로 나가지 않게 한다.
-    function syncAppViewportHeight() {
+    // 모바일에서 키보드가 올라오거나 입력란 사이를 옮길 때 visualViewport가 조금씩 흔들리는데,
+    // 그때마다 --app-vh를 다시 쓰면 팝업 높이(위치)가 계속 바뀌어 "재로딩처럼 깜박"인다.
+    // 그래서 24px 이상 차이가 날 때만, 한 프레임에 한 번만 반영한다.
+    let lastAppVhPx = null;
+    function syncAppViewportHeight(force) {
       try {
         const vv = window.visualViewport;
         const visibleH = (vv && vv.height ? vv.height : window.innerHeight) || 0;
         const zoom = parseFloat(document.documentElement.style.zoom || '1') || 1;
         const px = Math.max(220, Math.round(visibleH / zoom));
+        if (!force && lastAppVhPx !== null && Math.abs(px - lastAppVhPx) < 24) return;
+        if (lastAppVhPx === px) return;
+        lastAppVhPx = px;
         document.documentElement.style.setProperty('--app-vh', px + 'px');
       } catch (e) {}
     }
-    syncAppViewportHeight();
-    window.addEventListener('resize', syncAppViewportHeight);
-    window.addEventListener('orientationchange', syncAppViewportHeight);
+    syncAppViewportHeight(true);
+    let appVhRaf = 0;
+    function queueAppViewportHeight() {
+      if (appVhRaf) return;
+      appVhRaf = requestAnimationFrame(function () { appVhRaf = 0; syncAppViewportHeight(false); });
+    }
+    window.addEventListener('resize', queueAppViewportHeight);
+    window.addEventListener('orientationchange', function () { syncAppViewportHeight(true); });
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', syncAppViewportHeight);
-      window.visualViewport.addEventListener('scroll', syncAppViewportHeight);
+      window.visualViewport.addEventListener('resize', queueAppViewportHeight);
+      window.visualViewport.addEventListener('scroll', queueAppViewportHeight);
     }
 
     // CSS zoom 상태에서 Chart.js는 마우스 좌표를 배율만큼 크게 읽어 툴팁·클릭이 어긋난다.
@@ -6543,8 +6835,13 @@
     }
 
     // '자동'은 창 너비가 바뀌면(회전·창 크기) 다시 계산한다. 직접 고른 배율은 그대로 유지.
+    // 모바일 키보드가 올라올 때의 세로 resize(높이만 변함)에는 아무것도 하지 않는다(팝업 깜박임 방지).
+    let lastScaleWidth = window.innerWidth;
     window.addEventListener('resize', function () {
-      if (getUiScaleSetting() === 'auto') applyUiScale();
+      if (getUiScaleSetting() !== 'auto') return;
+      if (window.innerWidth === lastScaleWidth) return;
+      lastScaleWidth = window.innerWidth;
+      applyUiScale();
     });
     window.addEventListener('orientationchange', function () {
       if (getUiScaleSetting() === 'auto') applyUiScale();
@@ -6688,7 +6985,9 @@
         //  선수 id는 관리자별로 겹칠 수 있으므로 '소유 관리자 + 선수 id' 짝으로 고른다.
         const allowed = user.allowedPlayers || [];
         const sources = Array.isArray(user.allowedSources) ? user.allowedSources : [];
-        if (user.approved && (allowed.length > 0 || sources.length > 0)) {
+        // 특별 뷰어: 수락한 관리자의 '잠금 해제' 선수는 개별 승인 없이 자동으로 볼 수 있다.
+        const specialAdmins = getAcceptedSpecialAdminIdsFor(user);
+        if ((user.approved || specialAdmins.length > 0) && (allowed.length > 0 || sources.length > 0 || specialAdmins.length > 0)) {
           const poolAppData = { ...MASTER_APP_DATA };
           const poolList = [];
           MASTER_PLAYERS_DATA.forEach(p => poolList.push(Object.assign({}, p, { __owner: 'super_admin' })));
@@ -6714,6 +7013,16 @@
             picked = poolList.filter(p => wanted[(p.__owner || 'super_admin') + '::' + p.id]);
           }
           if (picked.length === 0) picked = poolList.filter(p => allowed.indexOf(p.id) >= 0);
+          // 특별 뷰어 자동 열람(잠긴 선수는 제외, 개별 승인분은 그대로 유지)
+          if (specialAdmins.length > 0) {
+            poolList.forEach(cand => {
+              const owner = cand.__owner || 'super_admin';
+              if (specialAdmins.indexOf(owner) < 0) return;
+              if (cand.locked) return;
+              const already = picked.some(x => x.id === cand.id && (x.__owner || 'super_admin') === owner);
+              if (!already) picked.push(cand);
+            });
+          }
           playersData = picked.map(p => { const copy = Object.assign({}, p); delete copy.__owner; return copy; });
           appData = poolAppData;
           currentPlayer = playersData.length > 0 ? playersData[0].id : '';
@@ -7955,75 +8264,6 @@
       return owner === (scopeId || getCurrentAdminScopeId());
     }
 
-    function renderAdminApprovedViewers() {
-      const c = document.getElementById('admin-approved-viewers-list');
-      if (!c) return;
-      const scopeId = getCurrentAdminScopeId();
-      const myPlayers = getCurrentAdminPlayersList();
-      const myPlayerIds = myPlayers.map(p => p.id);
-      const dummyNames = ['외할머니', '코치님', '하람아빠'];
-      const approvedKeys = Object.keys(realtimeAuthData).filter(k => {
-        if (k.startsWith('_') || dummyNames.includes(k)) return false;
-        const v = realtimeAuthData[k];
-        if (!v || !isViewerOwnedByCurrentAdmin(v, scopeId) || v.status !== 'approved' || !v.allowed || v.allowed === 'none') return false;
-        const allowedList = Array.isArray(v.allowedPlayers) && v.allowedPlayers.length > 0
-          ? v.allowedPlayers
-          : (v.allowed === 'all' ? myPlayerIds : [v.allowed]);
-        return allowedList.some(pid => myPlayerIds.includes(pid));
-      });
-      if (approvedKeys.length === 0) {
-        c.innerHTML = '<div class="py-4 text-center text-slate-500 text-[11px]">승인된 뷰어가 없습니다.</div>';
-        return;
-      }
-      c.innerHTML = '';
-
-      approvedKeys.forEach(nick => {
-        const item = realtimeAuthData[nick] || {};
-        if (!pendingViewerSelections[nick]) {
-          let initial = [];
-          if (Array.isArray(item.allowedPlayers)) initial = [...item.allowedPlayers];
-          else if (item.allowed === 'all') initial = [...myPlayerIds];
-          else if (item.allowed && item.allowed !== 'none') initial = [item.allowed];
-          pendingViewerSelections[nick] = initial;
-        }
-        const selectedArr = pendingViewerSelections[nick] || [];
-        const isAll = myPlayerIds.length > 0 && myPlayerIds.every(pid => selectedArr.includes(pid));
-        const allowedNames = selectedArr.map(pid => {
-          const fp = myPlayers.find(p => p.id === pid);
-          return fp ? fp.name : getPlayerDisplayLabel(pid).split(' (')[0];
-        });
-        const allowedLabel = isAll && myPlayerIds.length > 1 ? `전체 (${myPlayerIds.length}인)` : (allowedNames.length > 0 ? allowedNames.join(', ') : '미선택');
-
-        const toggleBtnsHtml = (myPlayers.length > 1 ? `
-          <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'all'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${isAll ? 'bg-indigo-600 text-white font-bold border-indigo-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">전체</button>
-        ` : '') + myPlayers.map(p => {
-          const active = selectedArr.includes(p.id);
-          return `<button type="button" onclick="toggleViewerPlayerPending('${nick}', '${p.id}'); renderAdminApprovedViewers();" class="py-1.5 rounded-lg border ${active ? 'bg-blue-600 text-white font-bold border-blue-400' : 'bg-slate-950 text-slate-400 border-slate-700'}">${p.name}</button>`;
-        }).join('');
-        const gridCols = myPlayers.length > 1 ? Math.min(myPlayers.length + 1, 4) : 1;
-
-        const card = document.createElement('div');
-        card.className = 'p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2';
-        card.innerHTML = `
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-xs font-extrabold text-white">${item.name || nick}</span>
-              ${item.email ? `<span class="text-[10px] text-slate-400">(${item.email})</span>` : ''}
-              <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold"><span class="ui-ic" data-ic="check"></span> ${allowedLabel}</span>
-            </div>
-            <span class="text-[10px] text-slate-500 font-mono">${item.time || ''}</span>
-          </div>
-          <div class="grid grid-cols-${gridCols} gap-1 text-[11px]">
-            ${toggleBtnsHtml}
-          </div>
-          <div class="flex gap-1.5">
-            <button type="button" onclick="saveViewerPermission('${nick}')" class="flex-1 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px]"><span class="ui-ic" data-ic="save"></span> 저장</button>
-            <button type="button" onclick="deleteViewerFromApproval('${nick}')" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-700 text-[11px]">삭제</button>
-          </div>
-        `;
-        c.appendChild(card);
-      });
-    }
     function renderAdminMyPlayers() {
       const c = document.getElementById('admin-my-players-list');
       if (!c) return;
@@ -8425,11 +8665,13 @@
     function shareKakaoInviteLink() {
       const inviteUrl = `${window.location.origin}${window.location.pathname}`;
       const shareTitle = '선수 성장노트 — 선수 기록 열람 초대';
-      const shareText = `[선수 성장노트]\n선수 경기 기록 열람에 초대합니다!\n아래 링크로 접속해 열람을 신청해 주세요.\n${inviteUrl}`;
+      // 공유 API가 url을 따로 붙이므로 본문에는 링크를 넣지 않는다(모바일에서 같은 주소가 두 번 보이던 문제).
+      const shareText = `[선수 성장노트]\n선수 경기 기록 열람에 초대합니다!\n아래 링크로 접속해 열람을 신청해 주세요.`;
       shareInviteUrl(inviteUrl, shareTitle, shareText);
     }
 
     // 초대 링크는 기존 공유 방식(모바일 공유창 → 안 되면 클립보드 복사)을 그대로 쓴다.
+    // text에 주소를 넣고 url도 넘기면 일부 앱에서 주소가 두 번 찍히므로, 주소는 url 필드로만 전달한다.
     function shareInviteUrl(inviteUrl, shareTitle, shareText) {
       if (navigator.share) {
         navigator.share({
@@ -8437,10 +8679,10 @@
           text: shareText,
           url: inviteUrl
         }).catch(err => {
-          if (err.name !== 'AbortError') copyInviteUrlFallback(inviteUrl);
+          if (err.name !== 'AbortError') copyInviteUrlFallback(shareText + '\n' + inviteUrl);
         });
       } else {
-        copyInviteUrlFallback(inviteUrl);
+        copyInviteUrlFallback(shareText + '\n' + inviteUrl);
       }
     }
 
@@ -8524,7 +8766,8 @@
       list.push({ code: code, createdAt: Date.now(), createdBy: me.email || me.name || '', used: false, usedAt: 0, usedByEmail: '' });
       writeSvipInvites(list);
       const url = window.location.origin + window.location.pathname + '?svip=' + encodeURIComponent(code);
-      const text = `[선수 성장노트] SVIP 관리자 초대입니다.\n아래 링크로 접속해 관리자 회원가입을 마치면 SVIP로 지정됩니다.\n이 링크는 한 번만 사용할 수 있습니다.\n${url}`;
+      // 본문에는 링크를 넣지 않고 url 필드로만 넘긴다(모바일 공유 시 주소 중복 방지).
+      const text = `[선수 성장노트] SVIP 관리자 초대입니다.\n아래 링크로 접속해 관리자 회원가입을 마치면 SVIP로 지정됩니다.\n이 링크는 한 번만 사용할 수 있습니다.`;
       shareInviteUrl(url, '선수 성장노트 — SVIP 관리자 초대', text);
     }
 
@@ -8707,7 +8950,22 @@
         if (titleEl) titleEl.textContent = '알림 센터';
         if (inviteBtn) inviteBtn.classList.add('hidden');
         if (subHeader) subHeader.classList.add('hidden');
-        if (viewerApprovalNotifs.length > 0) {
+        // 특별 뷰어(자동 열람) 제안: 관리자가 지정을 요청하면 여기서 수락/거절한다.
+        const offers = getMySpecialOffers();
+        const offerHtml = offers.map(o => `
+            <div class="p-3.5 rounded-2xl bg-indigo-950/50 border border-indigo-500/40 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-indigo-300"><span class="ui-ic" data-ic="shield"></span> 특별 뷰어 초대</span>
+                <span class="text-[10px] text-slate-400">${bodyEsc(o.adminName)}</span>
+              </div>
+              <p class="text-xs text-slate-200 leading-relaxed">${bodyEsc(o.adminName)} 관리자가 특별 뷰어로 지정하고 싶어 합니다. 수락하면 이 관리자의 <strong class="text-white">잠금이 해제된 모든 선수 기록</strong>을 자동으로 볼 수 있습니다(이후 새로 등록되는 선수 포함 · 조회와 엑셀 다운로드만).</p>
+              <div class="flex gap-1.5">
+                <button type="button" onclick="respondSpecialOffer('${bodyEsc(o.key)}', true)" class="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold active:scale-95 transition">수락</button>
+                <button type="button" onclick="respondSpecialOffer('${bodyEsc(o.key)}', false)" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 active:scale-95 transition">거절</button>
+              </div>
+            </div>
+          `).join('');
+        if (viewerApprovalNotifs.length > 0 || offers.length > 0) {
           container.innerHTML = viewerApprovalNotifs.map(n => `
             <div class="p-3.5 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 space-y-2">
               <div class="flex items-center justify-between">
@@ -8716,11 +8974,11 @@
               </div>
               <p class="text-xs text-slate-200 leading-relaxed">관리자가 <strong class="text-white">[${n.names}]</strong> 열람을 승인했습니다! 상단 선수 선택 메뉴에서 바로 확인할 수 있습니다.</p>
             </div>
-          `).join('') + `
+          `).join('') + offerHtml + (viewerApprovalNotifs.length > 0 ? `
             <button type="button" onclick="dismissViewerApprovalNotifs()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition">
                확인 (알림 지우기)
             </button>
-          `;
+          ` : '');
         } else if (!hasNewVersionUpdate) {
           container.innerHTML = `<div class="py-10 text-center text-slate-500 text-xs">새로운 알림이 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">현재 최신 버전 (${CURRENT_APP_VERSION})</span></div>`;
         } else {
@@ -8741,109 +8999,79 @@
       const keys = Object.keys(realtimeAuthData).filter(k => {
         if (k.startsWith('_') || dummyNames.includes(k)) return false;
         const v = realtimeAuthData[k];
-        return v && isViewerOwnedByCurrentAdmin(v, scopeId) && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
+        if (!v || typeof v !== 'object') return false;
+        if (v.status === 'rejected') return false;
+        return isViewerOwnedByCurrentAdmin(v, scopeId) && (v.status === 'pending' || v.pendingAdditional === true || !v.allowed || v.allowed === 'none');
       });
-      if (keys.length === 0) {
-        container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">현재 대기 중인 열람 승인 신청이 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">승인 완료된 뷰어는 [관리자] 메뉴에서 관리할 수 있습니다.</span></div>';
-        return;
-      }
 
       const myPlayers = getCurrentAdminPlayersList();
       const myPlayerIds = myPlayers.map(p => p.id);
 
-      container.innerHTML = '';
-      keys.forEach(nick => {
-        const item = realtimeAuthData[nick] || {};
-
-        // Initialize pending selections if not set
-        if (!pendingViewerSelections[nick]) {
-          let initial = [];
-          if (Array.isArray(item.allowedPlayers) && item.allowedPlayers.length > 0) {
-            initial = [...item.allowedPlayers];
-          } else if (item.allowed === 'all') {
-            initial = [...myPlayerIds];
-          } else if (item.allowed && item.allowed !== 'none') {
-            initial = [item.allowed];
-          }
-          if (Array.isArray(item.requestedPlayers)) {
-            item.requestedPlayers.forEach(p => { if (myPlayerIds.includes(p) && !initial.includes(p)) initial.push(p); });
-          } else if (item.targetPlayer === 'all') {
-            myPlayerIds.forEach(p => { if (!initial.includes(p)) initial.push(p); });
-          } else if (item.targetPlayer && myPlayerIds.includes(item.targetPlayer) && !initial.includes(item.targetPlayer)) {
-            initial.push(item.targetPlayer);
-          }
-          initial = initial.filter(p => myPlayerIds.includes(p));
-          pendingViewerSelections[nick] = initial;
+      // 실제로 열람을 신청한 선수만 추린다(신청하지 않은 선수는 카드에 나오지 않는다).
+      const requestedListOf = (item) => {
+        let raw = Array.isArray(item.requestedPlayers) && item.requestedPlayers.length > 0
+          ? item.requestedPlayers
+          : (item.targetPlayer === 'all' ? myPlayerIds : [item.targetPlayer || '']);
+        let list = raw.filter(pid => pid && myPlayerIds.indexOf(pid) >= 0);
+        if (item.pendingAdditional && Array.isArray(item.allowedPlayers) && item.allowedPlayers.length > 0) {
+          const onlyNew = list.filter(pid => item.allowedPlayers.indexOf(pid) < 0);
+          if (onlyNew.length > 0) list = onlyNew;
         }
+        return list.filter((v, i, a) => a.indexOf(v) === i);
+      };
 
-        const selectedArr = (pendingViewerSelections[nick] || []).filter(p => myPlayerIds.includes(p));
-        const isCurrentlyApproved = item.status === 'approved' && item.allowed && item.allowed !== 'none';
+      const cards = [];
+      keys.forEach(key => {
+        const item = realtimeAuthData[key] || {};
+        const reqArr = requestedListOf(item);
+        if (reqArr.length === 0) return;
+
+        const isCurrentlyApproved = item.status === 'approved' && !!item.approved;
+        const statusBadge = (item.pendingAdditional && isCurrentlyApproved)
+          ? '<span class="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold"><span class="ui-ic" data-ic="plus"></span> 추가 열람 요청</span>'
+          : '<span class="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold"><span class="ui-ic" data-ic="hourglass"></span> 승인 대기중</span>';
+
+        const names = reqArr.map(pid => {
+          const fp = myPlayers.find(p => p.id === pid);
+          const label = fp ? fp.name : getPlayerDisplayLabel(pid).split(' (')[0];
+          const lockedMark = fp && fp.locked ? ' <span class="text-amber-300 text-[10px]">(잠금)</span>' : '';
+          return `<span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[11px] font-bold">${bodyEsc(label)}${lockedMark}</span>`;
+        }).join(' ');
+
+        // 승인 버튼은 이 뷰어가 신청한 선수만 그대로 승인한다(다른 선수를 끼워 넣지 않는다).
+        pendingViewerSelections[key] = reqArr.slice();
 
         const card = document.createElement('div');
         card.className = 'p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700/80 space-y-2.5 shadow-md';
-
-        const rawReqArr = Array.isArray(item.requestedPlayers) && item.requestedPlayers.length > 0
-          ? item.requestedPlayers
-          : (item.targetPlayer === 'all' ? myPlayerIds : [item.targetPlayer || item.allowed || myPlayerIds[0] || '']);
-        const reqArr = rawReqArr.filter(pid => myPlayerIds.includes(pid));
-        const reqLabels = reqArr.filter(Boolean).map(pid => getPlayerDisplayLabel(pid));
-        const reqPlayer = reqLabels.length > 0 ? reqLabels.join(' · ') : (myPlayerIds[0] ? getPlayerDisplayLabel(myPlayerIds[0]) : '선수');
-
-        let statusBadge = '';
-        if (item.pendingAdditional && isCurrentlyApproved) {
-          statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold"><span class="ui-ic" data-ic="plus"></span> 추가 열람 요청</span>';
-        } else {
-          statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold"><span class="ui-ic" data-ic="hourglass"></span> 승인 대기중</span>';
-        }
-
-        const isAll = myPlayerIds.length > 0 && myPlayerIds.every(pid => selectedArr.includes(pid));
-        const toggleBtnsHtml = (myPlayers.length > 1 ? `
-          <button type="button" onclick="toggleViewerPlayerPending('${nick}', 'all')" class="py-2 rounded-xl border ${isAll ? 'bg-indigo-600 text-white font-black border-indigo-400 shadow-md ring-2 ring-indigo-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-indigo-500'} active:scale-95 transition">
-            전체
-          </button>
-        ` : '') + myPlayers.map(p => {
-          const active = selectedArr.includes(p.id);
-          return `<button type="button" onclick="toggleViewerPlayerPending('${nick}', '${p.id}')" class="py-2 rounded-xl border ${active ? 'bg-blue-600 text-white font-black border-blue-400 shadow-md ring-2 ring-blue-400/50' : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-blue-500'} active:scale-95 transition">${p.name}</button>`;
-        }).join('');
-        const gridCols = myPlayers.length > 1 ? Math.min(myPlayers.length + 1, 4) : 1;
-
         card.innerHTML = `
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-sm font-extrabold text-white">${item.name || nick}</span>
-              ${item.email ? `<span class="text-[10px] text-slate-400">(${item.email})</span>` : ''}
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 flex-wrap min-w-0">
+              <span class="text-sm font-extrabold text-white truncate">${bodyEsc(item.name || key)}</span>
+              ${item.email ? `<span class="text-[10px] text-slate-400 truncate">(${bodyEsc(item.email)})</span>` : ''}
               ${statusBadge}
             </div>
-            <span class="text-[10px] text-slate-400 font-mono">${item.time || ''}</span>
+            <span class="text-[10px] text-slate-400 font-mono shrink-0">${bodyEsc(item.time || '')}</span>
           </div>
-
-          <!-- Target Athlete Badge -->
-          <div class="p-2 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between text-xs">
-            <span class="text-slate-400 text-[11px]">신청 대상 선수:</span>
-            <span class="font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/30 text-[11px] flex items-center gap-1">
-              <span><span class="ui-ic" data-ic="target"></span></span><span>${reqPlayer}</span>
-            </span>
+          <div class="p-2 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+            <div class="text-slate-400 text-[11px]">신청한 선수 ${reqArr.length}명</div>
+            <div class="flex flex-wrap gap-1">${names}</div>
           </div>
-
-          <!-- Multi-select toggle buttons (선택 후 저장 방식) -->
-          <div class="space-y-2 pt-1">
-            <div class="grid grid-cols-${gridCols} gap-1.5 text-xs">
-              ${toggleBtnsHtml}
-            </div>
-
-            <!-- Action buttons: [선택 저장] & [삭제] -->
-            <div class="flex gap-1.5 pt-0.5">
-              <button type="button" onclick="saveViewerPermission('${nick}')" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition flex items-center justify-center gap-1.5">
-                <span><span class="ui-ic" data-ic="save"></span></span><span>선택 저장</span>
-              </button>
-              <button type="button" onclick="deleteViewerFromApproval('${nick}')" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/50 text-xs font-semibold active:scale-95 transition">
-                삭제
-              </button>
-            </div>
+          <div class="flex gap-1.5">
+            <button type="button" onclick="saveViewerPermission('${bodyEsc(key)}')" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md active:scale-95 transition flex items-center justify-center gap-1.5">
+              <span><span class="ui-ic" data-ic="check"></span></span><span>승인</span>
+            </button>
+            <button type="button" onclick="rejectViewerRequest('${bodyEsc(key)}')" class="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/50 text-xs font-semibold active:scale-95 transition">거절</button>
           </div>
         `;
-        container.appendChild(card);
+        cards.push(card);
       });
+
+      if (cards.length === 0) {
+        container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">현재 대기 중인 열람 승인 신청이 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">승인 완료된 뷰어는 [관리자] 메뉴에서 관리할 수 있습니다.</span></div>';
+        return;
+      }
+      container.innerHTML = '';
+      cards.forEach(c => container.appendChild(c));
     }
 
     function toggleViewerPlayerPending(nick, target) {
@@ -8865,8 +9093,12 @@
       renderApprovalList();
     }
 
-    async function saveViewerPermission(nick) {
-      const selectedArr = pendingViewerSelections[nick] || [];
+    async function saveViewerPermission(nick, overrideList) {
+      // 승인 대기 카드의 [승인]은 신청한 선수만, 승인된 뷰어 관리의 [저장]은 직접 고른 목록을 넘긴다.
+      const selectedArr = Array.isArray(overrideList)
+        ? overrideList.filter(Boolean)
+        : (pendingViewerSelections[nick] || []);
+      if (Array.isArray(overrideList)) pendingViewerSelections[nick] = selectedArr.slice();
       const isApproved = selectedArr.length > 0;
       const myPlayerIds = getCurrentAdminPlayersList().map(p => p.id);
 
@@ -8920,6 +9152,37 @@
         ? selectedArr.map(pid => getPlayerDisplayLabel(pid).split(' (')[0]).join(', ')
         : '승인 대기';
       alert(`[${dispNick}] 님의 열람 권한이 [${targetText}]으로 저장되었습니다!\n상대방 폰에 실시간으로 즉시 적용됩니다.`);
+    }
+
+    // 승인 대기 신청을 거절한다(뷰어 계정 자체는 지우지 않고, 그 신청만 닫는다).
+    async function rejectViewerRequest(nick) {
+      const item = realtimeAuthData[nick] || {};
+      const dispNick = item.name || nick;
+      if (!confirm('[' + dispNick + '] 뷰어의 열람 신청을 거절할까요?\n뷰어 계정은 그대로 두고 이번 신청만 닫습니다(다시 신청할 수 있습니다).')) return;
+      const nextData = Object.assign({}, realtimeAuthData);
+      nextData[nick] = Object.assign({}, item, {
+        status: 'rejected',
+        approved: false,
+        pendingAdditional: false,
+        allowed: 'none',
+        allowedPlayers: [],
+        rejectedAt: Date.now(),
+        time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      });
+      realtimeAuthData = nextData;
+      saveStagingCloud(nextData);
+      delete pendingViewerSelections[nick];
+      renderApprovalList();
+      renderAdminApprovedViewers();
+      updatePendingBadge();
+      updateSuperAdminStats();
+      try {
+        await stagingCloudFetch(AUTH_API_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'sports_pb_auth', data: nextData })
+        });
+      } catch (err) { console.error('rejectViewerRequest error:', err); }
     }
 
     async function deleteViewerFromApproval(nick) {
@@ -11371,6 +11634,459 @@
       }
     };
 
+
+    // ==================================================================
+    // 2026-11-27 모바일 검수 반영분
+    //  - 선수 프로필 잠금 / 선수 일괄 삭제(72시간 복구 연동)
+    //  - 승인된 뷰어 관리(선수 50명 대응: 검색·개별/전체 선택)
+    //  - 특별 뷰어(관리자별 자동 열람) 지정·수락·해제
+    //  ※ 지금은 검수용(staging 로컬 저장) 구현이다. 서버(RLS·RPC) 검증은 별도 작업이다.
+    // ==================================================================
+
+    // ---------- 선수 프로필 잠금 ----------
+    let formPlayerLocked = false;
+
+    function setFormPlayerLocked(locked) {
+      formPlayerLocked = !!locked;
+      const btn = document.getElementById('btn-form-player-lock');
+      const iconWrap = document.getElementById('form-player-lock-icon');
+      if (iconWrap) {
+        iconWrap.className = 'shrink-0 ' + (formPlayerLocked ? 'text-amber-300' : 'text-slate-400');
+        iconWrap.innerHTML = '<span class="ui-ic" data-ic="' + (formPlayerLocked ? 'lock' : 'unlock') + '"></span>';
+      }
+      if (btn) {
+        btn.textContent = formPlayerLocked ? '잠김 (자동 열람 제외)' : '잠금 해제 상태';
+        btn.className = 'shrink-0 px-3 py-1.5 rounded-xl border text-[11px] font-bold active:scale-95 transition ' +
+          (formPlayerLocked
+            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+            : 'bg-slate-900 text-slate-300 border-slate-700');
+      }
+    }
+
+    function toggleFormPlayerLock() {
+      setFormPlayerLocked(!formPlayerLocked);
+    }
+
+    // 생년월일이 바뀌어 연령부가 달라지면 제공 종목(카탈로그)만 다시 그린다.
+    // 이미 등록한 종목·기록·PB는 지우지 않는다.
+    function onFormPlayerBirthChange() {
+      const birthEl = document.getElementById('form-player-birth');
+      const key = getEventAgeDivisionKey(birthEl ? birthEl.value : '');
+      if (key !== formCatalogDivisionKey) renderFormEventsChips(undefined, true);
+    }
+
+    // 프로필 잠금 확인/변경(명단에서 바로 토글)
+    function isPlayerLocked(playerId) {
+      const p = (playersData || []).find(x => x.id === playerId);
+      return !!(p && p.locked);
+    }
+
+    function togglePlayerLock(playerId) {
+      if (!canManageRecords()) return;
+      const p = (playersData || []).find(x => x.id === playerId);
+      if (!p) return;
+      const prevAppData = JSON.parse(JSON.stringify(appData));
+      const prevPlayersData = JSON.parse(JSON.stringify(playersData));
+      p.locked = !p.locked;
+      p.updatedAt = Date.now();
+      if (!saveChangeOrRevert(prevAppData, prevPlayersData)) return;
+      renderPlayerCards();
+      renderCurrentView();
+      showSyncNotice(p.locked
+        ? `[${p.name}] 프로필을 잠갔습니다. 특별 뷰어 자동 열람에서 제외됩니다.`
+        : `[${p.name}] 프로필 잠금을 풀었습니다. 특별 뷰어 자동 열람 대상에 다시 포함됩니다.`, 'info');
+    }
+
+    // ---------- 선수 일괄 삭제 ----------
+    let playerBulkMode = false;
+    let playerBulkSelected = new Set();
+
+    function syncPlayerBulkUi() {
+      const bar = document.getElementById('player-bulk-bar');
+      const addBtn = document.getElementById('btn-player-add-new');
+      const enterBtn = document.getElementById('btn-player-bulk-enter');
+      const countEl = document.getElementById('player-list-count');
+      if (countEl) countEl.textContent = String((playersData || []).length);
+      if (bar) {
+        bar.classList.toggle('hidden', !playerBulkMode);
+        bar.classList.toggle('flex', playerBulkMode);
+      }
+      if (addBtn) addBtn.classList.toggle('hidden', playerBulkMode);
+      if (enterBtn) enterBtn.classList.toggle('hidden', playerBulkMode);
+      const confirmBtn = document.getElementById('btn-player-bulk-confirm');
+      const allBtn = document.getElementById('btn-player-bulk-all');
+      const n = playerBulkSelected.size;
+      if (confirmBtn) {
+        confirmBtn.textContent = n > 0 ? ('선택 ' + n + '명 삭제') : '선택 0명 삭제';
+        confirmBtn.disabled = n === 0;
+        confirmBtn.className = 'flex-1 py-2.5 rounded-xl border text-xs font-bold whitespace-nowrap transition ' +
+          (n > 0
+            ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500 active:scale-95'
+            : 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed');
+      }
+      if (allBtn) {
+        const total = (playersData || []).length;
+        const allOn = total > 0 && playerBulkSelected.size === total;
+        allBtn.textContent = allOn ? '전체 해제' : '전체 선택';
+      }
+    }
+
+    function enterPlayerBulkMode() {
+      if (!canManageRecords()) return;
+      playerBulkMode = true;
+      playerBulkSelected = new Set();
+      renderPlayerCards();
+      syncPlayerBulkUi();
+    }
+
+    function exitPlayerBulkMode() {
+      playerBulkMode = false;
+      playerBulkSelected = new Set();
+      renderPlayerCards();
+      syncPlayerBulkUi();
+    }
+
+    function togglePlayerBulkSelect(id, checked) {
+      if (!playerBulkMode) return;
+      if (checked) playerBulkSelected.add(id);
+      else playerBulkSelected.delete(id);
+      syncPlayerBulkUi();
+    }
+
+    function togglePlayerBulkAll() {
+      const total = (playersData || []).length;
+      if (total > 0 && playerBulkSelected.size === total) playerBulkSelected = new Set();
+      else playerBulkSelected = new Set((playersData || []).map(p => p.id));
+      renderPlayerCards();
+      syncPlayerBulkUi();
+    }
+
+    // 최종 확인창: 삭제 대상 이름·선수 수·경기 기록 건수·72시간 복구 안내를 보여 준 뒤에만 지운다.
+    function askBulkPlayerDelete() {
+      const ids = Array.from(playerBulkSelected);
+      if (ids.length === 0) return;
+      const targets = (playersData || []).filter(p => ids.indexOf(p.id) >= 0);
+      if (targets.length === 0) return;
+      const totalRecords = targets.reduce((sum, p) => sum + ((appData[p.id] || []).length), 0);
+      const nameList = targets.map(p => p.name || '(이름 없음)').join(', ');
+      return new Promise(resolve => {
+        playerDeleteResolver = resolve;
+        const body = document.getElementById('player-delete-body');
+        if (body) {
+          body.innerHTML = `
+            <div>선수 <strong class="text-white">${targets.length}명</strong>을 삭제하시겠습니까?</div>
+            <div class="mt-1 text-slate-200 break-words">대상: <strong class="text-white">${bodyEsc(nameList)}</strong></div>
+            <div class="mt-1">함께 처리되는 경기 기록: <strong class="text-rose-300">${totalRecords}건</strong></div>
+            <div class="mt-1 text-[11px] text-slate-400">선수 프로필과 경기 기록이 함께 삭제됩니다.</div>
+            <div class="mt-1 text-[11px] text-amber-300">삭제 후 72시간 이내에는 복구할 수 있으며, 72시간이 지나면 영구 삭제되어 복구할 수 없습니다.</div>`;
+        }
+        pushModalHistory('modal-player-delete');
+        document.getElementById('modal-player-delete')?.classList.remove('hidden');
+      }).then(ok => {
+        if (!ok) return;
+        performBulkPlayerDelete(targets);
+      });
+    }
+
+    async function performBulkPlayerDelete(targets) {
+      if (!Array.isArray(targets) || targets.length === 0) return;
+      try {
+        const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
+        const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+        if (authUser && authUser.role === 'admin') {
+          const stableKey = getStableAdminId(authUser.email, authUser.name);
+          const tomb = getAdminTombstones(stableKey);
+          targets.forEach(p => {
+            tomb.deletedPlayers[p.id] = Date.now();
+            (appData[p.id] || []).forEach(r => { if (r && r.id) tomb.deletedRecords[r.id] = Date.now(); });
+          });
+          saveAdminTombstones(stableKey, tomb);
+        }
+      } catch (e) {}
+
+      const prevAppData = JSON.parse(JSON.stringify(appData));
+      const prevPlayersData = JSON.parse(JSON.stringify(playersData));
+      const prevCurrentPlayer = currentPlayer;
+      const ids = new Set(targets.map(p => p.id));
+
+      targets.forEach(p => addDeletedPlayerToTrash(p, appData[p.id] || []));
+      playersData = playersData.filter(x => !ids.has(x.id));
+      ids.forEach(id => { delete appData[id]; });
+
+      // 마지막 선수까지 지워 0명이 되어도 된다(계정은 유지).
+      if (ids.has(currentPlayer)) currentPlayer = playersData.length > 0 ? playersData[0].id : '';
+
+      if (!saveChangeOrRevert(prevAppData, prevPlayersData)) {
+        currentPlayer = prevCurrentPlayer;
+        renderPlayerCards();
+        return;
+      }
+      playerBulkMode = false;
+      playerBulkSelected = new Set();
+      initPlayerSelectDropdown();
+      renderPlayerCards();
+      syncPlayerBulkUi();
+      renderEventTabs();
+      renderCurrentView();
+      showSyncNotice(targets.length + '명의 선수를 삭제했습니다. 72시간 안에 [삭제된 선수]에서 복구할 수 있습니다.', 'info');
+    }
+
+    // ---------- 승인된 뷰어 관리 (선수 50명 대응) ----------
+    let adminViewerPanelOpen = {};
+    let adminViewerDraft = {};
+
+    function viewerAllowedPlayerIds(item, myPlayerIds) {
+      if (!item) return [];
+      const ids = [];
+      if (Array.isArray(item.allowedPlayers)) item.allowedPlayers.forEach(pid => { if (myPlayerIds.indexOf(pid) >= 0) ids.push(pid); });
+      if (Array.isArray(item.allowedSources)) item.allowedSources.forEach(s => {
+        if (s && s.playerId && myPlayerIds.indexOf(s.playerId) >= 0) ids.push(s.playerId);
+      });
+      if (ids.length === 0 && item.allowed && item.allowed !== 'all' && item.allowed !== 'none' && myPlayerIds.indexOf(item.allowed) >= 0) ids.push(item.allowed);
+      return ids.filter((v, i, a) => a.indexOf(v) === i);
+    }
+
+    function isSpecialViewerRecord(item) {
+      return !!(item && item.special && item.special.status === 'accepted');
+    }
+
+    function pendingSpecialOffer(item) {
+      return !!(item && item.special && item.special.status === 'offered');
+    }
+
+    function getViewerRecordKeyForNick(nick) {
+      return String(nick || '');
+    }
+
+    function renderAdminApprovedViewers() {
+      const c = document.getElementById('admin-approved-viewers-list');
+      if (!c) return;
+      const scopeId = getCurrentAdminScopeId();
+      const myPlayers = getCurrentAdminPlayersList();
+      const myPlayerIds = myPlayers.map(p => p.id);
+      const dummyNames = ['외할머니', '코치님', '하람아빠'];
+      const approvedKeys = Object.keys(realtimeAuthData).filter(k => {
+        if (k.startsWith('_') || dummyNames.includes(k)) return false;
+        const v = realtimeAuthData[k];
+        if (!v || typeof v !== 'object') return false;
+        if (!isViewerOwnedByCurrentAdmin(v, scopeId)) return false;
+        if (v.status === 'rejected') return false;
+        const allowedList = viewerAllowedPlayerIds(v, myPlayerIds);
+        if (isSpecialViewerRecord(v)) return true;
+        if (v.status !== 'approved' || !v.approved) return false;
+        return allowedList.length > 0;
+      });
+      if (approvedKeys.length === 0) {
+        c.innerHTML = '<div class="py-4 text-center text-slate-500 text-[11px]">승인된 뷰어가 없습니다.</div>';
+        return;
+      }
+      c.innerHTML = '';
+
+      approvedKeys.forEach((key, keyIdx) => {
+        const item = realtimeAuthData[key] || {};
+        const allowedIds = viewerAllowedPlayerIds(item, myPlayerIds);
+        if (!Array.isArray(adminViewerDraft[key])) adminViewerDraft[key] = allowedIds.slice();
+        const draft = adminViewerDraft[key].filter(pid => myPlayerIds.indexOf(pid) >= 0);
+        const isAll = myPlayerIds.length > 0 && draft.length === myPlayerIds.length;
+        const allowedNames = allowedIds.map(pid => {
+          const fp = myPlayers.find(p => p.id === pid);
+          return fp ? fp.name : getPlayerDisplayLabel(pid).split(' (')[0];
+        });
+        const summary = isSpecialViewerRecord(item)
+          ? '자동 열람 (잠금 해제 선수 전체)'
+          : (isAll && myPlayerIds.length > 1 ? ('전체 (' + myPlayerIds.length + '인)') : (allowedNames.length ? (allowedNames.length + '명 · ' + allowedNames.slice(0, 3).join(', ') + (allowedNames.length > 3 ? ' 외' : '')) : '권한 없음'));
+        const panelOpen = !!adminViewerPanelOpen[key];
+        const specialBadge = isSpecialViewerRecord(item)
+          ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold whitespace-nowrap">특별 뷰어</span>'
+          : (pendingSpecialOffer(item) ? '<span class="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold whitespace-nowrap">특별 뷰어 수락 대기</span>' : '');
+
+        const rows = myPlayers.map(p => {
+          const checked = draft.indexOf(p.id) >= 0;
+          return `<label class="av-player-row flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-900 cursor-pointer" data-name="${bodyEsc((p.name || '') + ' ' + (p.sport || '') + ' ' + (p.mainEvent || ''))}">
+            <input type="checkbox" class="av-player-chk w-4 h-4 rounded border-slate-600 bg-slate-950 text-blue-600 shrink-0" data-viewer-key="${bodyEsc(key)}" data-player-id="${bodyEsc(p.id)}" ${checked ? 'checked' : ''} onchange="toggleAdminViewerDraft(this)">
+            <span class="text-[11px] text-slate-200 truncate min-w-0">${bodyEsc(p.name || '')}</span>
+            <span class="text-[10px] text-slate-500 truncate min-w-0">${bodyEsc(p.sport || '')} · ${bodyEsc(p.mainEvent || '')}</span>
+          </label>`;
+        }).join('');
+
+        const card = document.createElement('div');
+        card.className = 'p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2';
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0 space-y-1">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-extrabold text-white">${bodyEsc(item.name || key)}</span>
+                ${specialBadge}
+              </div>
+              ${item.email ? `<div class="text-[10px] text-slate-500 truncate">${bodyEsc(item.email)}</div>` : ''}
+              <div class="text-[10px] text-emerald-300">열람 권한: ${bodyEsc(summary)}</div>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono shrink-0">${bodyEsc(item.time || '')}</span>
+          </div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button type="button" onclick="toggleAdminViewerPanel('${bodyEsc(key)}')" class="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-300 text-[11px] font-bold active:scale-95 transition">${panelOpen ? '선수 선택 닫기' : '열람 선수 변경'}</button>
+            <button type="button" onclick="toggleSpecialViewer('${bodyEsc(key)}')" class="px-2.5 py-1.5 rounded-lg border text-[11px] font-bold active:scale-95 transition ${isSpecialViewerRecord(item) ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-slate-950 text-indigo-300 border-indigo-500/40'}">${isSpecialViewerRecord(item) ? '특별 뷰어 해제' : (pendingSpecialOffer(item) ? '수락 대기중' : '특별 뷰어 지정')}</button>
+            <button type="button" onclick="deleteViewerFromApproval('${bodyEsc(key)}')" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-700 text-[11px] active:scale-95 transition">삭제</button>
+          </div>
+          <div class="player-pick-panel ${panelOpen ? '' : 'hidden'} space-y-1.5 pt-1 border-t border-slate-800" data-panel-key="${bodyEsc(key)}">
+            <div class="flex items-center gap-1.5">
+              <input type="text" placeholder="선수 이름 검색" oninput="filterAdminViewerPlayers(this)" class="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-blue-500">
+              <button type="button" onclick="adminViewerSelectAll(this, true)" class="px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-[10px] font-bold text-slate-300 whitespace-nowrap">전체 선택</button>
+              <button type="button" onclick="adminViewerSelectAll(this, false)" class="px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-[10px] font-bold text-slate-300 whitespace-nowrap">선택 해제</button>
+            </div>
+            <div class="player-pick-list divide-y divide-slate-800/70 rounded-lg border border-slate-800/80 bg-slate-950/60">${rows || '<div class="p-2 text-[10px] text-slate-500">등록된 선수가 없습니다.</div>'}</div>
+            <div class="flex items-center justify-between gap-1.5">
+              <span class="text-[10px] text-slate-400">선택 <b class="av-picked-count text-slate-200">${draft.length}</b> / ${myPlayerIds.length}명</span>
+              <button type="button" onclick="saveAdminViewerSelection('${bodyEsc(key)}', this)" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold active:scale-95 transition">저장</button>
+            </div>
+          </div>`;
+        c.appendChild(card);
+      });
+    }
+
+    function toggleAdminViewerPanel(key) {
+      adminViewerPanelOpen[key] = !adminViewerPanelOpen[key];
+      renderAdminApprovedViewers();
+    }
+
+    function filterAdminViewerPlayers(input) {
+      const q = String((input && input.value) || '').trim().toLowerCase();
+      const panel = input.closest('.player-pick-panel');
+      if (!panel) return;
+      panel.querySelectorAll('.av-player-row').forEach(row => {
+        const name = (row.getAttribute('data-name') || '').toLowerCase();
+        row.classList.toggle('hidden', !!q && name.indexOf(q) < 0);
+      });
+    }
+
+    function toggleAdminViewerDraft(checkbox) {
+      if (!checkbox) return;
+      const key = checkbox.getAttribute('data-viewer-key');
+      const pid = checkbox.getAttribute('data-player-id');
+      if (!Array.isArray(adminViewerDraft[key])) adminViewerDraft[key] = [];
+      const arr = adminViewerDraft[key];
+      const idx = arr.indexOf(pid);
+      if (checkbox.checked && idx < 0) arr.push(pid);
+      if (!checkbox.checked && idx >= 0) arr.splice(idx, 1);
+      const panel = checkbox.closest('.player-pick-panel');
+      const counter = panel ? panel.querySelector('.av-picked-count') : null;
+      if (counter) counter.textContent = String(arr.length);
+    }
+
+    function adminViewerSelectAll(btn, on) {
+      const panel = btn.closest('.player-pick-panel');
+      if (!panel) return;
+      panel.querySelectorAll('.av-player-chk').forEach(chk => {
+        if (chk.closest('.av-player-row') && chk.closest('.av-player-row').classList.contains('hidden')) return;
+        if (chk.checked !== !!on) {
+          chk.checked = !!on;
+          toggleAdminViewerDraft(chk);
+        }
+      });
+    }
+
+    function saveAdminViewerSelection(key, btn) {
+      const panel = btn.closest('.player-pick-panel');
+      const ids = [];
+      if (panel) {
+        panel.querySelectorAll('.av-player-chk').forEach(chk => {
+          if (chk.checked) ids.push(chk.getAttribute('data-player-id'));
+        });
+      }
+      saveViewerPermission(key, ids);
+    }
+
+    // ---------- 특별 뷰어(관리자별 자동 열람) ----------
+    function getAdminDisplayNameById(adminId) {
+      if (!adminId || adminId === 'super_admin') return '지혜 님';
+      const adm = (realtimeAuthData && realtimeAuthData._admins) ? realtimeAuthData._admins[adminId] : null;
+      return (adm && adm.name) ? adm.name : '관리자';
+    }
+
+    function toggleSpecialViewer(key) {
+      const item = realtimeAuthData[key];
+      if (!item) return;
+      const scopeId = getCurrentAdminScopeId();
+      if (isSpecialViewerRecord(item)) {
+        if (!confirm('이 뷰어의 특별 뷰어(자동 열람) 지정을 해제할까요?\n\n자동 열람만 해제되며, 이미 개별 승인된 선수 열람 목록은 지우지 않습니다.\n(해제 시 개별 승인 권한을 어떻게 처리할지는 확정 전이라 임의로 바꾸지 않았습니다.)')) return;
+        const nextData = Object.assign({}, realtimeAuthData);
+        const rec = Object.assign({}, nextData[key]);
+        rec.special = { status: 'revoked', at: Date.now(), byAdminId: scopeId };
+        nextData[key] = rec;
+        realtimeAuthData = nextData;
+        saveStagingCloud(nextData);
+        renderAdminApprovedViewers();
+        alert('특별 뷰어 자동 열람을 해제했습니다. 개별 승인 열람은 그대로 유지됩니다.');
+        return;
+      }
+      if (pendingSpecialOffer(item)) {
+        alert('이미 특별 뷰어 수락 요청을 보냈습니다. 뷰어가 수락하면 자동 열람이 시작됩니다.');
+        return;
+      }
+      if (!confirm('이 뷰어를 특별 뷰어로 지정 요청할까요?\n\n상대 뷰어가 수락하면, 이 관리자의 잠금 해제된 모든 선수 기록을 자동으로 볼 수 있게 됩니다(조회·엑셀 다운로드만, 이후 새로 등록되는 선수 포함).\n뷰어의 수락 전에는 아무 권한도 생기지 않습니다.')) return;
+      const nextData = Object.assign({}, realtimeAuthData);
+      const rec = Object.assign({}, nextData[key]);
+      rec.special = { status: 'offered', at: Date.now(), byAdminId: scopeId, byAdminName: getAdminDisplayNameById(scopeId) };
+      nextData[key] = rec;
+      realtimeAuthData = nextData;
+      saveStagingCloud(nextData);
+      renderAdminApprovedViewers();
+      alert('특별 뷰어 수락 요청을 보냈습니다. 뷰어가 [알림]에서 수락하면 자동 열람이 시작됩니다.');
+    }
+
+    function getAcceptedSpecialAdminIdsFor(user) {
+      if (!user || !user.role || user.role !== 'viewer') return [];
+      try {
+        const entries = findAllViewerCloudEntries(realtimeAuthData, user);
+        const ids = [];
+        entries.forEach(e => {
+          if (!e.item || !e.item.special || e.item.special.status !== 'accepted') return;
+          const owner = e.item.ownerAdminId || 'super_admin';
+          if (ids.indexOf(owner) < 0) ids.push(owner);
+        });
+        return ids;
+      } catch (e) { return []; }
+    }
+
+    function getMySpecialOffers() {
+      const me = getCurrentAuthUser();
+      if (!me || me.role !== 'viewer') return [];
+      try {
+        return findAllViewerCloudEntries(realtimeAuthData, me)
+          .filter(e => e.item && e.item.special && e.item.special.status === 'offered')
+          .map(e => ({
+            key: e.key,
+            adminId: e.item.special.byAdminId || e.item.ownerAdminId || 'super_admin',
+            adminName: getAdminDisplayNameById(e.item.special.byAdminId || e.item.ownerAdminId)
+          }));
+      } catch (e) { return []; }
+    }
+
+    function respondSpecialOffer(key, accept) {
+      const item = realtimeAuthData[key];
+      if (!item || !item.special || item.special.status !== 'offered') return;
+      const nextData = Object.assign({}, realtimeAuthData);
+      const rec = Object.assign({}, nextData[key]);
+      rec.special = Object.assign({}, rec.special, {
+        status: accept ? 'accepted' : 'declined',
+        respondedAt: Date.now()
+      });
+      nextData[key] = rec;
+      realtimeAuthData = nextData;
+      saveStagingCloud(nextData);
+      // 수락 직후 내 선수 목록을 다시 계산한다(새로고침 없이 반영).
+      const me = getCurrentAuthUser();
+      if (me) {
+        syncDataForUserRole(me);
+        initPlayerSelectDropdown();
+        renderEventTabs();
+        renderCurrentView();
+      }
+      renderApprovalList();
+      alert(accept
+        ? '특별 뷰어 자동 열람을 수락했습니다. 해당 관리자의 잠금 해제된 선수 기록을 볼 수 있습니다.'
+        : '특별 뷰어 제안을 거절했습니다.');
+    }
 
     function resetStagingTestDataManual() {
       if (!confirm('검수용 staging 로컬 데이터를 초기 시드 상태(코치 A 2건, 코치 B 1건, 뷰어 1명)로 재설정할까요?\n(운영 앱 데이터에는 영향을 주지 않습니다.)')) return;
