@@ -12249,7 +12249,7 @@
         '· 학부모 뷰어: 4명 개별 승인 + 특별 뷰어 초대(수락 대기)',
         '· 대기 뷰어: 잠금 선수 1명 열람 신청(승인 대기 1건)',
         '',
-        '코치 A 계정의 기존 선수·기록은 더미 50명으로 교체됩니다.',
+        '코치 A 계정의 기존 선수·기록·삭제 보관함은 더미 50명 기준으로 정리됩니다.',
         '다른 계정과 운영 앱 데이터는 바뀌지 않습니다.',
         '[검수용 로컬 데이터 수동 초기화]로 언제든 처음 상태로 되돌릴 수 있습니다.'
       ].join('\n'));
@@ -12293,6 +12293,8 @@
         localStorage.setItem('STAGING_CUSTOM_PLAYERS_v2_' + DUMMY50_ADMIN_ID, JSON.stringify(built.players));
         localStorage.setItem('STAGING_CUSTOM_DATA_v2_' + DUMMY50_ADMIN_ID, JSON.stringify(built.records));
         localStorage.removeItem('STAGING_ATHLETE_APP_TOMBSTONES_' + DUMMY50_ADMIN_ID);
+        // 예전 검수에서 지운 선수가 '삭제된 선수'에 남아 50명 구성이 헷갈리지 않게 코치 A 보관함만 비운다.
+        localStorage.removeItem('STAGING_DELETED_PLAYER_TRASH_v1_' + DUMMY50_ADMIN_ID);
       } catch (e) { console.warn('dummy50 local cache warning:', e); }
 
       // 승인 대기 화면까지 직접 보려면 대기 뷰어로도 로그인할 수 있어야 해서 계정을 함께 만든다.
