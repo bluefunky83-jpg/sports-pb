@@ -8076,7 +8076,7 @@
                   <!-- Yusin -->
                   <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
                     <div class="font-bold text-slate-200 text-xs flex items-center justify-between">
-                      <span class="flex items-center gap-1"><span><span class="ui-ic" data-ic="running"></span></span><span>김유신</span></span>
+                      <span class="flex items-baseline gap-1"><span><span class="ui-ic ic-run-name" data-ic="running"></span></span><span>김유신</span></span>
                       <span class="text-[9px] text-blue-300 bg-blue-500/20 px-1.5 py-0.2 rounded">육상</span>
                     </div>
                     <div class="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-0.5">
@@ -8905,7 +8905,7 @@
           <input type="radio" name="viewer-search-target-radio" value="${p.id}" ${(!approved && firstPick && firstPick.id === p.id) ? 'checked' : ''} ${approved ? 'disabled' : ''} onchange="onViewerSelectSearchTarget('${p.id}', '${p.ownerAdminId || 'super_admin'}')" class="text-blue-600">
           <div class="min-w-0">
             <div class="font-bold text-slate-200 flex items-center gap-1.5 flex-wrap">
-              <span>${(p.sport || '').includes('육상') ? '<span class="ui-ic" data-ic="running"></span>' : '<span class="ui-ic" data-ic="cycling"></span>'}</span>
+              <span>${(p.sport || '').includes('육상') ? '<span class="ui-ic ic-run-name" data-ic="running"></span>' : '<span class="ui-ic" data-ic="cycling"></span>'}</span>
               <span>${bodyEsc(p.name)}</span>
               <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">${bodyEsc(p.sport)}</span>
               ${approved ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">승인됨</span>' : ''}
