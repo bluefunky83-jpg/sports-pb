@@ -11650,6 +11650,20 @@
     //  ※ 지금은 검수용(staging 로컬 저장) 구현이다. 서버(RLS·RPC) 검증은 별도 작업이다.
     // ==================================================================
 
+    // 검수용 클라우드(localStorage)와 서버 보관본(가짜 클라우드)에 같이 기록한다.
+    // 관리자 알림 폴러가 5초마다 서버본을 다시 읽어 오므로, 로컬에만 쓰면 곧 되돌아간다.
+    function pushStagingCloudToServer(data) {
+      try {
+        if (typeof stagingCloudFetch !== 'function' || typeof AUTH_API_ENDPOINT === 'undefined') return;
+        const p = stagingCloudFetch(AUTH_API_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'sports_pb_auth', data: data })
+        });
+        if (p && typeof p.catch === 'function') p.catch(function () {});
+      } catch (e) {}
+    }
+
     // ---------- 선수 프로필 잠금 ----------
     let formPlayerLocked = false;
 
@@ -11909,10 +11923,12 @@
 
         const rows = myPlayers.map(p => {
           const checked = draft.indexOf(p.id) >= 0;
-          return `<label class="av-player-row flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-900 cursor-pointer" data-name="${bodyEsc((p.name || '') + ' ' + (p.sport || '') + ' ' + (p.mainEvent || ''))}">
-            <input type="checkbox" class="av-player-chk w-4 h-4 rounded border-slate-600 bg-slate-950 text-blue-600 shrink-0" data-viewer-key="${bodyEsc(key)}" data-player-id="${bodyEsc(p.id)}" ${checked ? 'checked' : ''} onchange="toggleAdminViewerDraft(this)">
-            <span class="text-[11px] text-slate-200 truncate min-w-0">${bodyEsc(p.name || '')}</span>
-            <span class="text-[10px] text-slate-500 truncate min-w-0">${bodyEsc(p.sport || '')} · ${bodyEsc(p.mainEvent || '')}</span>
+          return `<label class="av-player-row flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-900 cursor-pointer min-w-0" data-name="${bodyEsc((p.name || '') + ' ' + (p.sport || '') + ' ' + (p.mainEvent || ''))}">
+            <input type="checkbox" class="av-player-chk mt-0.5 w-4 h-4 rounded border-slate-600 bg-slate-950 text-blue-600 shrink-0" data-viewer-key="${bodyEsc(key)}" data-player-id="${bodyEsc(p.id)}" ${checked ? 'checked' : ''} onchange="toggleAdminViewerDraft(this)">
+            <span class="min-w-0 flex-1">
+              <span class="block text-[11px] text-slate-200 truncate">${bodyEsc(p.name || '')}</span>
+              <span class="block text-[10px] text-slate-500 truncate">${bodyEsc(p.sport || '')} · ${bodyEsc(p.mainEvent || '')}</span>
+            </span>
           </label>`;
         }).join('');
 
@@ -12022,6 +12038,7 @@
         nextData[key] = rec;
         realtimeAuthData = nextData;
         saveStagingCloud(nextData);
+        pushStagingCloudToServer(nextData);
         renderAdminApprovedViewers();
         alert('특별 뷰어 자동 열람을 해제했습니다. 개별 승인 열람은 그대로 유지됩니다.');
         return;
@@ -12037,6 +12054,7 @@
       nextData[key] = rec;
       realtimeAuthData = nextData;
       saveStagingCloud(nextData);
+      pushStagingCloudToServer(nextData);
       renderAdminApprovedViewers();
       alert('특별 뷰어 수락 요청을 보냈습니다. 뷰어가 [알림]에서 수락하면 자동 열람이 시작됩니다.');
     }
@@ -12081,6 +12099,7 @@
       nextData[key] = rec;
       realtimeAuthData = nextData;
       saveStagingCloud(nextData);
+      pushStagingCloudToServer(nextData);
       // 수락 직후 내 선수 목록을 다시 계산한다(새로고침 없이 반영).
       const me = getCurrentAuthUser();
       if (me) {
