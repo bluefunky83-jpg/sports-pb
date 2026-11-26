@@ -31,6 +31,7 @@
 </div>
 <script>
   const frame = document.getElementById('frame');
+  frame.src = './index.html?qa=' + Date.now();
   const out = document.getElementById('out');
   function w() { return frame.contentWindow; }
   function d() { return frame.contentDocument; }
