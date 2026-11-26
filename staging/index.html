@@ -391,7 +391,7 @@
   </div>
 
   <!-- 가져오기 확인 (예 / 아니오) -->
-  <div id="modal-import-confirm" class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="modal-import-confirm" class="fixed inset-0 z-[90] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
       <h3 id="import-confirm-title" class="text-base font-bold text-white">가져오기 확인</h3>
       <div id="import-confirm-body" class="text-xs text-slate-300 leading-relaxed space-y-1 max-h-64 overflow-y-auto"></div>
@@ -2748,6 +2748,7 @@
     function openEventSelectModal() {
       if (!currentPlayer) return;
       renderEventSelectList();
+      pushModalHistory('modal-event-select');
       document.getElementById('modal-event-select').classList.remove('hidden');
     }
 
@@ -5765,6 +5766,7 @@
             <div class="mt-1 text-[11px] text-slate-400">선수 프로필과 경기 기록이 함께 삭제됩니다. 취소하면 아무 데이터도 바뀌지 않습니다.</div>
             <div class="mt-1 text-[11px] text-amber-300">선수 삭제 유예(72시간) 정책은 그대로 적용됩니다.</div>`;
         }
+        pushModalHistory('modal-player-delete');
         document.getElementById('modal-player-delete')?.classList.remove('hidden');
       });
     }
@@ -7586,6 +7588,8 @@
     }
 
     const BACK_CHECK_MODAL_IDS = [
+      'modal-import-confirm', 'modal-player-delete', 'modal-player-transfer',
+      'modal-notice-admin', 'modal-event-select',
       'modal-record', 'modal-player-form', 'modal-players',
       'modal-settings', 'modal-viewer-approvals', 'modal-super-admin-center',
       'modal-admin-profile', 'modal-viewer-add-player', 'modal-viewer-waiting',
@@ -9884,6 +9888,7 @@
       const res = document.getElementById('transfer-search-result');
       if (res) res.innerHTML = '';
       updateTransferRequestButton();
+      pushModalHistory('modal-player-transfer');
       document.getElementById('modal-player-transfer')?.classList.remove('hidden');
     }
 
@@ -10085,6 +10090,7 @@
       const me = getCurrentAuthUser();
       if (me.role !== 'super_admin') { alert('공지 작성과 발송은 최고관리자만 할 수 있습니다.'); return; }
       renderNoticeAdminList();
+      pushModalHistory('modal-notice-admin');
       document.getElementById('modal-notice-admin')?.classList.remove('hidden');
     }
 
