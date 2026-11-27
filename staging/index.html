@@ -9962,7 +9962,7 @@
 
       localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
       localStorage.removeItem('STAGING_ATHLETE_APP_IS_ADMIN');
-      appAlert('회원 탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.');
+      await appAlert('회원 탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.');
       window.location.reload();
     }
 
@@ -11014,7 +11014,7 @@
         const accounts = getStagingAccounts();
         if (accounts[authUser.email.toLowerCase()]) { accounts[authUser.email.toLowerCase()].status = 'withdrawn'; saveStagingAccounts(accounts); }
         localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
-        appAlert('뷰어 회원 탈퇴가 완료되었습니다.');
+        await appAlert('뷰어 회원 탈퇴가 완료되었습니다.');
         window.location.reload(); return;
       }
       const totalRecs = Object.values(appData).reduce((a, b) => a + (Array.isArray(b) ? b.length : 0), 0);
@@ -11042,7 +11042,7 @@
       }
     }
 
-    function executeAdminTransferAndWithdraw() {
+    async function executeAdminTransferAndWithdraw() {
       const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
       const targetId = document.getElementById('withdraw-target-admin')?.value;
       const accepted = document.getElementById('withdraw-transfer-accept-sim')?.checked;
@@ -11077,7 +11077,7 @@
       localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
       localStorage.removeItem('STAGING_CUSTOM_PLAYERS_v2_' + authUser.id);
       localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + authUser.id);
-      appAlert('선수·기록·학부모 권한 이전 및 관리자 탈퇴가 완료되었습니다.');
+      await appAlert('선수·기록·학부모 권한 이전 및 관리자 탈퇴가 완료되었습니다.');
       window.location.reload();
     }
 
@@ -11099,7 +11099,7 @@
       localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
       localStorage.removeItem('STAGING_CUSTOM_PLAYERS_v2_' + authUser.id);
       localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + authUser.id);
-      appAlert('본인 데이터 영구 삭제 및 회원 탈퇴가 완료되었습니다.');
+      await appAlert('본인 데이터 영구 삭제 및 회원 탈퇴가 완료되었습니다.');
       window.location.reload();
     }
 
@@ -11471,7 +11471,7 @@
       document.getElementById('modal-admin-withdraw')?.classList.add('hidden');
     }
 
-    executeAdminTransferAndWithdraw = function() {
+    executeAdminTransferAndWithdraw = async function() {
       const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
       if (!stagingTransferSelectedTarget) { appAlert('이전받을 관리자를 검색해 직접 선택해 주세요.'); return; }
       if (!stagingTransferAccepted) { appAlert('이전받는 관리자의 명시적 수락 절차를 먼저 진행해 주세요.'); return; }
@@ -11499,7 +11499,7 @@
       localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
       localStorage.removeItem('STAGING_CUSTOM_PLAYERS_v2_' + authUser.id);
       localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + authUser.id);
-      appAlert('선수·기록·열람 권한 이전과 관리자 탈퇴가 완료되었습니다.');
+      await appAlert('선수·기록·열람 권한 이전과 관리자 탈퇴가 완료되었습니다.');
       window.location.reload();
     };
 
@@ -11950,7 +11950,7 @@
         const accounts = getStagingAccounts();
         if (accounts[authUser.email.toLowerCase()]) { accounts[authUser.email.toLowerCase()].status = 'withdrawn'; saveStagingAccounts(accounts); }
         localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
-        appAlert('뷰어 회원 탈퇴가 완료되었습니다.');
+        await appAlert('뷰어 회원 탈퇴가 완료되었습니다.');
         window.location.reload(); return;
       }
       const owned = getOwnedAdminDataset(authUser);
@@ -12016,7 +12016,7 @@
       if (execBtn) execBtn.disabled = false;
     };
 
-    executeAdminTransferAndWithdraw = function() {
+    executeAdminTransferAndWithdraw = async function() {
       const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
       if (!authUser || authUser.role !== 'admin') return;
       if (!stagingTransferSelectedTarget) { appAlert('이전받을 관리자를 검색해 직접 선택해 주세요.'); return; }
@@ -12254,7 +12254,7 @@
         localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + owned.stableKey);
         localStorage.removeItem('STAGING_ATHLETE_APP_TOMBSTONES_' + owned.stableKey);
 
-        appAlert('전체 선수와 경기 기록, 삭제 이력, 열람 권한을 넘기고 관리자 탈퇴가 완료되었습니다.');
+        await appAlert('전체 선수와 경기 기록, 삭제 이력, 열람 권한을 넘기고 관리자 탈퇴가 완료되었습니다.');
         window.location.reload();
       } catch (err) {
         const rb = restoreSnapshots();
