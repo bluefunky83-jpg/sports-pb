@@ -31,7 +31,10 @@ function log(o) { out.textContent = typeof o === 'string' ? o : JSON.stringify(o
 function W() { return frame.contentWindow; }
 function D() { return frame.contentDocument; }
 
+window.addEventListener('error', function (e) { try { log('ERR: ' + (e.message || '') + ' @' + (e.lineno || '')); } catch (x) {} });
+setTimeout(function () { if (out.textContent === 'init...') { log('stage-diagnostic: load not fired or run not called / readyState=' + document.readyState); } }, 5000);
 frame.addEventListener('load', function () {
+  log('load fired');
   setTimeout(function () {
     try {
       const run = q.get('run') || '';
