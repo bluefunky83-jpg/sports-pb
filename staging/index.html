@@ -159,9 +159,9 @@
     #app-numpad button.numpad-act:active { transform: scale(0.97); }
     /* 키패드가 올라오면 기록 입력 팝업을 위로 붙이고, 키패드 높이만큼 팝업 높이를 줄여
        입력칸과 하단 버튼이 키패드에 가리지 않게 한다(높이는 JS가 실제 픽셀로 넣는다). */
-    body.numpad-open #modal-record .modal-overlay { align-items: flex-start !important; }
+    body.numpad-open #modal-record { align-items: flex-start !important; }
     body.numpad-open #modal-record .modal-panel {
-      max-height: calc(var(--app-vh, 100dvh) - var(--numpad-total-h, 232px) - 12px);
+      max-height: calc(var(--app-vh, 100dvh) - var(--numpad-total-h, 232px) - 24px);
     }
     /* PC(마우스·정밀 포인터, 넓은 화면)에서는 자체 키패드를 쓰지 않고 물리 키보드로 직접 입력한다. */
     @media (hover: hover) and (pointer: fine) and (min-width: 768px) {
