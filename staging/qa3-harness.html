@@ -6,469 +6,224 @@
 <style>
   html, body { margin: 0; background: #0b0f19; color: #e2e8f0; font: 12px/1.5 ui-monospace, monospace; }
   #wrap { display: flex; align-items: flex-start; gap: 8px; padding: 8px; }
-  #frame { border: 1px solid #334155; background: #020617; flex: 0 0 auto; }
+  #frame { border: 1px solid #334155; background: #020617; flex: 0 0 auto; display: block; }
   #out { flex: 1 1 auto; white-space: pre-wrap; word-break: break-all; max-height: 96vh; overflow: auto; margin: 0; padding: 8px; background: #111827; border: 1px solid #1f2937; }
+  #go { position: fixed; right: 12px; bottom: 12px; z-index: 9; padding: 8px 14px; font: inherit; }
 </style>
 </head>
 <body>
-<div id="wrap">
-  <pre id="out">init...</pre>
-</div>
+<button id="go" type="button">start</button>
+<div id="wrap"><pre id="out">ready</pre></div>
 <script>
 const q = new URLSearchParams(location.search);
 const out = document.getElementById('out');
-const frame = document.createElement('iframe');
-frame.id = 'frame';
-frame.style.border = '1px solid #334155';
-frame.style.background = '#020617';
-frame.style.flex = '0 0 auto';
-frame.style.display = 'block';
-document.getElementById('wrap').insertBefore(frame, out);
-const WIDTH = +(q.get('w') || 390);
-const HEIGHT = +(q.get('h') || 844);
-const SCALE = q.get('scale') || '';
-frame.src = 'index.html?qa3=1&cb=' + Date.now();
-frame.style.width = WIDTH + 'px';
-frame.style.height = HEIGHT + 'px';
-if (SCALE) { try { localStorage.setItem('STAGING_ATHLETE_APP_UI_SCALE', SCALE); } catch (e) {} }
-// 점검 실행 중에는 앱 화면을 화면 밖처럼 숨긴다(배치는 유지되어 계측은 그대로). 스크린샷용(shot=1)일 때만 보인다.
-
-
+let frame = null;
+const WIDTH = +(q.get('w') || 390), HEIGHT = +(q.get('h') || 844), SCALE = q.get('scale') || '';
 function log(o) { out.textContent = 'RESULT: ' + (typeof o === 'string' ? o : JSON.stringify(o)); }
 function W() { return frame.contentWindow; }
 function D() { return frame.contentDocument; }
+function waitMs(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function tabBtn(id) { return D().querySelector('#event-tabs-container button[data-tab-id="' + String(id).replace(/"/g, '\\"') + '"]'); }
+function tabs() { return Array.from(D().querySelectorAll('#event-tabs-container button')).map(function (b) { return b.getAttribute('data-tab-id'); }); }
+function activeTab() { const b = D().querySelector('#event-tabs-container button.bg-blue-600'); return b ? b.getAttribute('data-tab-id') : '(none)'; }
+function playerOptions() { const s = D().getElementById('select-player'); return s ? Array.from(s.options).map(function (o) { return { id: o.value, label: o.textContent.trim() }; }) : []; }
+function switchPlayerById(id) { const s = D().getElementById('select-player'); if (!s) return false; s.value = id; s.dispatchEvent(new (W().Event)('change', { bubbles: true })); return true; }
+function recordSelectInfo() { const s = D().getElementById('form-record-event'); return s ? { selected: s.value, options: Array.from(s.options).map(function (o) { return o.value; }) } : null; }
+function loginAs(email, role) { const w = W(); w.alert = function () {}; w.confirm = function () { return true; }; w.fillStagingTestAccount(email, role || 'admin'); w.handleEmailPasswordLogin(null); return waitMs(1100); }
+function isSuperUi() { const b = D().getElementById('btn-super-admin-top'); return !!b && !b.classList.contains('hidden'); }
+function rect(el) { const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), h: Math.round(b.height), w: Math.round(b.width) }; }
 
-window.addEventListener('error', function (e) { try { log('ERR: ' + (e.message || '') + ' @' + (e.lineno || '')); } catch (x) {} });
-setTimeout(function () { if (out.textContent === 'init...') { log('stage-diagnostic: load not fired or run not called / readyState=' + document.readyState); } }, 5000);
-frame.addEventListener('load', function () {
-  log('load fired');
-  setTimeout(function () {
-    try {
+function start() {
+  if (frame) return;
+  frame = document.createElement('iframe');
+  frame.id = 'frame';
+  frame.style.width = WIDTH + 'px';
+  frame.style.height = HEIGHT + 'px';
+  document.getElementById('wrap').insertBefore(frame, out);
+  if (SCALE) { try { localStorage.setItem('STAGING_ATHLETE_APP_UI_SCALE', SCALE); } catch (e) {} }
+  frame.addEventListener('load', function () {
+    setTimeout(function () {
       const run = q.get('run') || '';
       const fn = window['run_' + run];
       if (!fn) { log('no run: ' + run); return; }
       Promise.resolve(fn()).then(function (r) { if (r !== undefined) log(r); }).catch(function (e) { log({ error: String((e && e.stack) || e) }); });
-    } catch (e) {
-      log({ error: String((e && e.stack) || e) });
-    }
-  }, 700);
-});
-
-/* ---------- helpers ---------- */
-function tabBtn(id) { return D().querySelector('#event-tabs-container button[data-tab-id="' + String(id).replace(/"/g, '\\"') + '"]'); }
-function tabs() { return Array.from(D().querySelectorAll('#event-tabs-container button')).map(function (b) { return b.getAttribute('data-tab-id'); }); }
-function openRecord() { const w = W(); const d = D(); const b = d.getElementById('btn-add-record-fixed'); if (b) b.querySelector('button').click(); }
-function activeTab() {
-  const b = D().querySelector('#event-tabs-container button.bg-blue-600');
-  return b ? b.getAttribute('data-tab-id') : '(none)';
-}
-function recordSelectInfo() {
-  const s = D().getElementById('form-record-event');
-  if (!s) return null;
-  return { selected: s.value, options: Array.from(s.options).map(function (o) { return o.value; }) };
-}
-
-/* ---------- run: matrix (기본 종목 선택) ---------- */
-function playerOptions() {
-  const sel = D().getElementById('select-player');
-  return sel ? Array.from(sel.options).map(function (o) { return { id: o.value, label: o.textContent.trim() }; }) : [];
-}
-function switchPlayerById(id) {
-  const sel = D().getElementById('select-player');
-  if (!sel) return false;
-  sel.value = id;
-  sel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
-  return true;
-}
-window.run_matrix = function () {
-  const w = W();
-  const res = [];
-  const probe = function (tab) {
-    const btn = tabBtn(tab);
-    if (btn) btn.click();
-    w.openRecordModal();
-    res.push(Object.assign({ tab: tab }, recordSelectInfo()));
-    w.closeRecordModal();
-  };
-  tabs().forEach(probe);
-
-  const opts = playerOptions();
-  const other = [];
-  opts.forEach(function (p) {
-    switchPlayerById(p.id);
-    const t = tabs();
-    const probes = [];
-    t.forEach(function (tab) {
-      const btn = tabBtn(tab);
-      if (btn) btn.click();
-      w.openRecordModal();
-      probes.push(Object.assign({ tab: tab }, recordSelectInfo()));
-      w.closeRecordModal();
-    });
-    other.push({ player: p.label, id: p.id, events: t, probes: probes });
+    }, 800);
   });
-  return { players: opts, yusin: res, others: other };
-};
+  frame.src = 'index.html?qa3=1&cb=' + Date.now();
+}
+document.getElementById('go').addEventListener('click', start);
 
-/* ---------- run: swipe ---------- */
-function fireTouch(target, type, x, y) {
+/* ---------- 스와이프 ---------- */
+function fire(target, type, x, y) {
   const w = W();
   const t = new w.Touch({ identifier: 1, target: target, clientX: x, clientY: y });
   const list = (type === 'touchend' || type === 'touchcancel') ? [] : [t];
-  const ev = new w.TouchEvent(type, { bubbles: true, cancelable: true, touches: list, targetTouches: list, changedTouches: [t] });
-  target.dispatchEvent(ev);
+  target.dispatchEvent(new w.TouchEvent(type, { bubbles: true, cancelable: true, touches: list, targetTouches: list, changedTouches: [t] }));
 }
 function swipe(target, dx, dy, opts) {
   opts = opts || {};
-  const x0 = (opts.x0 === undefined) ? 180 : opts.x0;
-  const y0 = (opts.y0 === undefined) ? 300 : opts.y0;
-  fireTouch(target, 'touchstart', x0, y0);
-  if (!opts.noMove) fireTouch(target, 'touchmove', x0 + dx * 0.5, y0 + dy * 0.5);
-  fireTouch(target, 'touchend', x0 + dx, y0 + dy);
+  const x0 = (opts.x0 === undefined) ? 180 : opts.x0, y0 = (opts.y0 === undefined) ? 300 : opts.y0;
+  fire(target, 'touchstart', x0, y0);
+  if (!opts.noMove) fire(target, 'touchmove', x0 + dx * 0.5, y0 + dy * 0.5);
+  fire(target, 'touchend', x0 + dx, y0 + dy);
 }
 window.run_swipe = function () {
-  const w = W();
-  const d = D();
-  const res = [];
-  const yusinOpt = playerOptions().find(function (p) { return String(p.label).indexOf('김유신') >= 0; });
-  if (yusinOpt) switchPlayerById(yusinOpt.id);
-  const snap = function (label) { res.push({ step: label, tab: activeTab(), scrollX: Math.round(D().getElementById('event-tabs-container').scrollLeft) }); };
-
-  const order = tabs();
+  const w = W(), d = D(), res = [];
+  const y = playerOptions().find(function (p) { return String(p.label).indexOf('김유신') >= 0; });
+  if (y) switchPlayerById(y.id);
+  const snap = function (label) { res.push(label + ' => ' + activeTab()); };
   const body = d.getElementById('view-container');
+  const order = tabs();
   w.selectEventTab(order[0]);
-  snap('start: ' + order[0]);
-
-  swipe(body, -120, 4); snap('left swipe (-> next)');
-  swipe(body, -120, 4); snap('left swipe again');
-  swipe(body, 120, 4); snap('right swipe (-> prev)');
-
-  w.selectEventTab(order[0]);
-  swipe(body, 120, 4); snap('right swipe at first tab (should stay ' + order[0] + ')');
-
-  const last = order[order.length - 1];
-  w.selectEventTab(last);
-  swipe(body, -120, 4); snap('left swipe at last tab (should stay ' + last + ')');
-
-  w.selectEventTab(order[0]);
-  swipe(body, 10, 160); snap('vertical swipe (no change)');
-  swipe(body, 120, 150); snap('diagonal 120/150 (no change)');
-  swipe(body, -40, 2); snap('short swipe 40px (no change)');
-  swipe(body, -120, 2, { x0: 4 }); snap('edge start x=4 (no change)');
-
-  const tabsEl = d.getElementById('event-tabs-container');
-  swipe(tabsEl, -120, 2); snap('swipe on tab bar (no change)');
-
-  w.selectEventTab(order[1] || 'ALL_PB');
+  snap('start');
+  swipe(body, -120, 4); snap('left');
+  swipe(body, -120, 4); snap('left2');
+  swipe(body, 120, 4); snap('right');
+  w.selectEventTab(order[0]); swipe(body, 120, 4); snap('right@first(no move)');
+  w.selectEventTab(order[order.length - 1]); swipe(body, -120, 4); snap('left@last(no move)');
+  w.selectEventTab(order[0]); swipe(body, 10, 160); snap('vertical(no move)');
+  swipe(body, 120, 150); snap('diagonal(no move)');
+  swipe(body, -40, 2); snap('short40(no move)');
+  swipe(body, -120, 2, { x0: 4 }); snap('edge(no move)');
+  swipe(d.getElementById('event-tabs-container'), -120, 2); snap('tabbar(no move)');
+  w.selectEventTab(order[1]); snap('set ' + order[1]);
   const canvas = d.querySelector('#view-container canvas');
-  if (canvas) { swipe(canvas, -120, 2); snap('swipe on chart canvas (no change)'); } else { snap('no canvas'); }
-
-  // 입력창
-  const input = d.querySelector('#view-container input[type="text"]');
-  if (input) { swipe(input, -120, 2); snap('swipe on search input (no change)'); }
-
-  // 팝업이 열려 있을 때
+  if (canvas) { swipe(canvas, -120, 2); snap('canvas(no move)'); }
   w.openSettingsModal();
-  swipe(body, -120, 2); snap('swipe with settings modal open (no change)');
+  swipe(body, -120, 2); snap('modal open(no move)');
   w.closeSettingsModal();
-
+  w.selectEventTab(order[order.length - 1]);
+  const lastScroll = Math.round(d.getElementById('event-tabs-container').scrollLeft);
+  res.push('lastTabScrollLeft=' + lastScroll);
   return res;
 };
 
-/* ---------- run: tabs 가시성 ---------- */
+/* ---------- 종목 탭 자동 노출 ---------- */
 window.run_tabscroll = function () {
-  const w = W();
-  const d = D();
-  const res = [];
-  const order = tabs();
+  const w = W(), d = D(), res = [];
+  const y = playerOptions().find(function (p) { return String(p.label).indexOf('김유신') >= 0; });
+  if (y) switchPlayerById(y.id);
   const c = d.getElementById('event-tabs-container');
-  order.forEach(function (id) {
+  tabs().forEach(function (id) {
     w.selectEventTab(id);
-    const btn = tabBtn(id);
-    const cl = c.scrollLeft, cw = c.clientWidth;
+    const btn = tabBtn(id), cl = c.scrollLeft, cw = c.clientWidth;
     const left = btn.offsetLeft - c.offsetLeft, right = left + btn.offsetWidth;
-    const prev = res[res.length - 1];
-    res.push({ tab: id, visible: (left >= cl - 1 && right <= cl + cw + 1), scrollLeft: Math.round(cl), tabLeft: Math.round(left), tabRight: Math.round(right), viewRight: Math.round(cl + cw) });
+    res.push(id + ': visible=' + (left >= cl - 1 && right <= cl + cw + 1) + ' (' + Math.round(left) + '~' + Math.round(right) + ' / view ' + Math.round(cl) + '~' + Math.round(cl + cw) + ')');
   });
   return res;
 };
 
-/* ---------- run: modals (고정/스크롤·아코디언·로그아웃·문구) ---------- */
-window.run_modals = function () {
-  const w = W();
-  const d = D();
-  const r = {};
-  const rect = function (el) { const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), h: Math.round(b.height) }; };
-
-  // 선수 관리 명단: 상단 고정 / 가운데만 스크롤 / 하단 고정
-  w.openPlayerManageModal();
-  const mp = d.querySelector('#modal-players .modal-panel');
-  const header = d.querySelector('#modal-players .modal-fixed');
-  const scroller = d.querySelector('#modal-players [data-scroll-key="player-manage"]');
-  const footer = d.querySelector('#modal-players .modal-fixed:last-of-type');
-  r.playerModal = {
-    panel: rect(mp), viewportH: d.documentElement.clientHeight,
-    headerTopBefore: rect(header).top,
-    footerBottom: rect(d.querySelector('#modal-players .modal-panel > div:last-child')).bottom,
-    scrollerH: scroller.clientHeight, scrollerScrollH: scroller.scrollHeight,
-    deletedAccHidden: d.getElementById('deleted-players-accordion').classList.contains('hidden'),
-    count: d.getElementById('player-list-count').textContent
-  };
-  scroller.scrollTop = 500;
-  const before = scroller.scrollTop;
-  w.renderPlayerCards();
-  r.playerModal.scrollAfterRender = scroller.scrollTop;
-  r.playerModal.scrollBeforeRender = before;
-
-  // 명단 → 선수 수정 → 닫기 → 명단 복귀 + 스크롤 유지
-  const firstId = (w.playersData || [])[0] && w.playersData[0].id;
-  scroller.scrollTop = 420;
-  const keep = scroller.scrollTop;
-  d.querySelector('#player-cards-container button[title="프로필 수정"]').click();
-  const formOpen = !d.getElementById('modal-player-form').classList.contains('hidden');
-  const listStillOpen = !d.getElementById('modal-players').classList.contains('hidden');
-  w.closeAddEditPlayerModal();
-  r.editReturn = {
-    formOpened: formOpen, listStayedOpen: listStillOpen, scrollBefore: keep, scrollAfter: Math.round(scroller.scrollTop),
-    listVisible: !d.getElementById('modal-players').classList.contains('hidden')
-  };
-  w.closePlayerManageModal();
-  r.playerModalClosed = d.getElementById('modal-players').classList.contains('hidden');
-
-  // 관리자 센터: 아코디언 기본 접힘·독립 펼침·동시 펼침·로그아웃 없음·닫기 전체 폭
-  w.openAdminProfileModal();
-  const ac = d.getElementById('modal-admin-profile');
-  r.adminCenter = {
-    open: !ac.classList.contains('hidden'),
-    playersBodyOpen: d.getElementById('admin-my-players-body').classList.contains('is-open'),
-    viewersBodyOpen: d.getElementById('admin-approved-viewers-body').classList.contains('is-open'),
-    myPlayersTitle: d.getElementById('admin-my-players-title').textContent,
-    viewersTitle: d.getElementById('admin-approved-viewers-title').textContent,
-    logoutButtons: Array.from(ac.querySelectorAll('button')).filter(function (b) { return (b.textContent || '').indexOf('로그아웃') >= 0; }).length,
-    closeBtnFullWidth: (function () {
-      const btn = ac.querySelector('.modal-fixed:last-child button');
-      const panel = ac.querySelector('.modal-panel');
-      return btn ? Math.abs(btn.getBoundingClientRect().width - (panel.getBoundingClientRect().width - 40)) < 3 : null;
-    })()
-  };
-  w.toggleAdminCenterAccordion('players');
-  r.adminCenter.afterPlayersToggle = { players: d.getElementById('admin-my-players-body').classList.contains('is-open'), viewers: d.getElementById('admin-approved-viewers-body').classList.contains('is-open') };
-  w.toggleAdminCenterAccordion('viewers');
-  const panelRect = rect(ac.querySelector('.modal-panel'));
-  r.adminCenter.bothOpen = {
-    players: d.getElementById('admin-my-players-body').classList.contains('is-open'),
-    viewers: d.getElementById('admin-approved-viewers-body').classList.contains('is-open'),
-    panel: panelRect, viewportH: d.documentElement.clientHeight,
-    insideViewport: panelRect.top >= -1 && panelRect.bottom <= d.documentElement.clientHeight + 1,
-    headerTop: rect(ac.querySelector('.modal-fixed')).top,
-    footerBottom: rect(ac.querySelector('.modal-panel > div:last-child')).bottom
-  };
-  // 센터 → 선수 수정 → 닫기 → 센터 복귀
-  const editBtn = ac.querySelector('#admin-my-players-list button');
-  if (editBtn) editBtn.click();
-  r.adminCenter.formOverCenter = {
-    formOpen: !d.getElementById('modal-player-form').classList.contains('hidden'),
-    centerStillOpen: !ac.classList.contains('hidden'),
-    formZ: d.getElementById('modal-player-form').style.zIndex
-  };
-  w.closeAddEditPlayerModal();
-  r.adminCenter.afterFormClose = { centerOpen: !ac.classList.contains('hidden') };
-  w.closeAdminProfileModal();
-
-  // 최고관리자 센터: 상단 고정/가운데만 스크롤/하단 닫기/정보 카드 형식
-  w.openSuperAdminModal().then(function () {
+/* ---------- 종합 점검 ---------- */
+window.run_all = function () {
+  const w = W(), d = D(), res = {};
+  const VH = w.innerHeight;
+  return Promise.resolve(isSuperUi() ? null : loginAs('super@test.local')).then(function () {
+    return waitMs(500);
+  }).then(function () {
+    // 2) 기본 종목
+    const y = playerOptions().find(function (p) { return String(p.label).indexOf('김유신') >= 0; });
+    if (y) switchPlayerById(y.id);
+    const m = [];
+    tabs().forEach(function (t) { tabBtn(t).click(); w.openRecordModal(); const i = recordSelectInfo(); m.push(t + '→' + i.selected); w.closeRecordModal(); });
+    res.defaultEvent_김유신 = m;
+    const b = playerOptions().find(function (p) { return String(p.label).indexOf('별하') >= 0; });
+    if (b) {
+      switchPlayerById(b.id);
+      const m2 = [];
+      tabs().forEach(function (t) { tabBtn(t).click(); w.openRecordModal(); const i = recordSelectInfo(); m2.push(t + '→' + i.selected + '(' + i.options.join(',') + ')'); w.closeRecordModal(); });
+      res.defaultEvent_김별하 = m2;
+      switchPlayerById(y.id);
+    }
+    // 9/10/13) 최고관리자 센터
+    return w.openSuperAdminModal();
+  }).then(function () {
     const sc = d.getElementById('modal-super-admin-center');
     const panel = sc.querySelector('.modal-panel');
-    const list = d.getElementById('sa-viewers-tree-container');
     const card = d.getElementById('sa-super-card');
-    const cardLines = Array.from(card.children).map(function (c) { return c.textContent.trim(); });
-    const adminCards = Array.from(list.querySelectorAll(':scope > div'));
-    r.superCenter = {
-      panel: rect(panel), viewportH: d.documentElement.clientHeight,
-      insideViewport: rect(panel).top >= -1 && rect(panel).bottom <= d.documentElement.clientHeight + 1,
-      headerTop: rect(sc.querySelector('.modal-fixed')).top,
-      listScrollable: list.scrollHeight > list.clientHeight,
-      listScrollH: list.scrollHeight, listClientH: list.clientHeight,
-      closeButtons: Array.from(sc.querySelectorAll('button')).filter(function (b) { return (b.textContent || '').trim() === '닫기'; }).length,
-      logoutButtons: Array.from(sc.querySelectorAll('button')).filter(function (b) { return (b.textContent || '').indexOf('로그아웃') >= 0; }).length,
-      superCardLines: cardLines,
-      adminCardLines: adminCards.map(function (c) { return c.textContent.trim(); }),
-      superCardStyle: { cls: card.className, nameCls: card.children[0] && card.children[0].className, pad: getComputedStyle(card).padding },
-      adminCardStyle: adminCards[0] ? { cls: adminCards[0].className, nameCls: adminCards[0].children[0].className, pad: getComputedStyle(adminCards[0]).padding } : null,
-      megaIcon: (function () {
-        const box = d.getElementById('sa-notice-icon');
-        const svg = box.querySelector('svg');
-        const text = d.getElementById('sa-notice-text');
-        return { boxW: Math.round(box.getBoundingClientRect().width), boxH: Math.round(box.getBoundingClientRect().height), svgW: svg ? Math.round(svg.getBoundingClientRect().width) : null, svgH: svg ? Math.round(svg.getBoundingClientRect().height) : null, textH: Math.round(text.getBoundingClientRect().height), boxTop: Math.round(box.getBoundingClientRect().top), textTop: Math.round(text.getBoundingClientRect().top) };
-      })()
+    const list = d.getElementById('sa-viewers-tree-container');
+    const header = sc.querySelector('.modal-fixed');
+    const ht = Math.round(header.getBoundingClientRect().top);
+    res.superCenter = {
+      panel: rect(panel), vh: VH, inside: rect(panel).top >= -1 && rect(panel).bottom <= VH + 1,
+      cardLines: Array.from(card.children).map(function (c) { return c.textContent.trim(); }),
+      cardPad: getComputedStyle(card).padding,
+      adminCardPad: (list.querySelector(':scope > div') ? getComputedStyle(list.querySelector(':scope > div')).padding : null),
+      cardFonts: Array.from(card.children).map(function (c) { return getComputedStyle(c).fontSize; }),
+      adminCardFonts: list.querySelector(':scope > div') ? Array.from(list.querySelector(':scope > div').children).map(function (c) { return getComputedStyle(c).fontSize; }) : null,
+      logout: Array.from(sc.querySelectorAll('button')).filter(function (b) { return (b.textContent || '').indexOf('로그아웃') >= 0; }).length,
+      closeFullWidth: (function () { const btn = sc.querySelector('.modal-fixed:last-child button'); return Math.abs(btn.getBoundingClientRect().width - (panel.getBoundingClientRect().width - 40)) < 3; })(),
+      megaIcon: (function () { const box = d.getElementById('sa-notice-icon'), svg = box.querySelector('svg'), t = d.getElementById('sa-notice-text'); return { box: rect(box), svg: rect(svg), textH: Math.round(t.getBoundingClientRect().height) }; })(),
+      listScrollable: list.scrollHeight > list.clientHeight
     };
-    // 목록만 스크롤되는지: 목록 스크롤 후 상단 고정 요소 위치가 그대로인지
-    const headerTopBefore = rect(sc.querySelector('.modal-fixed')).top;
-    list.scrollTop = 200;
-    r.superCenter.listScrolled = list.scrollTop;
-    r.superCenter.headerTopAfterListScroll = rect(sc.querySelector('.modal-fixed')).top;
-    r.superCenter.headerStays = headerTopBefore === r.superCenter.headerTopAfterListScroll;
     w.closeSuperAdminModal();
-    log(r);
-  });
-  return new Promise(function () {});
-};
-
-/* ---------- run: texts (문구 전수 점검용) ---------- */
-window.run_texts = function () {
-  const w = W();
-  const d = D();
-  const bad = ['깡통', '더미', '하드코딩', '임시 처리', '개발용', '관제', '시뮬레이션', '강제 이전', '스르륵', 'TODO', 'FIXME'];
-  const found = [];
-  const scan = function (where) {
-    const txt = (d.body.innerText || '') + '\n' + (d.body.textContent || '');
-    bad.forEach(function (w2) {
-      let i = txt.indexOf(w2);
-      while (i >= 0) {
-        found.push({ where: where, word: w2, ctx: txt.slice(Math.max(0, i - 30), i + 30).replace(/\s+/g, ' ') });
-        i = txt.indexOf(w2, i + 1);
-        if (found.length > 60) return;
-      }
+    // 12/13) 관리자 센터
+    w.openAdminProfileModal();
+    const ac = d.getElementById('modal-admin-profile');
+    const r0 = { defaultClosed: !d.getElementById('admin-my-players-body').classList.contains('is-open') && !d.getElementById('admin-approved-viewers-body').classList.contains('is-open') };
+    w.toggleAdminCenterAccordion('players'); w.toggleAdminCenterAccordion('viewers');
+    const p = ac.querySelector('.modal-panel');
+    res.adminCenter = Object.assign(r0, {
+      bothOpen: d.getElementById('admin-my-players-body').classList.contains('is-open') && d.getElementById('admin-approved-viewers-body').classList.contains('is-open'),
+      panel: rect(p), inside: rect(p).top >= -1 && rect(p).bottom <= VH + 1,
+      titles: [d.getElementById('admin-my-players-title').textContent, d.getElementById('admin-approved-viewers-title').textContent],
+      logout: Array.from(ac.querySelectorAll('button')).filter(function (b) { return (b.textContent || '').indexOf('로그아웃') >= 0; }).length,
+      closeOnlyAtBottom: (function () { const f = ac.querySelector('.modal-panel > div:last-child'); return f.querySelectorAll('button').length === 1; })(),
+      searchBoxes: [!!d.getElementById('admin-my-players-search'), !!d.getElementById('admin-approved-viewers-search')]
     });
-  };
-  scan('main');
-  const modals = [
-    ['modal-players', w.openPlayerManageModal, w.closePlayerManageModal],
-    ['modal-admin-profile', w.openAdminProfileModal, w.closeAdminProfileModal],
-    ['modal-record', w.openRecordModal, w.closeRecordModal],
-    ['modal-settings', w.openSettingsModal, w.closeSettingsModal],
-    ['modal-viewer-approvals', w.openViewerApprovalModal, w.closeViewerApprovalModal]
-  ];
-  modals.forEach(function (m) {
-    try { m[1](); scan(m[0]); m[2](); } catch (e) { found.push({ where: m[0], error: String(e) }); }
-  });
-  return new Promise(function (resolve) {
-    w.openSuperAdminModal().then(function () { scan('modal-super-admin-center'); w.closeSuperAdminModal(); resolve(found); });
-  });
-};
-
-
-/* ---------- run: 50명 명단(코치 A) ---------- */
-function waitMs(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-window.run_50 = function () {
-  const w = W();
-  const d = D();
-  w.alert = function () {};
-  w.confirm = function () { return true; };
-  const res = {};
-  w.fillStagingTestAccount('coach_a@test.local', 'admin');
-  w.handleEmailPasswordLogin(null);
-  return waitMs(500).then(function () {
-    try { w.seedStagingDummy50(); } catch (e) { res.seedErr = String(e); }
-    return waitMs(600);
+    w.closeAdminProfileModal();
+    return loginAs('coach_a@test.local', 'admin');
   }).then(function () {
+    return waitMs(700);
+  }).then(function () {
+    try { w.seedStagingDummy50(); } catch (e) {}
+    return waitMs(800);
+  }).then(function () {
+    // 15/14) 50명 명단
     w.openPlayerManageModal();
     const scroller = d.querySelector('#modal-players [data-scroll-key="player-manage"]');
     const header = d.querySelector('#modal-players .modal-fixed');
     const footer = d.querySelector('#modal-players .modal-panel > div:last-child');
-    res.count = d.getElementById('player-list-count').textContent;
-    res.scroller = { h: scroller.clientHeight, sh: scroller.scrollHeight };
-    const headerTop = Math.round(header.getBoundingClientRect().top);
+    const ht = Math.round(header.getBoundingClientRect().top);
     scroller.scrollTop = 700;
-    res.scrolledTo = Math.round(scroller.scrollTop);
-    res.headerStaysOnScroll = Math.round(header.getBoundingClientRect().top) === headerTop;
-    res.footerVisible = footer.getBoundingClientRect().bottom <= d.documentElement.clientHeight + 1;
-    res.deletedHiddenWhenNone = d.getElementById('deleted-players-accordion').classList.contains('hidden');
     const cards = Array.from(d.querySelectorAll('#player-cards-container > div'));
-    res.cards = cards.length;
+    res.playerList = {
+      count: d.getElementById('player-list-count').textContent,
+      scroll: scroller.clientHeight + '/' + scroller.scrollHeight,
+      headerFixed: Math.round(header.getBoundingClientRect().top) === ht,
+      footerVisible: footer.getBoundingClientRect().bottom <= VH + 1,
+      deletedHiddenWhenNone: d.getElementById('deleted-players-accordion').classList.contains('hidden'),
+      cards: cards.length
+    };
     scroller.scrollTop = 620;
     const keep = scroller.scrollTop;
-    const target = cards[26];
-    const nameEl = target ? target.querySelector('.text-sm.font-bold') : null;
-    const editBtn = target ? target.querySelector('button[title="프로필 수정"]') : null;
+    const editBtn = cards[26] ? cards[26].querySelector('button[title="프로필 수정"]') : null;
     if (editBtn) {
       editBtn.click();
-      res.editTarget = nameEl ? nameEl.textContent.trim() : null;
-      res.listStayedOpen = !d.getElementById('modal-players').classList.contains('hidden');
       w.closeAddEditPlayerModal();
-      res.scrollBefore = Math.round(keep);
-      res.scrollAfterClose = Math.round(scroller.scrollTop);
-      res.keepsPosition = Math.abs(scroller.scrollTop - keep) <= 2;
+      res.playerList.editReturn = { before: Math.round(keep), after: Math.round(scroller.scrollTop), kept: Math.abs(scroller.scrollTop - keep) <= 2, listOpen: !d.getElementById('modal-players').classList.contains('hidden') };
     }
-    // 삭제 → 아코디언 표시 → 복구 → 숨김
-    const firstCard = d.querySelector('#player-cards-container > div');
-    const delBtn = firstCard ? firstCard.querySelector('button[title="선수 삭제"]') : null;
-    const m = delBtn ? String(delBtn.getAttribute('onclick')).match(/'([^']+)'/) : null;
-    const pid = m ? m[1] : null;
-    res.deleteTarget = pid;
-    if (!pid) { w.closePlayerManageModal(); return res; }
-    const pr = w.deletePlayer(pid);
-    return waitMs(120).then(function () {
-      const yes = d.querySelector('#modal-player-delete button[onclick*="resolvePlayerDeleteConfirm(true)"]');
-      if (yes) yes.click();
-      return pr;
-    }).then(function () {
-      res.deletedShownAfterDelete = !d.getElementById('deleted-players-accordion').classList.contains('hidden');
-      res.deletedTitle = d.getElementById('deleted-players-accordion-title').textContent;
-      w.toggleDeletedPlayersAccordion();
-      const listEl = d.getElementById('deleted-players-list');
-      const cs = getComputedStyle(listEl);
-      res.deletedListStyle = { maxHeight: cs.maxHeight, overflowY: cs.overflowY };
-      w.toggleDeletedPlayersAccordion();
-      return w.restoreDeletedPlayer(pid);
-    }).then(function () {
-      return waitMs(200);
-    }).then(function () {
-      res.deletedHiddenAfterRestore = d.getElementById('deleted-players-accordion').classList.contains('hidden');
-      res.countAfterRestore = d.getElementById('player-list-count').textContent;
-      w.closePlayerManageModal();
-      return res;
-    });
-  });
-};
-
-/* ---------- run: 관리자 많을 때 최고관리자 센터 ---------- */
-window.run_manyadmins = function () {
-  const w = W();
-  const d = D();
-  return w.openSuperAdminModal().then(function () {
-    const list = d.getElementById('sa-viewers-tree-container');
-    const first = list.querySelector(':scope > div');
-    if (first) { for (let i = 0; i < 12; i++) list.appendChild(first.cloneNode(true)); }
-    const panel = d.querySelector('#modal-super-admin-center .modal-panel');
-    const rect = panel.getBoundingClientRect();
-    const header = d.querySelector('#modal-super-admin-center .modal-fixed');
-    const footer = d.querySelector('#modal-super-admin-center .modal-fixed:last-child');
-    const headerTop = Math.round(header.getBoundingClientRect().top);
-    const footerBottom = Math.round(footer.getBoundingClientRect().bottom);
-    const res = {
-      panelH: Math.round(rect.height), top: Math.round(rect.top), bottom: Math.round(rect.bottom),
-      vh: d.documentElement.clientHeight,
-      inViewport: rect.top >= -1 && rect.bottom <= d.documentElement.clientHeight + 1,
-      listClientH: list.clientHeight, listScrollH: list.scrollHeight,
-      scrollable: list.scrollHeight > list.clientHeight,
-      footerBottom: footerBottom
-    };
-    list.scrollTop = 300;
-    res.listScrolled = Math.round(list.scrollTop);
-    res.headerStays = Math.round(header.getBoundingClientRect().top) === headerTop;
-    res.footerStays = Math.round(footer.getBoundingClientRect().bottom) === footerBottom;
-    w.closeSuperAdminModal();
+    w.closePlayerManageModal();
+    // 4) 잠금 문구
+    w.openPlayerManageModal();
+    const card = d.querySelector('#player-cards-container > div');
+    const lockBtn = card.querySelector('button[title="프로필 잠금"], button[title="프로필 잠금 해제"]');
+    const mm = String(lockBtn.getAttribute('onclick')).match(/'([^']+)'/);
+    const pid = mm[1];
+    w.togglePlayerLock(pid); const t1 = d.getElementById('sync-status-toast').textContent;
+    w.togglePlayerLock(pid); const t2 = d.getElementById('sync-status-toast').textContent;
+    res.lockMessages = [t1, t2];
+    w.closePlayerManageModal();
+    // 6) 알림 하단
+    w.openViewerApprovalModal();
+    const modal = d.getElementById('modal-viewer-approvals');
+    const pane = d.getElementById('approval-list-container');
+    res.notif = { hasGgangtong: (modal.textContent || '').indexOf('깡통') >= 0, paneIsLast: pane.parentElement.lastElementChild === pane, gap: Math.round(pane.parentElement.getBoundingClientRect().bottom - pane.getBoundingClientRect().bottom) };
+    w.closeViewerApprovalModal();
     return res;
   });
 };
 
-/* ---------- run: 최고관리자 센터 높이(관리자 적을 때) ---------- */
-window.run_superfit = function () {
-  const w = W();
-  const d = D();
-  return w.openSuperAdminModal().then(function () {
-    const panel = d.querySelector('#modal-super-admin-center .modal-panel');
-    const kids = Array.from(panel.children).map(function (c) {
-      return { cls: c.className.split(' ').slice(0, 2).join(' '), h: Math.round(c.getBoundingClientRect().height), scrollH: c.scrollHeight };
-    });
-    const r = { panelH: Math.round(panel.getBoundingClientRect().height), vh: d.documentElement.clientHeight, kids: kids };
-    w.closeSuperAdminModal();
-    return r;
-  });
-};
-
-/* ---------- run: 화면 고정(스크린샷용) ---------- */
+/* ---------- 화면 고정(스크린샷) ---------- */
 window.run_shot = function () {
   const w = W();
   const login = q.get('login') || '';
@@ -478,164 +233,23 @@ window.run_shot = function () {
   const open = q.get('open') || '';
   const ready = login ? loginAs(login, role) : waitMs(200);
   return ready.then(function () {
-  if (player) { const o = playerOptions().find(function (p) { return String(p.label).indexOf(player) >= 0; }); if (o) switchPlayerById(o.id); }
-  return waitMs(500);
-  }).then(function () {
-  if (tab) { const b = tabBtn(tab); if (b) b.click(); }
-  return waitMs(400);
-  }).then(function () {
-  if (tab) { const b = tabBtn(tab); if (b && activeTab() !== tab) b.click(); }
-  return waitMs(300);
-  }).then(function () {
-    if (open === 'players') { w.openPlayerManageModal(); if (q.get('bulk') === '1') w.enterPlayerBulkMode(); log('ok'); }
-    else if (open === 'admincenter') { w.openAdminProfileModal(); return waitMs(400).then(function () { w.toggleAdminCenterAccordion('players'); w.toggleAdminCenterAccordion('viewers'); log('ok'); }); }
-    else if (open === 'super') { return w.openSuperAdminModal().then(function () { log('ok'); }); }
-    else if (open === 'record') { w.openRecordModal(); log('ok'); }
-    else if (open === 'notif') { w.openViewerApprovalModal(); log('ok'); }
-    else if (open === 'notice') { w.openNoticeAdminModal(); log('ok'); }
-    else if (open === 'settings') { w.openSettingsModal(); log('ok'); }
-    else log('ok');
-    return waitMs(100);
-  });
-};
-
-
-/* ---------- run: 배율별 잘림 점검 ---------- */
-window.run_scale = function () {
-  const w = W();
-  const d = D();
-  const VH = w.innerHeight, VW = w.innerWidth;
-  const res = { vh: VH, vw: VW, zoom: d.documentElement.style.zoom, scaleSetting: localStorage.getItem('STAGING_ATHLETE_APP_UI_SCALE') };
-  const measure = function (key, panelSel, opener, closer, opt) {
-    try {
-      opener();
-      const panel = d.querySelector(panelSel);
-      const r = panel.getBoundingClientRect();
-      const footerBtn = opt && opt.footerSel ? d.querySelector(opt.footerSel) : panel.querySelector('.modal-fixed:last-child button, .modal-fixed:last-of-type button');
-      const fr = footerBtn ? footerBtn.getBoundingClientRect() : null;
-      res[key] = {
-        top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height), w: Math.round(r.width),
-        inside: r.top >= -1 && r.bottom <= VH + 1 && r.left >= -1 && r.right <= VW + 1,
-        footerBtnVisible: fr ? (fr.bottom <= VH + 1 && fr.top >= 0) : null
-      };
-      closer();
-    } catch (e) { res[key] = { error: String(e) }; }
-  };
-  measure('players', '#modal-players .modal-panel', w.openPlayerManageModal, w.closePlayerManageModal);
-  measure('admincenter', '#modal-admin-profile .modal-panel', function () { w.openAdminProfileModal(); w.toggleAdminCenterAccordion('players'); w.toggleAdminCenterAccordion('viewers'); }, w.closeAdminProfileModal);
-  measure('record', '#modal-record .modal-panel', w.openRecordModal, w.closeRecordModal);
-  measure('settings', '#modal-settings .modal-panel', w.openSettingsModal, w.closeSettingsModal);
-  measure('notif', '#modal-viewer-approvals .modal-panel', w.openViewerApprovalModal, w.closeViewerApprovalModal);
-  return res;
-};
-function isSuperUi() {
-  const b = D().getElementById('btn-super-admin-top');
-  return !!b && !b.classList.contains('hidden');
-}
-function loginAs(email, role) {
-  const w = W();
-  w.alert = function () {};
-  w.fillStagingTestAccount(email, role || 'admin');
-  w.handleEmailPasswordLogin(null);
-  return waitMs(900);
-}
-window.run_scale_super = function () {
-  const w = W();
-  const d = D();
-  const VH = w.innerHeight, VW = w.innerWidth;
-  return Promise.resolve(isSuperUi() ? null : loginAs('super@test.local')).then(function () { return waitMs(400); }).then(function () {
-    return w.openSuperAdminModal();
-  }).then(function () {
-    const panel = d.querySelector('#modal-super-admin-center .modal-panel');
-    const r = panel.getBoundingClientRect();
-    const closeBtn = d.querySelector('#modal-super-admin-center .modal-fixed:last-child button').getBoundingClientRect();
-    const list = d.getElementById('sa-viewers-tree-container').getBoundingClientRect();
-    const res = {
-      vh: VH, vw: VW, zoom: d.documentElement.style.zoom,
-      panel: { top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height), w: Math.round(r.width) },
-      inside: r.top >= -1 && r.bottom <= VH + 1 && r.left >= -1 && r.right <= VW + 1,
-      closeVisible: closeBtn.bottom <= VH + 1 && closeBtn.top >= 0,
-      listVisible: list.bottom <= VH + 1 && list.height > 40,
-      hScroll: d.documentElement.scrollWidth > d.documentElement.clientWidth + 1
-    };
-    w.closeSuperAdminModal();
-    return res;
-  });
-};
-
-
-/* ---------- run: 뷰어 특별 초대 문구 ---------- */
-window.run_viewer_offer = function () {
-  const w = W();
-  const d = D();
-  return loginAs('parent@test.local', 'viewer').then(function () {
-    // 알림 창 열기
-    w.openViewerApprovalModal();
+    if (player) { const o = playerOptions().find(function (p) { return String(p.label).indexOf(player) >= 0; }); if (o) switchPlayerById(o.id); }
     return waitMs(600);
   }).then(function () {
-    const pane = d.getElementById('approval-list-container');
-    const cards = Array.from(pane.querySelectorAll('div.rounded-2xl, [class*="rounded-2xl"]'));
-    const offer = Array.from(pane.querySelectorAll('p')).map(function (p) { return p.textContent.trim(); });
-    const res = {
-      offerParagraphs: offer,
-      hasOldPhrase: (pane.textContent || '').indexOf('관리자가 특별 뷰어로 지정하고 싶어') >= 0,
-      hasExcelPhrase: (pane.textContent || '').indexOf('엑셀 다운로드만') >= 0,
-      hasAdminHonorific: (pane.textContent || '').indexOf('지혜 님 관리자') >= 0,
-      buttons: Array.from(pane.querySelectorAll('button')).map(function (b) { return b.textContent.trim(); }),
-      roles: d.querySelectorAll('#gate-login-screen:not(.hidden)').length
-    };
-    w.closeViewerApprovalModal();
-    return res;
-  });
-};
-
-
-/* ---------- run: 잠금 안내 문구 · 알림 하단 안내 ---------- */
-window.run_lockmsg = function () {
-  const w = W();
-  const d = D();
-  return loginAs('coach_a@test.local', 'admin').then(function () {
-    w.openPlayerManageModal();
-    const card = d.querySelector('#player-cards-container > div');
-    const nameEl = card ? card.querySelector('.text-sm.font-bold') : null;
-    const lockBtn = card ? card.querySelector('button[title="프로필 잠금"], button[title="프로필 잠금 해제"]') : null;
-    const m = lockBtn ? String(lockBtn.getAttribute('onclick')).match(/'([^']+)'/) : null;
-    const pid = m ? m[1] : null;
-    const res = { player: nameEl ? nameEl.textContent.trim() : null, pid: pid, steps: [] };
-    if (!pid) { w.closePlayerManageModal(); return res; }
-    w.togglePlayerLock(pid);
-    res.steps.push(d.getElementById('sync-status-toast').textContent);
-    w.togglePlayerLock(pid);
-    res.steps.push(d.getElementById('sync-status-toast').textContent);
-    res.lockedAfter = !!d.querySelector('#player-cards-container .text-amber-300');
-    w.closePlayerManageModal();
-
-    w.openViewerApprovalModal();
-    const modal = d.getElementById('modal-viewer-approvals');
-    const pane = d.getElementById('approval-list-container');
-    res.notif = {
-      hasGgangtong: (modal.textContent || '').indexOf('깡통') >= 0,
-      hasApproveFooter: (modal.textContent || '').indexOf('승인 즉시') >= 0,
-      paneIsLast: pane.parentElement.lastElementChild === pane,
-      paneParentCls: pane.parentElement.className,
-      footerAreaH: (function () {
-        const r = pane.getBoundingClientRect(), p = pane.parentElement.getBoundingClientRect();
-        return Math.round(p.bottom - r.bottom);
-      })()
-    };
-    w.closeViewerApprovalModal();
-    return res;
-  });
-};
-
-/* ---------- run: login (계정 전환) ---------- */
-window.run_login = function (email) {
-  const w = W();
-  const d = D();
-  return new Promise(function (resolve) {
-    w.fillStagingTestAccount(email, '');
-    setTimeout(function () { resolve({ loginScreens: Array.from(d.querySelectorAll('#gate-login-screen .text-\\[11px\\]')).map(function (e) { return e.textContent.trim(); }).slice(0, 8) }); }, 800);
-  });
+    if (tab) { const b = tabBtn(tab); if (b) b.click(); }
+    return waitMs(500);
+  }).then(function () {
+    if (tab && activeTab() !== tab) { const b = tabBtn(tab); if (b) b.click(); }
+    return waitMs(400);
+  }).then(function () {
+    if (open === 'players') { w.openPlayerManageModal(); if (q.get('bulk') === '1') w.enterPlayerBulkMode(); }
+    else if (open === 'admincenter') { w.openAdminProfileModal(); return waitMs(400).then(function () { w.toggleAdminCenterAccordion('players'); w.toggleAdminCenterAccordion('viewers'); }); }
+    else if (open === 'super') { return w.openSuperAdminModal(); }
+    else if (open === 'record') { w.openRecordModal(); }
+    else if (open === 'notif') { w.openViewerApprovalModal(); }
+    else if (open === 'notice') { w.openNoticeAdminModal(); }
+    return waitMs(200);
+  }).then(function () { log('shot ready: ' + activeTab() + ' / ' + open); });
 };
 </script>
 </body>
