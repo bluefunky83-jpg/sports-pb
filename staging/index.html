@@ -163,9 +163,10 @@
     /* 종목 화면 좌우 스와이프: 세로 스크롤은 브라우저에 맡기고, 가로 이동만 앱이 직접 처리한다. */
     #view-container { touch-action: pan-y; }
     /* 비로그인 차단: 대문(로그인 게이트) 밖의 인증 후 화면은 화면·포커스·스크린리더 어디에도 남기지 않는다.
+       html/body 모두 잠가야 배경 페이지가 스크롤되지 않는다(html에 overflow-x가 있어 body만으로는 안 잠김).
        다만 로그인 화면의 안내창(비밀번호 오류 등 appAlert)은 대문 위에 떠야 하므로 모달은 여기서 숨기지 않고
        로그아웃 시 JS(clearAuthedScreen)에서 직접 닫는다. */
-    body.auth-locked { overflow: hidden; }
+    html.auth-locked, body.auth-locked { overflow: hidden; }
     body.auth-locked #app-shell,
     body.auth-locked #btn-add-record-fixed,
     body.auth-locked #bulk-delete-bar,
@@ -209,7 +210,7 @@
     (function () {
       var authed = false;
       try { authed = !!localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER'); } catch (e) { authed = false; }
-      if (!authed) document.body.classList.add('auth-locked');
+      if (!authed) { document.documentElement.classList.add('auth-locked'); document.body.classList.add('auth-locked'); }
     })();
   </script>
 
@@ -7898,6 +7899,7 @@
     //  감출 때는 display: none(hidden) + aria-hidden 으로 화면·클릭·포커스·스크린리더 모두에서 빠진다.
     function setAuthedShellVisible(visible) {
       const on = !!visible;
+      document.documentElement.classList.toggle('auth-locked', !on);
       document.body.classList.toggle('auth-locked', !on);
       const shell = document.getElementById('app-shell');
       if (shell) {
