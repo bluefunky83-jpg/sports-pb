@@ -574,6 +574,45 @@ window.run_viewer_offer = function () {
   });
 };
 
+
+/* ---------- run: 잠금 안내 문구 · 알림 하단 안내 ---------- */
+window.run_lockmsg = function () {
+  const w = W();
+  const d = D();
+  return loginAs('coach_a@test.local', 'admin').then(function () {
+    w.openPlayerManageModal();
+    const card = d.querySelector('#player-cards-container > div');
+    const nameEl = card ? card.querySelector('.text-sm.font-bold') : null;
+    const lockBtn = card ? card.querySelector('button[title="프로필 잠금"], button[title="프로필 잠금 해제"]') : null;
+    const m = lockBtn ? String(lockBtn.getAttribute('onclick')).match(/'([^']+)'/) : null;
+    const pid = m ? m[1] : null;
+    const res = { player: nameEl ? nameEl.textContent.trim() : null, pid: pid, steps: [] };
+    if (!pid) { w.closePlayerManageModal(); return res; }
+    w.togglePlayerLock(pid);
+    res.steps.push(d.getElementById('sync-status-toast').textContent);
+    w.togglePlayerLock(pid);
+    res.steps.push(d.getElementById('sync-status-toast').textContent);
+    res.lockedAfter = !!d.querySelector('#player-cards-container .text-amber-300');
+    w.closePlayerManageModal();
+
+    w.openViewerApprovalModal();
+    const modal = d.getElementById('modal-viewer-approvals');
+    const pane = d.getElementById('approval-list-container');
+    res.notif = {
+      hasGgangtong: (modal.textContent || '').indexOf('깡통') >= 0,
+      hasApproveFooter: (modal.textContent || '').indexOf('승인 즉시') >= 0,
+      paneIsLast: pane.parentElement.lastElementChild === pane,
+      paneParentCls: pane.parentElement.className,
+      footerAreaH: (function () {
+        const r = pane.getBoundingClientRect(), p = pane.parentElement.getBoundingClientRect();
+        return Math.round(p.bottom - r.bottom);
+      })()
+    };
+    w.closeViewerApprovalModal();
+    return res;
+  });
+};
+
 /* ---------- run: login (계정 전환) ---------- */
 window.run_login = function (email) {
   const w = W();
