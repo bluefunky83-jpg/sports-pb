@@ -54,6 +54,17 @@ function recordSelectInfo() {
 }
 
 /* ---------- run: matrix (기본 종목 선택) ---------- */
+function playerOptions() {
+  const sel = D().getElementById('select-player');
+  return sel ? Array.from(sel.options).map(function (o) { return { id: o.value, label: o.textContent.trim() }; }) : [];
+}
+function switchPlayerById(id) {
+  const sel = D().getElementById('select-player');
+  if (!sel) return false;
+  sel.value = id;
+  sel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+  return true;
+}
 window.run_matrix = function () {
   const w = W();
   const res = [];
@@ -66,21 +77,22 @@ window.run_matrix = function () {
   };
   tabs().forEach(probe);
 
-  const players = (w.playersData || []).map(function (p) { return { id: p.id, name: p.name, events: (p.events || []).map(function (e) { return typeof e === 'object' ? e.name : e; }) }; });
-  const bye = (w.playersData || []).find(function (p) { return String(p.name || '').indexOf('별하') >= 0; });
-  let other = null;
-  if (bye) {
-    w.switchPlayer(bye.id);
-    other = { player: bye.name, id: bye.id, events: tabs(), probes: [] };
-    tabs().forEach(function (tab) {
+  const opts = playerOptions();
+  const other = [];
+  opts.forEach(function (p) {
+    switchPlayerById(p.id);
+    const t = tabs();
+    const probes = [];
+    t.forEach(function (tab) {
       const btn = tabBtn(tab);
       if (btn) btn.click();
       w.openRecordModal();
-      other.probes.push(Object.assign({ tab: tab }, recordSelectInfo()));
+      probes.push(Object.assign({ tab: tab }, recordSelectInfo()));
       w.closeRecordModal();
     });
-  }
-  return { players: players, yusin: res, other: other, nowPlayer: w.currentPlayer, nowTab: w.currentEvent };
+    other.push({ player: p.label, id: p.id, events: t, probes: probes });
+  });
+  return { players: opts, yusin: res, others: other };
 };
 
 /* ---------- run: swipe ---------- */
