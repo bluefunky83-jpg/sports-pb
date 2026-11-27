@@ -466,12 +466,17 @@ window.run_superfit = function () {
 /* ---------- run: 화면 고정(스크린샷용) ---------- */
 window.run_shot = function () {
   const w = W();
+  const login = q.get('login') || '';
+  const role = q.get('role') || 'admin';
   const player = q.get('player') || '';
   const tab = q.get('tab') || '';
+  const open = q.get('open') || '';
+  const ready = login ? loginAs(login, role) : waitMs(200);
+  return ready.then(function () {
   if (player) { const o = playerOptions().find(function (p) { return String(p.label).indexOf(player) >= 0; }); if (o) switchPlayerById(o.id); }
   if (tab) { const b = tabBtn(tab); if (b) b.click(); }
-  const open = q.get('open') || '';
-  return waitMs(500).then(function () {
+  return waitMs(500);
+  }).then(function () {
     if (open === 'players') { w.openPlayerManageModal(); if (q.get('bulk') === '1') w.enterPlayerBulkMode(); log('ok'); }
     else if (open === 'admincenter') { w.openAdminProfileModal(); return waitMs(400).then(function () { w.toggleAdminCenterAccordion('players'); w.toggleAdminCenterAccordion('viewers'); log('ok'); }); }
     else if (open === 'super') { return w.openSuperAdminModal().then(function () { log('ok'); }); }
