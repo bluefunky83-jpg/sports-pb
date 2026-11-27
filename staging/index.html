@@ -2597,6 +2597,8 @@
       swipeTouchState = null;
       if (!e.touches || e.touches.length !== 1) return;
       if (document.body.classList.contains('kb-open')) return;
+      // 팝업(모달)이 하나라도 열려 있으면 종목을 바꾸지 않는다.
+      if (document.querySelector('.modal-overlay:not(.hidden)')) return;
       const t = e.touches[0];
       // 화면 가장자리에서 시작한 터치는 브라우저 뒤로가기 제스처에 맡긴다.
       if (t.clientX < SWIPE_EDGE_PX || t.clientX > window.innerWidth - SWIPE_EDGE_PX) return;
