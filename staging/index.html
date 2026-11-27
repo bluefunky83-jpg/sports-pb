@@ -162,6 +162,17 @@
     #deleted-players-list { max-height: calc(var(--app-vh, 100dvh) * 0.3); overflow-y: auto; overscroll-behavior: contain; }
     /* 종목 화면 좌우 스와이프: 세로 스크롤은 브라우저에 맡기고, 가로 이동만 앱이 직접 처리한다. */
     #view-container { touch-action: pan-y; }
+    /* 비로그인 차단: 대문(로그인 게이트) 밖의 인증 후 화면은 화면·포커스·스크린리더 어디에도 남기지 않는다.
+       다만 로그인 화면의 안내창(비밀번호 오류 등 appAlert)은 대문 위에 떠야 하므로 모달은 여기서 숨기지 않고
+       로그아웃 시 JS(clearAuthedScreen)에서 직접 닫는다. */
+    body.auth-locked { overflow: hidden; }
+    body.auth-locked #app-shell,
+    body.auth-locked #btn-add-record-fixed,
+    body.auth-locked #bulk-delete-bar,
+    body.auth-locked #capture-toast,
+    body.auth-locked #sync-status-toast { display: none !important; }
+    /* 로그인 게이트는 화면 전체를 불투명하게 덮고, 그 안의 카드만 휴대폰 폭으로 가운데 둔다. */
+    #gate-login-screen { overscroll-behavior: contain; }
   </style>
   <script>
     /* 화면 크기(배율): 첫 화면이 그려지기 전에 적용해 깜빡임을 막는다. 설정 모달과 같은 규칙을 쓴다. */
@@ -193,9 +204,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen pb-24 antialiased selection:bg-blue-500 selection:text-white">
+  <script>
+    /* 첫 화면이 그려지기 전에 비로그인 상태를 표시해, 앱 본문이 잠깐이라도 보이지 않게 한다. */
+    (function () {
+      var authed = false;
+      try { authed = !!localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER'); } catch (e) { authed = false; }
+      if (!authed) document.body.classList.add('auth-locked');
+    })();
+  </script>
 
   <!-- Global Gate Screen: Real Login & Sign-up Page -->
-  <div id="gate-login-screen" class="fixed inset-0 z-50 bg-slate-950 overflow-y-auto flex flex-col justify-between p-5 max-w-md mx-auto hidden no-scrollbar">
+  <!--  화면 전체를 불투명 배경으로 덮고, 그 안쪽 카드만 최대 448px로 가운데에 둔다.  -->
+  <div id="gate-login-screen" role="dialog" aria-modal="true" aria-label="선수 성장노트 로그인" class="fixed inset-0 z-50 bg-slate-950 overflow-y-auto hidden no-scrollbar">
+  <div id="gate-login-panel" class="min-h-full w-full max-w-md mx-auto flex flex-col justify-between p-5">
     <!-- Top Branding -->
     <div class="pt-8 pb-4 text-center space-y-3">
       <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-2xl mx-auto shadow-xl shadow-blue-500/20">
@@ -347,8 +368,9 @@
           </div>
         </div>
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.28.1</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.28.2</div>
     </div>
+  </div>
   </div>
 
   <!-- Screen: Pending Approval for Viewers -->
@@ -1178,7 +1200,7 @@
       </div>
 
       <div class="modal-fixed text-[10px] text-slate-500 text-center px-5 py-2.5 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.28.1
+        선수 성장노트 v2026.11.28.2
       </div>
     </div>
   </div>
@@ -2234,6 +2256,12 @@
       const labelEl = document.getElementById('custom-player-dropdown-label');
       const menuEl = document.getElementById('custom-player-dropdown-menu');
       if (!select) return;
+      // 비로그인 상태에서는 선수 이름을 화면·DOM 어디에도 남기지 않는다.
+      if (typeof isAuthedSession === 'function' && !isAuthedSession()) {
+        select.innerHTML = '';
+        if (menuEl) menuEl.innerHTML = '';
+        return;
+      }
       select.innerHTML = '';
       if (menuEl) menuEl.innerHTML = '';
 
@@ -2569,6 +2597,11 @@
     function renderEventTabs() {
       const container = document.getElementById('event-tabs-container');
       if (!container) return;
+      // 비로그인 상태에서는 종목 탭도 그리지 않는다.
+      if (typeof isAuthedSession === 'function' && !isAuthedSession()) {
+        container.innerHTML = '';
+        return;
+      }
       // 종목 탭은 PB·연간 종합노트 두 화면에서 모두 유지한다(전환 버튼은 최고기록 요약에서만 노출).
       container.innerHTML = '';
 
@@ -2940,6 +2973,11 @@
     function renderCurrentView() {
       const container = document.getElementById('view-container');
       if (!container) return;
+      // 비로그인 상태에서는 성장 기록·PB 카드 등 본문을 그리지 않고, 그려 둔 것도 바로 지운다.
+      if (typeof isAuthedSession === 'function' && !isAuthedSession()) {
+        container.innerHTML = '';
+        return;
+      }
 
       if (!playersData || playersData.length === 0) {
         const curUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
@@ -7851,13 +7889,69 @@
     }
 
     // --- Global Gate & Auth State Management ---
+    // 로그인한 세션이 있는지. (있어도 뷰어 미승인처럼 앱 본문을 보여 주지 않는 경우는 따로 판단한다.)
+    function isAuthedSession() {
+      try { return !!localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER'); } catch (e) { return false; }
+    }
+
+    // 인증 후 화면(앱 본문)을 보이거나 감춘다.
+    //  감출 때는 display: none(hidden) + aria-hidden 으로 화면·클릭·포커스·스크린리더 모두에서 빠진다.
+    function setAuthedShellVisible(visible) {
+      const on = !!visible;
+      document.body.classList.toggle('auth-locked', !on);
+      const shell = document.getElementById('app-shell');
+      if (shell) {
+        shell.classList.toggle('hidden', !on);
+        if (on) shell.removeAttribute('aria-hidden');
+        else shell.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    // 로그아웃 직후·비로그인 상태에서 직전 계정의 화면 조각(모달·토스트·선수·기록 DOM)을 모두 비운다.
+    //  clearMemory가 true이면 메모리에 들고 있던 선수·기록도 함께 놓아 준다.
+    function clearAuthedScreen(clearMemory) {
+      try {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
+        if (Array.isArray(openModalsStack)) openModalsStack.length = 0;
+      } catch (e) {}
+      const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html || ''; };
+      // 동적으로 그려지는 앱 본문 영역
+      setHtml('select-player');
+      setHtml('custom-player-dropdown-menu');
+      setHtml('event-tabs-container');
+      setHtml('view-container');
+      // 모달 안쪽 목록
+      setHtml('event-select-list');
+      setHtml('notice-admin-list');
+      // 상단 버튼 문구·토스트·하단 고정 바
+      const label = document.getElementById('custom-player-dropdown-label');
+      if (label) label.textContent = '선수 선택';
+      const ddMenu = document.getElementById('custom-player-dropdown-menu');
+      if (ddMenu) ddMenu.classList.add('hidden');
+      const toast = document.getElementById('capture-toast');
+      if (toast) { toast.classList.add('hidden'); toast.textContent = ''; }
+      const syncToast = document.getElementById('sync-status-toast');
+      if (syncToast) { syncToast.classList.add('hidden'); syncToast.textContent = ''; }
+      const bulkBar = document.getElementById('bulk-delete-bar');
+      if (bulkBar) bulkBar.classList.add('hidden');
+      // 뷰어 승인 대기 화면 문구도 직전 신청자 이름이 남지 않게 기본값으로 되돌린다.
+      setHtml('text-viewer-nickname-display', '관리자가 열람 권한을 승인하면<br>선수의 경기 기록과 성장 차트가 열립니다.');
+      if (clearMemory) {
+        playersData = [];
+        appData = {};
+        currentPlayer = null;
+      }
+    }
+
     function checkInitialAuthGate() {
       const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
       const gate = document.getElementById('gate-login-screen');
       const pendingScreen = document.getElementById('screen-pending-approval');
 
       if (!authUserStr) {
-        // Not logged in: Show Login Gate
+        // Not logged in: Show Login Gate (앱 본문은 화면·DOM에서 모두 비운다)
+        setAuthedShellVisible(false);
+        clearAuthedScreen(true);
         if (gate) gate.classList.remove('hidden');
         if (pendingScreen) pendingScreen.classList.add('hidden');
         return;
@@ -7870,6 +7964,8 @@
 
       if (authUser.role === 'super_admin' || authUser.role === 'admin') {
         if (pendingScreen) pendingScreen.classList.add('hidden');
+        // 차트 폭을 잴 수 있어야 하므로 본문을 먼저 보이게 한 뒤 그린다.
+        setAuthedShellVisible(true);
         isMasterAdmin = (authUser.role === 'super_admin');
         applyAuthModeUI(authUser.role);
         initPlayerSelectDropdown();
@@ -7878,6 +7974,8 @@
       } else {
         // Viewer Role
         isMasterAdmin = false;
+        // 뷰어는 승인 전까지 앱 본문을 보여 주지 않는다(대문 또는 승인 대기 화면만).
+        setAuthedShellVisible(false);
         applyAuthModeUI('viewer');
         const hasPendingTarget = !!(authUser.targetPlayer || (Array.isArray(authUser.requestedPlayers) && authUser.requestedPlayers.length > 0));
         if (!authUser.approved) {
@@ -7901,6 +7999,7 @@
           }
         } else {
           if (pendingScreen) pendingScreen.classList.add('hidden');
+          setAuthedShellVisible(true);
           initPlayerSelectDropdown();
           renderEventTabs();
           renderCurrentView();
@@ -8583,12 +8682,20 @@
           console.warn('google logout reset warning:', e);
         }
       }
+      // 직전 계정의 주기 확인(폴링)도 바로 멈춘다(로그아웃한 화면에 데이터가 다시 그려지지 않게).
+      try { if (typeof stopAdminPendingPoller === 'function') stopAdminPendingPoller(); } catch (e) {}
+      try { if (viewerPollingInterval) { clearInterval(viewerPollingInterval); viewerPollingInterval = null; } } catch (e) {}
+      try { if (viewerApprovedSyncTimer) { clearInterval(viewerApprovedSyncTimer); viewerApprovedSyncTimer = null; } } catch (e) {}
+      try { if (typeof closeCustomPlayerDropdown === 'function') closeCustomPlayerDropdown(); } catch (e) {}
       closeSuperAdminModal();
       closeAdminProfileModal();
       closeSettingsModal();
       // 로그아웃하면 보던 탭·요약 모드를 기본값으로 되돌린다(다른 계정으로 들어올 때 앞 계정 화면이 남지 않게).
       currentEvent = 'ALL_PB';
       mainViewMode = 'PB';
+      // 직전 세션의 모달·토스트·선수·기록 DOM과 메모리를 즉시 비우고 대문만 남긴다.
+      setAuthedShellVisible(false);
+      clearAuthedScreen(true);
       checkInitialAuthGate();
     }
 
@@ -10231,7 +10338,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.28.1';
+    const CURRENT_APP_VERSION = '2026.11.28.2';
 
     function checkForUpdates() {
       // Listen for Service Worker update
@@ -10316,14 +10423,20 @@
       history.pushState({ page: 'main' }, '');
       applyUiScale();
       loadDataFromStorage();      checkInitialAuthGate();
-      applyAuthModeUI();
       checkForUpdates();
       loadRealtimeApprovals();
-      // 새로고침해도 방금 보던 선수·종목 탭으로 돌아간다(불가능하면 기본 화면).
-      restoreViewState();
-      initPlayerSelectDropdown();
-      renderEventTabs();
-      renderCurrentView();
+      // 앱 본문은 로그인해서 대문이 닫힌 사용자에게만 그린다. 비로그인 상태에서는 본문을 비워 둔다.
+      if (isAuthedSession() && !document.body.classList.contains('auth-locked')) {
+        applyAuthModeUI();
+        // 새로고침해도 방금 보던 선수·종목 탭으로 돌아간다(불가능하면 기본 화면).
+        restoreViewState();
+        initPlayerSelectDropdown();
+        renderEventTabs();
+        renderCurrentView();
+      } else {
+        setAuthedShellVisible(false);
+        clearAuthedScreen(true);
+      }
       initGoogleOneTap();
       checkInviteParamOnLoad();
       purgeExpiredPlayerTrash();
