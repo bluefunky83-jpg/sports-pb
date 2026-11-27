@@ -69,8 +69,9 @@ function swipe(target, dx, dy, opts) {
 }
 window.run_swipe = function () {
   const w = W(), d = D(), res = [];
-  const y = playerOptions().find(function (p) { return String(p.label).indexOf('김유신') >= 0; });
-  if (y) switchPlayerById(y.id);
+  let y = playerOptions().find(function (p) { return String(p.label).indexOf('김유신') >= 0; });
+  if (!y) { return loginAs('super@test.local').then(function () { return waitMs(400); }).then(function () { return window.run_swipe(); }); }
+  switchPlayerById(y.id);
   const snap = function (label) { res.push(label + ' => ' + activeTab()); };
   const body = d.getElementById('view-container');
   const order = tabs();
