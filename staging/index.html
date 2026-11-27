@@ -94,6 +94,12 @@
     .modal-panel { max-height: calc(var(--app-vh, 100dvh) - 2rem); }
     .modal-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     .modal-fixed { flex: 0 0 auto; }
+    /* 기록 입력 팝업: 키보드가 올라오면 상단 대회 정보와 하단 추가·저장 영역의 고정을 풀고
+       팝업 안 전체를 스크롤한다(입력 중인 항목이 키보드에 가리지 않게). 키보드가 닫히면 원래 구조로 돌아간다. */
+    body.kb-open #modal-record .modal-panel { height: var(--app-vh, 100dvh); max-height: var(--app-vh, 100dvh); }
+    body.kb-open #modal-record form { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    body.kb-open #modal-record .modal-fixed { flex: 0 0 auto; }
+    body.kb-open #modal-record .modal-scroll { flex: 0 0 auto; min-height: 0; overflow: visible; }
     /* 키보드가 올라온 상태(body.kb-open): 가운데 정렬 대신 보이는 화면(visualViewport) 위쪽에 붙이고,
        팝업 높이를 남은 화면 높이에 꼭 맞춰 아래 버튼이 키보드 바로 위에 오게 한다(빈 여백 없음). */
     body.kb-open .modal-overlay {
@@ -341,7 +347,7 @@
           </div>
         </div>
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.27.1</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.28.1</div>
     </div>
   </div>
 
@@ -800,36 +806,18 @@
           </div>
         </div>
 
-        <!-- Relay Runners Input (Conditional: Only for Relay/Team Events) -->
+        <!-- Relay Runners (Conditional: Only for Relay/Team Events) -->
         <div id="field-relay-container" class="hidden bg-slate-900/80 border border-blue-500/30 rounded-xl p-3 space-y-2">
-          <label class="block font-semibold text-blue-400 text-xs flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-            <span class="min-w-0">릴레이 / 단체전 주자 명단 (1~4번)</span>
-            <span class="text-[10px] text-slate-400 font-normal">순서대로 입력 또는 아래 칩 터치</span>
-          </label>
-          <div class="grid grid-cols-2 gap-2">
-            <div class="min-w-0">
-              <span class="text-[10px] text-slate-400">1주자</span>
-              <input type="text" id="relay-runner-1" placeholder="1주자 이름" class="relay-input w-full min-w-0 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-            </div>
-            <div class="min-w-0">
-              <span class="text-[10px] text-slate-400">2주자</span>
-              <input type="text" id="relay-runner-2" placeholder="2주자 이름" class="relay-input w-full min-w-0 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-            </div>
-            <div class="min-w-0">
-              <span class="text-[10px] text-slate-400">3주자</span>
-              <input type="text" id="relay-runner-3" placeholder="3주자 이름" class="relay-input w-full min-w-0 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-            </div>
-            <div class="min-w-0">
-              <span class="text-[10px] text-slate-400 whitespace-nowrap">4주자 (앵커)</span>
-              <input type="text" id="relay-runner-4" placeholder="4주자 이름" class="relay-input w-full min-w-0 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-            </div>
-          </div>
-          
-          <!-- Quick Teammate Chips (Multi-Select & Batch Delete) -->
+          <label class="block font-semibold text-blue-400 text-xs">릴레이 / 단체전 주자</label>
+          <div class="text-[10px] text-slate-400 leading-relaxed">릴레이 선수 선택에서 이름을 누르면 주자로 배정되고, 선택한 순서대로 주자 순번이 붙습니다. 배정된 선수를 다시 누르면 해제됩니다.</div>
+
+          <!-- 주자 배정 결과: 직접 입력하지 않고 선택 결과·순번만 보여 준다. -->
+          <div id="relay-slot-area" class="grid grid-cols-2 gap-2"></div>
+
           <div>
-            <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center justify-between gap-2 mb-1.5">
               <span class="text-[11px] font-semibold text-slate-300">릴레이 선수 선택:</span>
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap justify-end">
                 <button type="button" id="btn-toggle-runner-del" onclick="toggleTeammateEditMode()" class="text-[11px] text-slate-300 hover:text-red-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
                   편집
                 </button>
@@ -846,6 +834,7 @@
             <div class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto no-scrollbar p-1.5 bg-slate-950/60 rounded-xl border border-slate-800/80" id="relay-teammate-chips">
               <!-- Dynamically rendered -->
             </div>
+            <div id="relay-edit-hint" class="hidden text-[10px] text-amber-300/90 pt-1 leading-relaxed">편집 중입니다. 지우거나 추가한 내용은 [확인]을 눌러야 저장되고, [취소]하거나 창을 닫으면 취소됩니다.</div>
           </div>
         </div>
 
@@ -1131,8 +1120,8 @@
           </button>
         </div>
 
-        <!-- Weekly Backup Status & Responsibility Notice -->
-        <div class="p-3 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-2">
+        <!-- Weekly Backup Status & Responsibility Notice (관리자 앱 전용) -->
+        <div id="section-weekly-backup" class="p-3 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-2">
           <div class="flex items-center justify-between">
             <span class="font-bold text-slate-300"><span class="ui-ic" data-ic="calendar"></span> 주간 백업 상태</span>
             <span id="label-backup-status" class="text-[11px] font-bold text-amber-300">미백업</span>
@@ -1160,6 +1149,14 @@
 
         </div>
 
+        <!-- 뷰어 전용: 관리자 승인을 받아 백업파일을 받는다(직접 백업 버튼 대신). -->
+        <div id="section-viewer-backup-request" class="space-y-2 hidden">
+          <button type="button" onclick="openBackupRequestModal()" class="w-full py-2.5 rounded-2xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95">
+            <span><span class="ui-ic" data-ic="download"></span> 선수 기록 백업파일 요청(.xlsx)</span>
+          </button>
+          <p class="text-[10px] text-slate-500 leading-relaxed px-1">현재 열람 권한이 있는 선수만 요청할 수 있습니다. 관리자가 승인한 뒤 72시간 이내 1회 다운로드할 수 있습니다.</p>
+        </div>
+
         <!-- 검수용 더미 50명 (staging 전용) -->
         <div id="section-staging-tools" class="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/30 space-y-2 hidden">
           <div class="flex items-center justify-between">
@@ -1181,7 +1178,7 @@
       </div>
 
       <div class="modal-fixed text-[10px] text-slate-500 text-center px-5 py-2.5 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.27.1
+        선수 성장노트 v2026.11.28.1
       </div>
     </div>
   </div>
@@ -1448,7 +1445,6 @@
     let isMeetLocked = false;
     let editingRecordId = null;
     let chartInstance = null;
-    let activeRelayInputId = 'relay-runner-1';
 
     let filterKind = 'ALL';
     let filterYear = 'ALL';
@@ -1472,6 +1468,14 @@
     ];
     let isTeammateEditMode = false;
     let selectedTeammatesToDelete = new Set();
+
+    // 단체전 후보 명단은 '선수 프로필 × 세부 종목'별로 따로 보관한다(이 기기에 저장).
+    //  relaySelectedRunners: 지금 작성 중인 기록의 주자(선택 순서 = 주자 순번).
+    //  relayDraftRoster: 명단 [편집] 중의 임시 목록. [확인]을 눌러야 실제 명단에 저장된다.
+    const RELAY_ROSTER_KEY = 'STAGING_RELAY_ROSTERS_V1';
+    let relaySelectedRunners = [];
+    let relayDraftRoster = null;
+    let relayPendingRemoval = new Set();
 
     // Pure Master Data Snapshot (must be captured BEFORE loadDataFromStorage!)
     const MASTER_PLAYERS_DATA = JSON.parse(JSON.stringify(playersData));
@@ -1841,7 +1845,7 @@
     let appDialogActive = null;
 
     function appDialogAsk(message, options) {
-      const opts = Object.assign({ type: 'alert', title: '', okText: '', cancelText: '취소', danger: false, defaultValue: '' }, options || {});
+      const opts = Object.assign({ type: 'alert', title: '', okText: '', cancelText: '취소', danger: false, defaultValue: '', html: false }, options || {});
       opts.message = message == null ? '' : String(message);
       return new Promise(function (resolve) {
         APP_DIALOG_QUEUE.push({ opts: opts, resolve: resolve });
@@ -1871,7 +1875,11 @@
       const panel = document.getElementById('app-dialog-panel');
 
       if (titleEl) titleEl.textContent = opts.title || (opts.type === 'confirm' ? '확인' : (opts.type === 'prompt' ? '입력' : '안내'));
-      if (bodyEl) bodyEl.textContent = opts.message;
+      if (bodyEl) {
+        // html: true 로 부른 팝업만 문단별 글자 크기 위계를 위해 마크업을 그대로 쓴다(넣는 값은 호출 쪽에서 escape 한다).
+        if (opts.html) bodyEl.innerHTML = opts.message;
+        else bodyEl.textContent = opts.message;
+      }
       if (panel) panel.className = 'bg-slate-900 border ' + (opts.danger ? 'border-rose-500/40' : 'border-slate-700') + ' rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl';
 
       if (inputEl) {
@@ -5314,10 +5322,8 @@
       const elWind = document.getElementById('input-wind-val');
       if (elWind) elWind.value = '';
       document.getElementById('input-note').value = '';
-      document.getElementById('relay-runner-1').value = '';
-      document.getElementById('relay-runner-2').value = '';
-      document.getElementById('relay-runner-3').value = '';
-      document.getElementById('relay-runner-4').value = '';
+      relaySelectedRunners = [];
+      renderRelaySlots();
       selectedRound = '';
       document.getElementById('preview-formatted-time').textContent = '미리보기: 0.00초';
     }
@@ -5553,6 +5559,7 @@
       if (container) {
         if (isRelay) {
           container.classList.remove('hidden');
+          renderRelaySlots();
           renderTeammateChips();
         } else {
           container.classList.add('hidden');
@@ -5579,23 +5586,6 @@
       updateTimePreview();
     }
 
-    document.addEventListener('focusin', (e) => {
-      if (e.target && e.target.classList && e.target.classList.contains('relay-input')) {
-        activeRelayInputId = e.target.id;
-      }
-    });
-
-    function insertRelayRunner(name) {
-      if (activeRelayInputId) {
-        document.getElementById(activeRelayInputId).value = name;
-        if (activeRelayInputId === 'relay-runner-1') activeRelayInputId = 'relay-runner-2';
-        else if (activeRelayInputId === 'relay-runner-2') activeRelayInputId = 'relay-runner-3';
-        else if (activeRelayInputId === 'relay-runner-3') activeRelayInputId = 'relay-runner-4';
-        const nextElem = document.getElementById(activeRelayInputId);
-        if (nextElem) nextElem.focus();
-      }
-    }
-
     function openRecordModal() {
       if (!canManageRecords()) { appAlert('뷰어 계정은 기록을 추가할 수 없습니다.'); return; }
       if (!currentPlayer || !playersData.some(p => p.id === currentPlayer)) {
@@ -5616,6 +5606,8 @@
     }
 
     function closeRecordModal() {
+      // 명단 [확인]을 누르지 않고 창을 닫으면 그동안의 편집은 취소된다.
+      if (isTeammateEditMode) cancelTeammateEditMode();
       document.getElementById('modal-record').classList.add('hidden');
       restoreScreenAfterModal('modal-record');
     }
@@ -5681,18 +5673,7 @@
 
       document.getElementById('input-note').value = record.note || '';
 
-      if (record.runners && record.runners.length > 0) {
-        document.getElementById('relay-runner-1').value = record.runners[0] || '';
-        document.getElementById('relay-runner-2').value = record.runners[1] || '';
-        document.getElementById('relay-runner-3').value = record.runners[2] || '';
-        document.getElementById('relay-runner-4').value = record.runners[3] || '';
-      } else if (record.relay) {
-        const parts = record.relay.split('/').map(x => x.trim());
-        document.getElementById('relay-runner-1').value = parts[0] || '';
-        document.getElementById('relay-runner-2').value = parts[1] || '';
-        document.getElementById('relay-runner-3').value = parts[2] || '';
-        document.getElementById('relay-runner-4').value = parts[3] || '';
-      }
+      setRelayRunnersFromRecord(record);
 
       updateTimePreview();
       updateFormChips(record.event || '');
@@ -5881,20 +5862,9 @@
       const windVal = check.windVal;
       const rankVal = check.rankVal;
 
-      const r1 = document.getElementById('relay-runner-1').value.trim();
-      const r2 = document.getElementById('relay-runner-2').value.trim();
-      const r3 = document.getElementById('relay-runner-3').value.trim();
-      const r4 = document.getElementById('relay-runner-4').value.trim();
-      const runnersList = targetIsTeam ? [r1, r2, r3, r4].filter(Boolean) : [];
+      // 주자는 후보 칩 선택으로만 배정된다(선택 순서 = 주자 순번).
+      const runnersList = targetIsTeam ? relaySelectedRunners.slice(0, 4).filter(Boolean) : [];
       const relayStr = runnersList.join('/');
-
-      // Auto learn new teammate names into quick chips
-      runnersList.forEach(name => {
-        if (name && !savedTeammates.includes(name)) {
-          savedTeammates.push(name);
-          saveTeammates();
-        }
-      });
 
       const newEntry = {
         id: editingRecordId || ('rec_' + Date.now()),
@@ -6065,7 +6035,9 @@
         const borderClass = playerBulkMode && picked
           ? 'border-rose-500 ring-2 ring-rose-500/30'
           : (isCurrent ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-700/80 hover:border-slate-600');
-        card.className = `p-3.5 rounded-2xl bg-slate-800/80 border ${borderClass} flex items-start justify-between gap-2 shadow-md transition min-w-0`;
+        card.className = `p-3.5 rounded-2xl bg-slate-800/80 border ${borderClass} flex items-start justify-between gap-2 shadow-md transition min-w-0${playerBulkMode ? ' cursor-pointer select-none' : ''}`;
+        // 선택 모드에서는 체크박스뿐 아니라 카드 전체를 눌러도 선택·해제된다(체크박스 클릭은 change가 처리해 두 번 반전되지 않게 한다).
+        if (playerBulkMode) card.setAttribute('onclick', `onPlayerBulkCardTap(event,'${p.id}')`);
 
         const genderBadgeClass = p.gender === '남' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-pink-500/20 text-pink-300 border-pink-500/40';
         const lockBtnClass = locked
@@ -6075,7 +6047,7 @@
         card.innerHTML = `
           <!-- Left: 이름·생년월일·성별·학년 / 종목 -->
           <div ${playerBulkMode ? '' : `onclick="selectPlayerFromCard('${p.id}')"`} class="flex items-start gap-2 flex-1 min-w-0 ${playerBulkMode ? '' : 'cursor-pointer'}">
-            ${playerBulkMode ? `<input type="checkbox" class="mt-0.5 w-4 h-4 rounded border-slate-500 bg-slate-900 text-rose-500 shrink-0" ${picked ? 'checked' : ''} onchange="togglePlayerBulkSelect('${p.id}', this.checked); renderPlayerCards();" aria-label="${bodyEsc(p.name || '')} 선택">` : ''}
+            ${playerBulkMode ? `<input type="checkbox" class="mt-0.5 w-4 h-4 rounded border-slate-500 bg-slate-900 text-rose-500 shrink-0" ${picked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="togglePlayerBulkSelect('${p.id}', this.checked); renderPlayerCards();" aria-label="${bodyEsc(p.name || '')} 선택">` : ''}
             <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
                 <span class="text-sm font-bold text-white truncate max-w-[9rem]">${bodyEsc(p.name || '')}</span>
@@ -6766,6 +6738,7 @@
       // 사진 기능은 사용하지 않는다. 기존 저장 데이터의 photo 값은 건드리지 않는다.
       const prevAppData = JSON.parse(JSON.stringify(appData));
       const prevPlayersData = JSON.parse(JSON.stringify(playersData));
+      let createdNewPlayer = false;
       if (id) {
         const p = playersData.find(x => x.id === id);
         if (p) {
@@ -6803,6 +6776,7 @@
         });
         if (!appData[newId]) appData[newId] = [];
         currentPlayer = newId;
+        createdNewPlayer = true;
       }
 
       if (!saveChangeOrRevert(prevAppData, prevPlayersData)) return;
@@ -6811,6 +6785,25 @@
       closeAddEditPlayerModal();
       renderEventTabs();
       renderCurrentView();
+
+      // 새 선수를 등록했고 이 관리자에게 특별 뷰어가 있으면 자동 열람 대상이 된다는 점을 안내한다.
+      if (createdNewPlayer) {
+        const specialNames = getMySpecialViewerNames();
+        if (specialNames.length > 0) {
+          const who = specialNames.join(', ');
+          const lockedNow = !!formPlayerLocked;
+          appAlert(
+            `<div class="space-y-1.5">
+              <div class="text-[13px] font-bold text-white leading-snug">${bodyEsc(name)} 선수를 등록했습니다.</div>
+              <div class="text-xs text-slate-300 leading-relaxed">${lockedNow
+                ? '프로필 잠금 상태이므로 이 선수의 기록은 특별 뷰어의 자동 열람 대상에서 제외됩니다.'
+                : `특별 뷰어(${bodyEsc(who)})에게 이 선수의 기록이 자동 열람 대상이 됩니다.`}</div>
+              <div class="text-[11px] text-slate-500 leading-relaxed">프로필 잠금 선수는 자동 열람 대상에서 제외됩니다.</div>
+            </div>`,
+            { title: '선수 등록 완료', html: true }
+          );
+        }
+      }
     }
 
     // 선수 삭제 확인창: 선수 이름과 함께 삭제되는 경기 기록 건수를 보여 주고, 취소하면 아무것도 바꾸지 않는다.
@@ -7135,36 +7128,183 @@
       appAlert((entry.player && entry.player.name ? entry.player.name : '선수') + ' 선수와 경기 기록 ' + ((entry.records || []).length) + '건을 복구했습니다.');
     }
 
-    // 11. Teammate Multi-Select & Batch Delete
-    //  삭제 모드 상단은 [삭제(N명)] [확인] [취소] 세 칸이다. 이름은 한 번 누르면 선택, 다시 누르면 해제되고
-    //  [확인]을 눌러야 실제로 지운다. 인원수는 항상 현재 선택만 세어 연속 삭제에도 누적되지 않는다.
+    // 11. 단체전 후보 명단(선수 프로필 × 세부 종목별 독립) · 주자 배정
+    //  - 명단은 그 프로필의 그 종목 실제 출전 기록의 주자 이름으로 최초 1회만 구성한다.
+    //  - 다른 종목·다른 프로필과 공유하지 않으며, 한 번 사용자가 지운 후보는 기록 때문에 자동으로 돌아오지 않는다.
+    //  - 주자 입력은 직접 타이핑하지 않고 후보 칩 선택으로만 한다(키보드가 올라오지 않는다).
+    function getRelayScopeKey() {
+      const me = getCurrentAuthUser();
+      return String((me && (me.id || me.email)) || (me && me.role) || 'guest');
+    }
+
+    function getRelayRosterStore() {
+      try {
+        const o = JSON.parse(localStorage.getItem(RELAY_ROSTER_KEY) || '{}');
+        return (o && typeof o === 'object') ? o : {};
+      } catch (e) { return {}; }
+    }
+
+    function saveRelayRosterStore(store) {
+      try { localStorage.setItem(RELAY_ROSTER_KEY, JSON.stringify(store)); } catch (e) {}
+    }
+
+    function getPlayerNameById(playerId) {
+      const p = (playersData || []).find(x => x && x.id === playerId);
+      return p ? String(p.name || '') : '';
+    }
+
+    // 그 선수의 그 종목 경기 기록에 실제로 출전한 주자만 추린다(출전 순서 기준, 중복 제거).
+    function buildRelayRosterFromRecords(playerId, eventName) {
+      const ownerName = getPlayerNameById(playerId);
+      const out = [];
+      (appData[playerId] || []).forEach(function (r) {
+        if (!r || !isEventMatch(r.event, eventName)) return;
+        let runners = [];
+        if (Array.isArray(r.runners) && r.runners.length > 0) runners = r.runners;
+        else if (r.relay) runners = String(r.relay).split('/');
+        runners.forEach(function (n) {
+          const name = String(n || '').trim();
+          if (!name) return;
+          if (ownerName && name === ownerName) return;   // 프로필 주인은 목록 맨 앞에 고정하므로 중복 제거
+          if (out.indexOf(name) < 0) out.push(name);
+        });
+      });
+      return out;
+    }
+
+    function getRelayRosterKey(playerId, eventName) {
+      return String(playerId || '') + '|' + String(eventName || '');
+    }
+
+    function getRelayRoster(playerId, eventName) {
+      if (!playerId || !eventName) return [];
+      const scope = getRelayScopeKey();
+      const store = getRelayRosterStore();
+      const map = (store[scope] && typeof store[scope] === 'object') ? store[scope] : {};
+      const key = getRelayRosterKey(playerId, eventName);
+      if (Array.isArray(map[key])) return map[key].slice();
+      const built = buildRelayRosterFromRecords(playerId, eventName);
+      map[key] = built;
+      store[scope] = map;
+      saveRelayRosterStore(store);
+      return built.slice();
+    }
+
+    function saveRelayRoster(playerId, eventName, names) {
+      if (!playerId || !eventName) return;
+      const scope = getRelayScopeKey();
+      const store = getRelayRosterStore();
+      const map = (store[scope] && typeof store[scope] === 'object') ? store[scope] : {};
+      map[getRelayRosterKey(playerId, eventName)] = (Array.isArray(names) ? names : []).slice();
+      store[scope] = map;
+      saveRelayRosterStore(store);
+    }
+
+    // 저장된 기록의 주자 이름·순서를 그대로 불러온다(기록 자체는 건드리지 않는다).
+    function setRelayRunnersFromRecord(record) {
+      let list = [];
+      if (record && Array.isArray(record.runners) && record.runners.length > 0) list = record.runners.slice();
+      else if (record && record.relay) list = String(record.relay).split('/');
+      relaySelectedRunners = list.map(function (n) { return String(n || '').trim(); }).filter(Boolean).slice(0, 4);
+    }
+
+    function renderRelaySlots() {
+      const area = document.getElementById('relay-slot-area');
+      if (!area) return;
+      const maxSlots = 4;
+      const html = [];
+      for (let i = 0; i < maxSlots; i++) {
+        const name = relaySelectedRunners[i] || '';
+        const filled = !!name;
+        const safeName = bodyEsc(name);
+        html.push(`
+          <div class="min-w-0 rounded-lg border ${filled ? 'border-blue-500/50 bg-blue-500/10' : 'border-slate-700 bg-slate-800/60'} px-2 py-1.5 flex items-center gap-1">
+            <span class="text-[10px] ${filled ? 'text-blue-300' : 'text-slate-500'} font-bold shrink-0">${i + 1}주자</span>
+            <span class="flex-1 min-w-0 text-xs ${filled ? 'text-white font-bold' : 'text-slate-500'} truncate">${filled ? safeName : '미선택'}</span>
+            ${filled ? `<button type="button" onclick="moveRelayRunner(${i}, -1)" ${i === 0 ? 'disabled' : ''} class="shrink-0 w-5 h-5 rounded border text-[10px] ${i === 0 ? 'border-slate-800 text-slate-600 cursor-not-allowed' : 'border-slate-600 text-slate-300 hover:text-white'} active:scale-95 transition" title="앞 주자와 순서 바꾸기" aria-label="${safeName} 주자 순서 앞으로">&lsaquo;</button>
+            <button type="button" onclick="moveRelayRunner(${i}, 1)" ${i === maxSlots - 1 ? 'disabled' : ''} class="shrink-0 w-5 h-5 rounded border text-[10px] ${i === maxSlots - 1 ? 'border-slate-800 text-slate-600 cursor-not-allowed' : 'border-slate-600 text-slate-300 hover:text-white'} active:scale-95 transition" title="뒤 주자와 순서 바꾸기" aria-label="${safeName} 주자 순서 뒤로">&rsaquo;</button>
+            <button type="button" onclick="removeRelayRunnerAt(${i})" class="shrink-0 w-5 h-5 rounded border border-slate-600 text-slate-300 hover:text-rose-300 text-[11px] leading-none active:scale-95 transition" title="배정 해제" aria-label="${safeName} 주자 해제">&times;</button>` : ''}
+          </div>`);
+      }
+      area.innerHTML = html.join('');
+    }
+
+    function toggleRelayRunner(name) {
+      const clean = String(name || '').trim();
+      if (!clean) return;
+      const idx = relaySelectedRunners.indexOf(clean);
+      if (idx >= 0) relaySelectedRunners.splice(idx, 1);
+      else {
+        if (relaySelectedRunners.length >= 4) {
+          showSyncNotice('주자는 4명까지 선택할 수 있습니다. 먼저 배정된 선수를 해제해 주세요.', 'warn');
+          return;
+        }
+        relaySelectedRunners.push(clean);
+      }
+      renderRelaySlots();
+      renderTeammateChips();
+    }
+
+    function removeRelayRunnerAt(index) {
+      if (index < 0 || index >= relaySelectedRunners.length) return;
+      relaySelectedRunners.splice(index, 1);
+      renderRelaySlots();
+      renderTeammateChips();
+    }
+
+    function moveRelayRunner(index, delta) {
+      const target = index + delta;
+      if (index < 0 || index >= relaySelectedRunners.length) return;
+      if (target < 0 || target >= relaySelectedRunners.length) return;
+      const tmp = relaySelectedRunners[index];
+      relaySelectedRunners[index] = relaySelectedRunners[target];
+      relaySelectedRunners[target] = tmp;
+      renderRelaySlots();
+      renderTeammateChips();
+    }
+
     function updateTeammateDeleteControls() {
-      const count = selectedTeammatesToDelete.size;
+      const removedCount = relayPendingRemoval.size;
+      let addedCount = 0;
+      if (isTeammateEditMode && Array.isArray(relayDraftRoster)) {
+        const savedList = getRelayRoster(currentPlayer, getRecordFormEventName());
+        addedCount = relayDraftRoster.filter(function (n) {
+          return savedList.indexOf(n) < 0 && !relayPendingRemoval.has(n);
+        }).length;
+      }
+      const changedCount = removedCount + addedCount;
       const countEl = document.getElementById('runner-del-count');
       const confirmBtn = document.getElementById('btn-runner-del-confirm');
-      if (countEl) countEl.textContent = `삭제(${count}명)`;
+      if (countEl) countEl.textContent = removedCount > 0 ? `삭제(${removedCount}명)` : (addedCount > 0 ? `추가(${addedCount}명)` : '변경 없음');
       if (confirmBtn) {
-        confirmBtn.disabled = count === 0;
-        confirmBtn.className = count === 0
+        confirmBtn.disabled = changedCount === 0;
+        confirmBtn.className = changedCount === 0
           ? 'text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed whitespace-nowrap'
           : 'text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-rose-600 text-white border-rose-400 shadow-sm transition active:scale-95 whitespace-nowrap';
       }
     }
 
-    function enterTeammateEditMode() {
-      isTeammateEditMode = true;
-      selectedTeammatesToDelete.clear();
+    function setTeammateEditUi() {
       const btn = document.getElementById('btn-toggle-runner-del');
       const countEl = document.getElementById('runner-del-count');
       const confirmBtn = document.getElementById('btn-runner-del-confirm');
       const cancelBtn = document.getElementById('btn-cancel-runner-del');
-      const addBtn = document.getElementById('btn-add-teammate');
-      if (btn) btn.classList.add('hidden');
-      if (countEl) countEl.classList.remove('hidden');
-      if (confirmBtn) confirmBtn.classList.remove('hidden');
-      if (cancelBtn) cancelBtn.classList.remove('hidden');
-      if (addBtn) addBtn.classList.add('hidden');
+      const hint = document.getElementById('relay-edit-hint');
+      if (btn) btn.classList.toggle('hidden', isTeammateEditMode);
+      if (countEl) countEl.classList.toggle('hidden', !isTeammateEditMode);
+      if (confirmBtn) confirmBtn.classList.toggle('hidden', !isTeammateEditMode);
+      if (cancelBtn) cancelBtn.classList.toggle('hidden', !isTeammateEditMode);
+      if (hint) hint.classList.toggle('hidden', !isTeammateEditMode);
       updateTeammateDeleteControls();
+    }
+
+    function enterTeammateEditMode() {
+      if (!canManageRecords()) return;
+      isTeammateEditMode = true;
+      // 편집 중 변경은 임시 목록에만 담아 두고 [확인]에서 한 번에 확정한다.
+      relayDraftRoster = getRelayRoster(currentPlayer, getRecordFormEventName());
+      relayPendingRemoval = new Set();
+      setTeammateEditUi();
       renderTeammateChips();
     }
 
@@ -7173,43 +7313,43 @@
       else cancelTeammateEditMode();
     }
 
+    // [취소] 또는 창 닫기: 확정하지 않은 명단 변경을 버린다.
     function cancelTeammateEditMode() {
       isTeammateEditMode = false;
-      selectedTeammatesToDelete.clear();
-      const btn = document.getElementById('btn-toggle-runner-del');
-      const countEl = document.getElementById('runner-del-count');
-      const confirmBtn = document.getElementById('btn-runner-del-confirm');
-      const cancelBtn = document.getElementById('btn-cancel-runner-del');
-      const addBtn = document.getElementById('btn-add-teammate');
-      if (btn) btn.classList.remove('hidden');
-      if (countEl) { countEl.classList.add('hidden'); countEl.textContent = '삭제(0명)'; }
-      if (confirmBtn) { confirmBtn.classList.add('hidden'); }
-      if (cancelBtn) cancelBtn.classList.add('hidden');
-      if (addBtn) addBtn.classList.remove('hidden');
-      updateTeammateDeleteControls();
+      relayDraftRoster = null;
+      relayPendingRemoval = new Set();
+      setTeammateEditUi();
       renderTeammateChips();
     }
 
-    // 주자 이름 목록을 이 기기에 저장한다(정의가 빠져 있어 삭제·추가가 중간에 멈추던 문제 수정).
+    // 주자 이름 목록의 예전 저장 방식(다른 화면과의 호환용). 지금 화면은 종목별 명단을 쓴다.
     function saveTeammates() {
       try { localStorage.setItem(TEAMMATES_KEY, JSON.stringify(savedTeammates)); } catch (e) {}
     }
 
+    // [확인]: 편집 중 지운 후보를 확정하고, 현재 기록에서 선택된 주자도 함께 정리한다.
     function confirmTeammateDeletion() {
-      if (selectedTeammatesToDelete.size === 0) return;
-      // 저장된 주자 이름 목록에서만 지운다. 과거 경기 기록·PB의 주자 명단은 건드리지 않는다.
-      savedTeammates = savedTeammates.filter(name => !selectedTeammatesToDelete.has(name));
-      saveTeammates();
-      selectedTeammatesToDelete.clear();
-      cancelTeammateEditMode();
+      if (!isTeammateEditMode) return;
+      const playerId = currentPlayer;
+      const eventName = getRecordFormEventName();
+      const base = Array.isArray(relayDraftRoster) ? relayDraftRoster : [];
+      const removed = Array.from(relayPendingRemoval);
+      const next = base.filter(function (n) { return removed.indexOf(n) < 0; });
+      saveRelayRoster(playerId, eventName, next);
+      relaySelectedRunners = relaySelectedRunners.filter(function (n) { return removed.indexOf(n) < 0; });
+      isTeammateEditMode = false;
+      relayDraftRoster = null;
+      relayPendingRemoval = new Set();
+      setTeammateEditUi();
+      renderRelaySlots();
+      renderTeammateChips();
+      showSyncNotice('후보 명단을 저장했습니다.', 'info');
     }
 
     function toggleSelectTeammateToDelete(name) {
-      if (selectedTeammatesToDelete.has(name)) {
-        selectedTeammatesToDelete.delete(name);
-      } else {
-        selectedTeammatesToDelete.add(name);
-      }
+      if (!isTeammateEditMode) return;
+      if (relayPendingRemoval.has(name)) relayPendingRemoval.delete(name);
+      else relayPendingRemoval.add(name);
       updateTeammateDeleteControls();
       renderTeammateChips();
     }
@@ -7218,42 +7358,79 @@
       const container = document.getElementById('relay-teammate-chips');
       if (!container) return;
       container.innerHTML = '';
+      const playerId = currentPlayer;
+      const eventName = getRecordFormEventName();
+      const ownerName = getPlayerNameById(playerId);
+      const saved = getRelayRoster(playerId, eventName);
+      const editList = (isTeammateEditMode && Array.isArray(relayDraftRoster)) ? relayDraftRoster : null;
+      const names = editList ? editList : saved;
 
-      savedTeammates.forEach(name => {
-        const isHero = name === '김유신' || name === '김별하';
+      const makeChip = function (name, isOwner) {
         const btn = document.createElement('button');
         btn.type = 'button';
-
-        if (isTeammateEditMode) {
-          const isSelected = selectedTeammatesToDelete.has(name);
-          btn.className = isSelected 
+        const order = relaySelectedRunners.indexOf(name);
+        const picked = order >= 0;
+        if (isTeammateEditMode && !isOwner) {
+          const willRemove = relayPendingRemoval.has(name);
+          btn.className = willRemove
             ? 'px-2.5 py-1 rounded-lg bg-red-600/30 text-red-200 border border-red-500 ring-2 ring-red-500/40 text-[11px] font-bold shadow-md transition active:scale-95'
-            : 'px-2.5 py-1 rounded-lg bg-slate-900/60 text-slate-500 border border-slate-800 text-[11px] font-medium transition active:scale-95';
+            : 'px-2.5 py-1 rounded-lg bg-slate-900/60 text-slate-400 border border-slate-800 text-[11px] font-medium transition active:scale-95';
           btn.textContent = name;
-          btn.onclick = () => toggleSelectTeammateToDelete(name);
+          btn.onclick = function () { toggleSelectTeammateToDelete(name); };
         } else {
-          btn.className = isHero 
-            ? 'px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-bold shadow-sm active:scale-95 transition'
+          // 노란 강조 없이 기본 색을 쓰고, 실제로 선택된 경우에만 선택 색과 순번을 보여 준다.
+          btn.className = picked
+            ? 'px-2 rounded-lg bg-blue-600 text-white border border-blue-400 text-[11px] font-bold shadow-sm active:scale-95 transition inline-flex items-center gap-1'
             : 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:border-blue-500 text-[11px] font-medium active:scale-95 transition';
-          btn.textContent = name;
-          btn.onclick = () => insertRelayRunner(name);
+          btn.innerHTML = (picked ? `<span class="text-[10px] font-bold text-blue-100/90">${order + 1}</span>` : '') + `<span class="${isOwner ? 'font-extrabold' : ''}">${bodyEsc(name)}</span>`;
+          btn.onclick = function () { toggleRelayRunner(name); };
+          btn.title = picked ? '다시 누르면 주자에서 해제됩니다.' : '누르면 주자로 배정됩니다.';
         }
-
         container.appendChild(btn);
+      };
+
+      // 프로필 주인은 이름만 볼드체로, 다른 미선택 선수와 같은 기본 색으로 맨 앞에 고정한다.
+      if (ownerName) makeChip(ownerName, true);
+      names.forEach(function (name) {
+        if (ownerName && name === ownerName) return;
+        makeChip(name, false);
       });
+      if (!ownerName && names.length === 0) {
+        container.innerHTML = '<span class="text-[10px] text-slate-500 px-1">이 종목에 출전한 주자 기록이 없습니다. [+ 새 선수 등록]으로 추가해 주세요.</span>';
+      }
     }
 
     async function promptAddNewTeammate() {
-      const name = await appPrompt('새로 추가할 선수 이름을 입력하세요.', '', { title: '함께 뛴 선수 추가' });
-      if (name && name.trim()) {
-        const cleanName = name.trim();
-        if (!savedTeammates.includes(cleanName)) {
-          savedTeammates.push(cleanName);
-          saveTeammates();
-          renderTeammateChips();
-        }
-        insertRelayRunner(cleanName);
+      const name = await appPrompt('추가할 선수 이름을 입력하세요. 동명이인은 이름 뒤에 2를 붙여 등록해 주세요. (예: 김유신2)', '', { title: '후보 선수 추가' });
+      const clean = String(name || '').trim();
+      if (!clean) return;
+      const ownerName = getPlayerNameById(currentPlayer);
+      if (ownerName && clean === ownerName) {
+        showSyncNotice('프로필 주인은 이미 명단 맨 앞에 있습니다.', 'info');
+        return;
       }
+      if (isTeammateEditMode && Array.isArray(relayDraftRoster)) {
+        if (relayDraftRoster.indexOf(clean) >= 0) {
+          relayPendingRemoval.delete(clean);
+        } else {
+          relayDraftRoster.push(clean);
+        }
+        renderTeammateChips();
+        return;
+      }
+      const roster = getRelayRoster(currentPlayer, getRecordFormEventName());
+      if (roster.indexOf(clean) >= 0) {
+        showSyncNotice('이미 후보 명단에 있는 선수입니다.', 'info');
+        return;
+      }
+      roster.push(clean);
+      saveRelayRoster(currentPlayer, getRecordFormEventName(), roster);
+      renderTeammateChips();
+    }
+
+    // 예전 이름으로 부르던 곳과의 호환(직접 입력란은 없어졌고, 칩 선택과 같은 동작을 한다).
+    function insertRelayRunner(name) {
+      toggleRelayRunner(name);
     }
 
     // 12. Settings & Backup/Export Functions
@@ -7358,6 +7535,22 @@
       if (t && t.tagName && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
         syncAppViewportHeight(false);
       }
+    });
+
+    // 기록 입력 팝업: 키보드가 올라온 뒤 입력 중인 칸이 키보드에 가리지 않도록 보이는 영역 가운데로 당긴다.
+    // (키보드 애니메이션이 끝날 때까지 몇 번만 다시 맞춘다. 입력값·작성 상태는 건드리지 않는다.)
+    function ensureRecordFieldVisible(el) {
+      if (!el || !document.body.classList.contains('kb-open')) return;
+      const modal = document.getElementById('modal-record');
+      if (!modal || modal.classList.contains('hidden')) return;
+      try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) {}
+    }
+    document.addEventListener('focusin', function (e) {
+      const t = e.target;
+      if (!t || !t.closest || !t.closest('#modal-record')) return;
+      [120, 320, 600].forEach(function (ms) {
+        setTimeout(function () { ensureRecordFieldVisible(t); }, ms);
+      });
     });
 
     // ---------------- 모달 배경 스크롤 잠금 ----------------
@@ -7487,10 +7680,12 @@
         else btnAddPlayerTop.classList.add('hidden');
       }
 
-      if (backupSec) {
-        if (role === 'viewer') backupSec.classList.add('hidden');
-        else backupSec.classList.remove('hidden');
-      }
+      if (backupSec) backupSec.classList.toggle('hidden', role === 'viewer');
+      // 뷰어: 주간 백업 상태·알림 영역과 직접 전체 백업 버튼은 감추고 [백업파일 요청]을 보여 준다.
+      const weeklySec = document.getElementById('section-weekly-backup');
+      if (weeklySec) weeklySec.classList.toggle('hidden', role === 'viewer');
+      const viewerReqSec = document.getElementById('section-viewer-backup-request');
+      if (viewerReqSec) viewerReqSec.classList.toggle('hidden', role !== 'viewer');
 
       document.getElementById('modal-settings').classList.remove('hidden');
       updateUiScaleUI();
@@ -8935,7 +9130,7 @@
       'modal-record', 'modal-player-form', 'modal-players',
       'modal-settings', 'modal-viewer-approvals', 'modal-super-admin-center',
       'modal-admin-profile', 'modal-viewer-add-player', 'modal-viewer-waiting',
-      'modal-viewer-roster', 'modal-google-auth-popup'
+      'modal-viewer-roster', 'modal-backup-request', 'modal-google-auth-popup'
     ];
 
     window.addEventListener('popstate', (e) => {
@@ -9139,9 +9334,12 @@
     let lastApprovalListSig = '';
     function approvalListSignature() {
       try {
-        const specials = getMySpecialNotices(getCurrentAuthUser()).map(n => (n.key || '') + ':' + n.status + ':' + (n.at || '')).join(',');
+        const me = getCurrentAuthUser();
+        const specials = getMySpecialNotices(me).map(n => (n.key || '') + ':' + n.status + ':' + (n.at || '') + (isSpecialNoticeSeen(n) ? ':seen' : ':new')).join(',');
         const notifs = (viewerApprovalNotifs || []).map(n => n.id).join(',');
-        return specials + '|' + notifs;
+        const backups = getBackupRequests().filter(r => r.status === 'pending' || r.status === 'approved')
+          .map(r => r.id + ':' + r.status).join(',');
+        return specials + '|' + notifs + '|' + backups;
       } catch (e) { return ''; }
     }
 
@@ -9168,10 +9366,14 @@
       });
       const hasViewerNotif = !isAdmin && viewerApprovalNotifs.length > 0;
       // 특별 뷰어 등록·해제 알림도 뷰어에게는 새 알림으로 표시한다.
-      const hasSpecialNotice = !isAdmin && getMySpecialNotices(getCurrentAuthUser()).length > 0;
+      const hasSpecialNotice = !isAdmin && getUnseenSpecialNotices(getCurrentAuthUser()).length > 0;
       const hasTransferRequest = isAdmin && getTransferRequests().some(r => r.status === 'pending' && r.toAdminId === authUser.id);
       const hasUnreadNotice = getUnreadNoticeCount() > 0;
-      if (hasPending || hasNewVersionUpdate || hasViewerNotif || hasSpecialNotice || hasTransferRequest || hasUnreadNotice) badge.classList.remove('hidden');
+      const backupList = getBackupRequests();
+      const hasBackupNotice = isAdmin
+        ? backupList.some(r => r.status === 'pending' && normalizeOwnerId(r.ownerAdminId) === normalizeOwnerId(scopeId))
+        : backupList.some(r => r.status === 'approved' && isMyBackupRequest(r, getCurrentAuthUser()) && Date.now() < Number(r.expiresAt || 0));
+      if (hasPending || hasNewVersionUpdate || hasViewerNotif || hasSpecialNotice || hasTransferRequest || hasUnreadNotice || hasBackupNotice) badge.classList.remove('hidden');
       else badge.classList.add('hidden');
       updateNoticeDot();
     }
@@ -9497,25 +9699,37 @@
         //  명단 버튼은 화면을 새로 여는 것이며, 권한은 누를 때마다 현재 상태로 다시 계산한다.
         const me = getCurrentAuthUser();
         const roster = buildViewerRoster(me);
-        const specialNotices = getMySpecialNotices(me).map(n => {
+        const specialNotices = getUnseenSpecialNotices(me).map(n => {
           const viewable = roster.filter(r => r.ownerAdminId === n.ownerAdminId).length;
           const isReg = n.status === 'registered';
-          return `
-            <div class="p-3.5 rounded-2xl ${isReg ? 'bg-amber-950/40 border border-amber-500/40' : 'bg-slate-900 border border-slate-700'} space-y-2">
+          const noticeId = bodyEsc(getSpecialNoticeId(n));
+          if (isReg) {
+            return `
+            <div class="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/40 space-y-2">
               <div class="flex items-center justify-between gap-2">
-                <span class="text-xs font-bold ${isReg ? 'text-amber-300' : 'text-slate-300'}"><span class="ui-ic" data-ic="shield"></span> 특별 뷰어 ${isReg ? '등록' : '해제'} 안내</span>
+                <span class="text-xs font-bold text-amber-300"><span class="ui-ic" data-ic="shield"></span> 특별 뷰어 등록 안내</span>
                 <span class="text-[10px] text-slate-400">${formatYmd(n.at)}</span>
               </div>
               <div class="text-xs text-slate-200 leading-relaxed space-y-0.5">
-                <p><strong class="text-white">${bodyEsc(n.ownerName)}</strong>님 · ${isReg ? '등록일' : '해제일'} ${formatYmd(n.at)}</p>
-                ${isReg
-                  ? `<p>열람 가능한 선수 ${viewable}명</p>`
-                  : `<p>이 관리자의 특별 뷰어 권한이 해제되었습니다. 개별 승인된 선수 열람은 그대로 유지됩니다.</p>`}
+                <p><strong class="text-white">${bodyEsc(n.ownerName)}</strong>님 · 등록일 ${formatYmd(n.at)}</p>
+                <p>열람 가능한 선수 ${viewable}명</p>
               </div>
-              ${isReg ? `<button type="button" onclick="openViewerRosterModal('${bodyEsc(n.ownerAdminId)}')" class="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1">선수 조회 명단 <span class="ui-ic" data-ic="chevronRight"></span></button>` : ''}
+              <button type="button" onclick="openViewerRosterFromSpecialNotice('${bodyEsc(n.ownerAdminId)}','${bodyEsc(n.key)}','${n.at || 0}','${bodyEsc(n.status)}')" class="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1">선수 조회 명단 <span class="ui-ic" data-ic="chevronRight"></span></button>
+            </div>`;
+          }
+          return `
+            <div role="button" tabindex="0" onclick="ackSpecialNotice('${bodyEsc(n.key)}','${n.at || 0}','${bodyEsc(n.status)}')" data-special-notice="${noticeId}" class="p-3.5 rounded-2xl bg-amber-950/25 border border-amber-500/30 space-y-1 cursor-pointer active:scale-[0.99] transition">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-amber-200/90"><span class="ui-ic" data-ic="shield"></span> 특별 뷰어 해제 안내</span>
+                <span class="text-[10px] text-slate-400">${formatYmd(n.at)}</span>
+              </div>
+              <p class="text-xs text-slate-200 leading-relaxed"><strong class="text-white">${bodyEsc(n.ownerName)}</strong>님 · 해제일 ${formatYmd(n.at)}</p>
+              <p class="text-xs text-slate-300 leading-relaxed">이 관리자의 특별 뷰어 권한이 해제되었습니다. 개별 승인된 선수 열람은 그대로 유지됩니다.</p>
+              <p class="text-[10px] text-slate-500 pt-0.5">카드를 누르면 확인 처리됩니다.</p>
             </div>`;
         }).join('');
-        if (viewerApprovalNotifs.length > 0 || specialNotices) {
+        const backupNotices = buildViewerBackupNoticesHtml();
+        if (viewerApprovalNotifs.length > 0 || specialNotices || backupNotices) {
           container.innerHTML = viewerApprovalNotifs.map(n => `
             <div class="p-3.5 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 space-y-2">
               <div class="flex items-center justify-between">
@@ -9524,7 +9738,7 @@
               </div>
               <p class="text-xs text-slate-200 leading-relaxed">관리자가 <strong class="text-white">[${n.names}]</strong> 열람을 승인했습니다! 상단 선수 선택 메뉴에서 바로 확인할 수 있습니다.</p>
             </div>
-          `).join('') + specialNotices + (viewerApprovalNotifs.length > 0 ? `
+          `).join('') + specialNotices + backupNotices + (viewerApprovalNotifs.length > 0 ? `
             <button type="button" onclick="dismissViewerApprovalNotifs()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition">
                확인 (알림 지우기)
             </button>
@@ -9621,11 +9835,13 @@
         cards.push(card);
       });
 
+      const backupHtml = buildAdminBackupRequestHtml();
       if (cards.length === 0) {
-        container.innerHTML = '<div class="py-12 text-center text-slate-500 text-xs">현재 대기 중인 열람 승인 신청이 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">승인 완료된 뷰어는 [관리자] 메뉴에서 관리할 수 있습니다.</span></div>';
+        container.innerHTML = (backupHtml ? '<div class="space-y-3">' + backupHtml + '</div>' : '')
+          + '<div class="py-12 text-center text-slate-500 text-xs">현재 대기 중인 열람 승인 신청이 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">승인 완료된 뷰어는 [관리자] 메뉴에서 관리할 수 있습니다.</span></div>';
         return;
       }
-      container.innerHTML = '';
+      container.innerHTML = backupHtml ? ('<div class="space-y-3">' + backupHtml + '</div>') : '';
       cards.forEach(c => container.appendChild(c));
     }
 
@@ -10012,7 +10228,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.27.1';
+    const CURRENT_APP_VERSION = '2026.11.28.1';
 
     function checkForUpdates() {
       // Listen for Service Worker update
@@ -10427,9 +10643,13 @@
       _origApplyAuthModeUI(role);
       const backupSec = document.getElementById('section-admin-backup');
       const importXlsxLbl = document.getElementById('btn-import-xlsx-label');
-      if (backupSec) backupSec.classList.remove('hidden');
-      // 사용자용 백업·복원은 엑셀 하나로 단일화했다. 뷰어는 읽기 전용 엑셀 다운로드만 쓴다.
+      // 직접 백업·가져오기는 관리자만 쓴다. 뷰어는 [선수 기록 백업파일 요청]을 쓴다.
+      if (backupSec) backupSec.classList.toggle('hidden', role === 'viewer');
       if (importXlsxLbl) importXlsxLbl.classList.toggle('hidden', role === 'viewer');
+      const weeklySec1 = document.getElementById('section-weekly-backup');
+      if (weeklySec1) weeklySec1.classList.toggle('hidden', role === 'viewer');
+      const viewerReqSec1 = document.getElementById('section-viewer-backup-request');
+      if (viewerReqSec1) viewerReqSec1.classList.toggle('hidden', role !== 'viewer');
       updateBackupStatusUI();
     };
 
@@ -10562,10 +10782,11 @@
     }
 
     // 선수 1명의 시트 값(AOA). 1~5행 기본정보, 6행 빈 행, 7행 제목행, 8행~ 기록.
-    function buildPlayerSheetAoa(p) {
+    function buildPlayerSheetAoa(p, recordsArg) {
       const headers = xlsxHeadersForSport(p.sport);
       const isTrack = headers === XLSX_TRACK_HEADERS;
-      const recs = (appData[p.id] || []).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+      const source = Array.isArray(recordsArg) ? recordsArg : (appData[p.id] || []);
+      const recs = source.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
       const aoa = [
         ['이름', p.name || ''],
         ['성별', p.gender || ''],
@@ -11110,8 +11331,12 @@
       const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
       const sec = document.getElementById('section-admin-backup');
       const impX = document.getElementById('btn-import-xlsx-label');
-      if (sec) sec.classList.remove('hidden');
+      if (sec) sec.classList.toggle('hidden', authUser.role === 'viewer');
       if (impX) impX.classList.toggle('hidden', authUser.role === 'viewer');
+      const weeklySec2 = document.getElementById('section-weekly-backup');
+      if (weeklySec2) weeklySec2.classList.toggle('hidden', authUser.role === 'viewer');
+      const viewerReqSec2 = document.getElementById('section-viewer-backup-request');
+      if (viewerReqSec2) viewerReqSec2.classList.toggle('hidden', authUser.role !== 'viewer');
       updateBackupStatusUI();
     };
 
@@ -12385,7 +12610,7 @@
       renderCurrentView();
       showSyncNotice(p.locked
         ? `${p.name} 선수의 기록을 특별 뷰어의 자동 열람 대상에서 제외했습니다.`
-        : `${p.name} 선수의 기록을 특별 뷰어의 자동 열람 대상에서 포함했습니다.`, 'info');
+        : `${p.name} 선수의 기록을 특별 뷰어의 자동 열람 대상에 포함했습니다.`, 'info');
     }
 
     // ---------- 선수 일괄 삭제 ----------
@@ -12442,6 +12667,15 @@
       if (checked) playerBulkSelected.add(id);
       else playerBulkSelected.delete(id);
       syncPlayerBulkUi();
+    }
+
+    // 카드 전체 터치: 체크박스에서 올라온 클릭은 무시하고(중복 반전 방지), 나머지는 선택 상태를 뒤집는다.
+    function onPlayerBulkCardTap(e, id) {
+      if (!playerBulkMode) return;
+      const target = e && e.target;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'LABEL')) return;
+      togglePlayerBulkSelect(id, !playerBulkSelected.has(id));
+      renderPlayerCards();
     }
 
     function togglePlayerBulkAll() {
@@ -12552,6 +12786,18 @@
       }
       const adm = (realtimeAuthData && realtimeAuthData._admins) ? realtimeAuthData._admins[id] : null;
       return (adm && adm.name) ? adm.name : '관리자';
+    }
+
+    // 이 관리자에게 특별 뷰어로 등록된 뷰어 이름 목록(새 선수 등록 안내에 쓴다).
+    function getMySpecialViewerNames() {
+      const scopeId = getCurrentAdminScopeId();
+      const dummyNames = ['외할머니', '코치님', '하람아빠'];
+      return Object.keys(realtimeAuthData || {}).filter(function (k) {
+        if (!k || k.startsWith('_') || dummyNames.indexOf(k) >= 0) return false;
+        const v = realtimeAuthData[k];
+        if (!v || typeof v !== 'object' || v.status === 'rejected') return false;
+        return isViewerOwnedByCurrentAdmin(v, scopeId) && isSpecialViewerRecord(v);
+      }).map(function (k) { return realtimeAuthData[k].name || k; });
     }
 
     // 승인된 뷰어 관리: 이 관리자의 선수를 개별 승인받은 뷰어만 보여 준다.
@@ -12844,6 +13090,72 @@
       return d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0');
     }
 
+    // ---------- 특별 뷰어 알림 확인 상태 ----------
+    //  확인한 알림은 이 기기에 기록해 새로고침·재로그인 후에도 다시 뜨지 않게 한다.
+    //  권한·운영 이력은 건드리지 않고 화면의 알림만 정리한다.
+    const SPECIAL_NOTICE_SEEN_PREFIX = 'STAGING_SPECIAL_NOTICE_SEEN_';
+
+    function getSpecialNoticeId(n) {
+      return String(n.key || '') + '|' + String(n.at || '') + '|' + String(n.status || '');
+    }
+
+    function getSpecialNoticeSeenList() {
+      try {
+        const me = getCurrentAuthUser();
+        const arr = JSON.parse(localStorage.getItem(SPECIAL_NOTICE_SEEN_PREFIX + (me.id || me.email || 'guest')) || '[]');
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+
+    function isSpecialNoticeSeen(n) {
+      if (!n) return true;
+      return getSpecialNoticeSeenList().indexOf(getSpecialNoticeId(n)) >= 0;
+    }
+
+    function markSpecialNoticeSeen(n) {
+      if (!n) return;
+      try {
+        const me = getCurrentAuthUser();
+        const list = getSpecialNoticeSeenList();
+        const id = getSpecialNoticeId(n);
+        if (list.indexOf(id) < 0) {
+          list.push(id);
+          localStorage.setItem(SPECIAL_NOTICE_SEEN_PREFIX + (me.id || me.email || 'guest'), JSON.stringify(list));
+        }
+      } catch (e) {}
+    }
+
+    // 아직 확인하지 않은 특별 뷰어 알림만 돌려준다(레드닷·알림 센터 공통 기준).
+    function getUnseenSpecialNotices(me) {
+      return getMySpecialNotices(me).filter(function (n) { return !isSpecialNoticeSeen(n); });
+    }
+
+    // 등록 알림: [선수 조회 명단]으로 실제 이동한 뒤에만 확인 처리한다.
+    function openViewerRosterFromSpecialNotice(ownerAdminId, key, at, status) {
+      const n = { key: key, at: at, status: status, ownerAdminId: ownerAdminId };
+      let moved = false;
+      try {
+        openViewerRosterModal(ownerAdminId);
+        const modal = document.getElementById('modal-viewer-roster');
+        const sel = document.getElementById('viewer-roster-admin-filter');
+        moved = !!modal && !modal.classList.contains('hidden') && !!sel && normalizeOwnerId(sel.value) === normalizeOwnerId(ownerAdminId);
+      } catch (e) { moved = false; }
+      if (!moved) {
+        showSyncNotice('선수 조회 명단을 열지 못했습니다. 잠시 후 다시 시도해 주세요.', 'warn');
+        return;
+      }
+      markSpecialNoticeSeen(n);
+      renderApprovalList();
+      updatePendingBadge();
+    }
+
+    // 해제 알림: 별도 버튼 없이 카드 전체를 누르면 확인 처리한다.
+    function ackSpecialNotice(key, at, status) {
+      markSpecialNoticeSeen({ key: key, at: at, status: status });
+      renderApprovalList();
+      updatePendingBadge();
+    }
+
     // 헤더의 [특별 뷰어] 배지: 특별 뷰어로 등록된 뷰어에게만 보인다.
     function updateSpecialViewerBadge() {
       const btn = document.getElementById('btn-special-viewer-badge');
@@ -12989,6 +13301,486 @@
       switchPlayer(p.id);
     }
 
+    // =========================================================================
+    // 뷰어 백업파일 요청 → 관리자 승인 → 72시간 1회 다운로드
+    //  - 파일은 관리자 승인 시점의 자료로 그 자리에서 만든다(승인 뒤 기록이 바뀌어도 내용은 그대로).
+    //  - 다운로드 완료 또는 승인 후 72시간이 되는 순간 파일과 다운로드 권한을 지운다.
+    //  - 요청·승인 기록과 승인 파일은 이 브라우저 저장소에 보관한다.
+    // =========================================================================
+    const BACKUP_REQUEST_TTL_MS = 72 * 60 * 60 * 1000;
+    const BACKUP_NOTICE_TEXT = '승인 후 72시간 이내 1회 다운로드할 수 있습니다. 다운로드 완료 또는 기간 만료 시 백업파일이 삭제되며, 다시 받으려면 재신청해야 합니다.';
+
+    let bkrLevel = 'all';
+    let bkrGender = 'all';
+    let bkrSelection = new Set();
+
+    // 뷰어 요청·관리자 승인 기록은 다른 저장(권한·기록)과 섞이지 않도록 별도 키에 둔다.
+    const BACKUP_REQUESTS_KEY = 'STAGING_BACKUP_REQUESTS_V1';
+
+    function writeBackupRequests(list) {
+      try {
+        localStorage.setItem(BACKUP_REQUESTS_KEY, JSON.stringify(list));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function readBackupRequestsRaw() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(BACKUP_REQUESTS_KEY) || '[]');
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+
+    // 승인 후 정확히 72시간 0초가 되는 시점에 만료·삭제한다(유예 없음).
+    // 다운로드·만료·거절된 지 7일이 지난 알림 기록만 목록에서 정리한다(파일은 이미 지웠다).
+    function purgeBackupRequests() {
+      const list = readBackupRequestsRaw();
+      let changed = false;
+      const now = Date.now();
+      list.forEach(function (r) {
+        if (!r) return;
+        if (r.status === 'approved' && r.expiresAt && now >= Number(r.expiresAt)) {
+          r.status = 'expired';
+          r.expiredAt = Number(r.expiresAt);
+          delete r.fileBase64;
+          changed = true;
+        }
+      });
+      const kept = list.filter(function (r) {
+        if (!r) return false;
+        if (r.status === 'downloaded' || r.status === 'expired' || r.status === 'rejected') {
+          const at = Number(r.downloadedAt || r.expiredAt || r.respondedAt || r.requestedAt || 0);
+          if (at && now - at > 7 * 86400000) return false;
+        }
+        return true;
+      });
+      if (kept.length !== list.length) changed = true;
+      if (changed) writeBackupRequests(kept);
+      return kept;
+    }
+
+    function getBackupRequests() {
+      return purgeBackupRequests();
+    }
+
+    function isMyBackupRequest(r, me) {
+      if (!r || !me) return false;
+      const myEmail = String(me.email || '').toLowerCase();
+      if (r.viewerEmail && myEmail) return String(r.viewerEmail).toLowerCase() === myEmail;
+      return String(r.viewerName || '') === String(me.name || '');
+    }
+
+    // ---------- 뷰어: 백업 대상 선택 ----------
+    function openBackupRequestModal() {
+      const me = getCurrentAuthUser();
+      if (!me || me.role !== 'viewer') { appAlert('뷰어 계정에서만 백업파일을 요청할 수 있습니다.'); return; }
+      bkrLevel = 'all';
+      bkrGender = 'all';
+      bkrSelection = new Set();
+      const searchEl = document.getElementById('bkr-search');
+      if (searchEl) searchEl.value = '';
+      const rosterContainer = document.getElementById('bkr-list');
+      if (!rosterContainer) return;
+      renderBackupRequestList();
+      pushModalHistory('modal-backup-request');
+      rememberScreenBeforeModal('modal-backup-request');
+      document.getElementById('modal-backup-request')?.classList.remove('hidden');
+    }
+
+    function closeBackupRequestModal() {
+      document.getElementById('modal-backup-request')?.classList.add('hidden');
+      restoreScreenAfterModal('modal-backup-request');
+    }
+
+    function getBackupRequestRoster() {
+      const me = getCurrentAuthUser();
+      return buildViewerRoster(me);
+    }
+
+    function updateBackupRequestFilterButtons() {
+      ['all', 'middle', 'high', 'adult'].forEach(function (k) {
+        const btn = document.getElementById('bkr-level-' + k);
+        if (!btn) return;
+        const map = { all: 'all', middle: '중등부', high: '고등부', adult: '대학/실업' };
+        const on = bkrLevel === map[k];
+        btn.className = 'px-2.5 py-1 rounded-lg whitespace-nowrap ' + (on ? 'bg-blue-600 text-white font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700');
+      });
+      ['all', 'm', 'f'].forEach(function (k) {
+        const btn = document.getElementById('bkr-gender-' + k);
+        if (!btn) return;
+        const want = k === 'm' ? '남' : (k === 'f' ? '여' : 'all');
+        const on = bkrGender === want;
+        btn.className = 'px-2 py-1 rounded-lg whitespace-nowrap ' + (on ? 'bg-blue-600 text-white font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700');
+      });
+    }
+
+    function setBackupRequestLevel(lvl) {
+      bkrLevel = lvl || 'all';
+      renderBackupRequestList();
+    }
+
+    function setBackupRequestGender(g) {
+      bkrGender = g || 'all';
+      renderBackupRequestList();
+    }
+
+    function getBackupRequestRowKey(r) {
+      return String(r.ownerAdminId || '') + '::' + String(r.player && r.player.id ? r.player.id : '');
+    }
+
+    function getFilteredBackupRoster() {
+      const searchEl = document.getElementById('bkr-search');
+      const q = String((searchEl && searchEl.value) || '').trim().toLowerCase();
+      const adminSel = document.getElementById('bkr-admin-filter');
+      const adminFilter = adminSel ? adminSel.value : 'ALL';
+      return getBackupRequestRoster().filter(function (r) {
+        const p = r.player || {};
+        if (adminFilter !== 'ALL' && r.ownerAdminId !== adminFilter) return false;
+        if (bkrLevel !== 'all') {
+          const info = calculateGradeAndAge(p.birth || '');
+          if (info.schoolLevel !== bkrLevel) return false;
+        }
+        if (bkrGender !== 'all' && p.gender !== bkrGender) return false;
+        if (q) {
+          const hay = ((p.name || '') + ' ' + (p.sport || '') + ' ' + (p.mainEvent || '') + ' ' + (r.ownerName || '')).toLowerCase();
+          if (hay.indexOf(q) < 0) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderBackupRequestList() {
+      updateBackupRequestFilterButtons();
+      const listEl = document.getElementById('bkr-list');
+      if (!listEl) return;
+      const all = getBackupRequestRoster();
+      // 관리자 필터 목록은 지금 열람 가능한 관리자만 채운다.
+      const sel = document.getElementById('bkr-admin-filter');
+      if (sel) {
+        const owners = [];
+        all.forEach(function (r) { if (!owners.some(function (o) { return o.id === r.ownerAdminId; })) owners.push({ id: r.ownerAdminId, name: r.ownerName }); });
+        const prev = sel.value || 'ALL';
+        sel.innerHTML = '<option value="ALL">전체 관리자</option>' + owners.map(function (o) {
+          return `<option value="${bodyEsc(o.id)}">${bodyEsc(o.name)}</option>`;
+        }).join('');
+        sel.value = (prev !== 'ALL' && owners.some(function (o) { return o.id === prev; })) ? prev : 'ALL';
+      }
+      const rows = getFilteredBackupRoster();
+      const countEl = document.getElementById('bkr-count');
+      if (countEl) countEl.textContent = String(rows.length);
+      if (rows.length === 0) {
+        listEl.innerHTML = '<div class="py-10 text-center text-slate-500 text-xs">요청할 수 있는 선수가 없습니다.<br><span class="text-[10px] text-slate-600 mt-1 block">관리자가 열람을 승인한 선수만 요청할 수 있습니다.</span></div>';
+      } else {
+        listEl.innerHTML = rows.map(function (r) {
+          const p = r.player || {};
+          const info = calculateGradeAndAge(p.birth || '');
+          const key = getBackupRequestRowKey(r);
+          const picked = bkrSelection.has(key);
+          const genderClass = p.gender === '남' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-pink-500/20 text-pink-300 border-pink-500/40';
+          return `
+          <div role="button" tabindex="0" onclick="onBackupRequestCardTap(event,'${bodyEsc(key)}')" class="p-3 rounded-2xl border ${picked ? 'bg-emerald-950/40 border-emerald-500/50 ring-2 ring-emerald-500/20' : 'bg-slate-800/80 border-slate-700/80'} transition cursor-pointer min-w-0">
+            <div class="flex items-start gap-2 min-w-0">
+              <input type="checkbox" class="mt-0.5 w-4 h-4 rounded border-slate-500 bg-slate-900 text-emerald-500 shrink-0" ${picked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="onBackupRequestCheckChange(event,'${bodyEsc(key)}')" aria-label="${bodyEsc(p.name || '')} 선택">
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
+                  <span class="text-[10px] text-slate-400 shrink-0">[${bodyEsc(r.ownerName)}]</span>
+                  <span class="text-sm font-bold text-white truncate max-w-[9rem]">${bodyEsc(p.name || '')}</span>
+                  <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
+                  <span class="px-1.5 py-0.5 rounded border ${genderClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${bodyEsc(p.gender || '')}</span>
+                  <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${bodyEsc(info.gradeBadge || '')}</span>
+                </div>
+                <div class="mt-1 text-xs text-blue-400 font-medium truncate">${bodyEsc(p.sport || '운동')} · ${bodyEsc(p.mainEvent || '종목 미지정')}</div>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+      updateBackupRequestSelectionUi();
+    }
+
+    function updateBackupRequestSelectionUi() {
+      const el = document.getElementById('bkr-selected-count');
+      const n = bkrSelection.size;
+      if (el) el.textContent = '선택 ' + n + '명';
+      const btn = document.getElementById('bkr-request-btn');
+      if (btn) {
+        btn.disabled = n === 0;
+        btn.textContent = n > 0 ? ('선택 ' + n + '명으로 요청') : '선택한 선수로 요청';
+      }
+    }
+
+    function onBackupRequestCardTap(e, key) {
+      const target = e && e.target;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'LABEL')) return;
+      if (bkrSelection.has(key)) bkrSelection.delete(key);
+      else bkrSelection.add(key);
+      renderBackupRequestList();
+    }
+
+    function onBackupRequestCheckChange(e, key) {
+      const checked = !!(e && e.target && e.target.checked);
+      if (checked) bkrSelection.add(key);
+      else bkrSelection.delete(key);
+      renderBackupRequestList();
+    }
+
+    // [전체 선택]/[전체 해제]는 지금 필터에 보이는 선수만 대상으로 한다.
+    function backupRequestSelectAll(on) {
+      getFilteredBackupRoster().forEach(function (r) {
+        const key = getBackupRequestRowKey(r);
+        if (on) bkrSelection.add(key);
+        else bkrSelection.delete(key);
+      });
+      renderBackupRequestList();
+    }
+
+    async function submitBackupRequest() {
+      const me = getCurrentAuthUser();
+      if (!me || me.role !== 'viewer') { appAlert('뷰어 계정에서만 요청할 수 있습니다.'); return; }
+      if (bkrSelection.size === 0) { appAlert('백업파일을 요청할 선수를 선택해 주세요.'); return; }
+      const roster = getBackupRequestRoster();
+      const byOwner = {};
+      Array.from(bkrSelection).forEach(function (key) {
+        const r = roster.find(function (x) { return getBackupRequestRowKey(x) === key; });
+        if (!r) return;
+        const owner = normalizeOwnerId(r.ownerAdminId);
+        if (!byOwner[owner]) byOwner[owner] = { ownerAdminId: owner, ownerName: r.ownerName, players: [] };
+        byOwner[owner].players.push({ id: r.player.id, name: r.player.name });
+      });
+      const groups = Object.values(byOwner);
+      if (groups.length === 0) { appAlert('선택한 선수의 열람 권한을 확인할 수 없습니다. 명단을 새로 열어 다시 선택해 주세요.'); return; }
+
+      const existing = getBackupRequests();
+      const dup = groups.filter(function (g) {
+        return existing.some(function (r) {
+          return r.status === 'pending' && isMyBackupRequest(r, me) && normalizeOwnerId(r.ownerAdminId) === g.ownerAdminId;
+        });
+      });
+      if (dup.length > 0) {
+        appAlert(dup.map(function (g) { return g.ownerName; }).join(', ') + ' 관리자에게 이미 승인 대기 중인 요청이 있습니다.\n승인 또는 거절 결과를 기다린 뒤 다시 요청해 주세요.');
+        return;
+      }
+
+      const lines = groups.map(function (g) {
+        return g.ownerName + ' 관리자 · ' + g.players.length + '명 (' + g.players.map(function (p) { return p.name; }).join(', ') + ')';
+      });
+      const ok = await askImportConfirm('백업파일 요청 확인', lines.concat([
+        '요청은 관리자별로 따로 전달됩니다.',
+        '관리자가 승인해야 파일을 받을 수 있으며, 열람 권한과는 별개입니다.'
+      ]));
+      if (!ok) return;
+
+      const list = getBackupRequests();
+      const now = Date.now();
+      groups.forEach(function (g, i) {
+        list.push({
+          id: 'bkr_' + now + '_' + i,
+          viewerEmail: me.email || '',
+          viewerName: me.name || '뷰어',
+          ownerAdminId: g.ownerAdminId,
+          ownerAdminName: g.ownerName,
+          playerIds: g.players.map(function (p) { return p.id; }),
+          playerNames: g.players.map(function (p) { return p.name; }),
+          status: 'pending',
+          requestedAt: now
+        });
+      });
+      if (!writeBackupRequests(list)) {
+        appAlert('요청을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.');
+        return;
+      }
+      bkrSelection = new Set();
+      closeBackupRequestModal();
+      updatePendingBadge();
+      showSyncNotice('백업파일을 요청했습니다. 관리자별로 승인을 기다립니다.', 'info');
+    }
+
+    // ---------- 관리자: 요청 확인·승인 ----------
+    function buildAdminBackupRequestHtml() {
+      const me = getCurrentAuthUser();
+      if (!me || (me.role !== 'admin' && me.role !== 'super_admin')) return '';
+      const scope = normalizeOwnerId(getCurrentAdminScopeId());
+      const list = getBackupRequests().filter(function (r) {
+        return r.status === 'pending' && normalizeOwnerId(r.ownerAdminId) === scope;
+      });
+      if (list.length === 0) return '';
+      return list.map(function (r) {
+        const chips = (r.playerNames || []).map(function (n) {
+          return `<span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-200 border border-emerald-500/30 text-[11px] font-bold">${bodyEsc(n)}</span>`;
+        }).join(' ');
+        return `
+        <div class="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold text-emerald-300 flex items-center gap-1.5"><span class="ui-ic" data-ic="download"></span> 백업파일 요청</span>
+            <span class="text-[10px] text-slate-400">${new Date(Number(r.requestedAt) || Date.now()).toLocaleString('ko-KR')}</span>
+          </div>
+          <p class="text-xs text-slate-200 leading-relaxed"><strong class="text-white">${bodyEsc(r.viewerName || '뷰어')}</strong> 뷰어가 선수 ${(r.playerIds || []).length}명의 기록 백업파일을 요청했습니다.</p>
+          <div class="flex flex-wrap gap-1">${chips}</div>
+          <p class="text-[10px] text-slate-400 leading-relaxed">승인하면 지금 시점의 자료로 엑셀 파일을 만들어 전달합니다. 승인 후 72시간이 지나면 파일이 자동 삭제되며, 열람 권한과는 별개로 처리됩니다.</p>
+          <div class="flex gap-1.5">
+            <button type="button" onclick="approveBackupRequest('${bodyEsc(r.id)}')" class="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md active:scale-95 transition">승인</button>
+            <button type="button" onclick="rejectBackupRequest('${bodyEsc(r.id)}')" class="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/50 text-xs font-semibold active:scale-95 transition">거절</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function buildBackupWorkbookBase64(ownerAdminId, playerIds) {
+      if (typeof XLSX === 'undefined') return { base64: '', included: [] };
+      const scope = normalizeOwnerId(getCurrentAdminScopeId());
+      let players = [];
+      let records = {};
+      if (normalizeOwnerId(ownerAdminId) === scope) {
+        players = playersData || [];
+        records = appData || {};
+      } else {
+        const adm = (realtimeAuthData && realtimeAuthData._admins) ? realtimeAuthData._admins[ownerAdminId] : null;
+        if (adm) {
+          players = Array.isArray(adm.players) ? adm.players : [];
+          records = adm.records || {};
+        }
+      }
+      const wb = XLSX.utils.book_new();
+      const used = new Set();
+      const included = [];
+      (playerIds || []).forEach(function (pid) {
+        const p = players.find(function (x) { return x && x.id === pid; });
+        if (!p) return;
+        const aoa = buildPlayerSheetAoa(p, Array.isArray(records[pid]) ? records[pid] : []);
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        const headers = xlsxHeadersForSport(p.sport);
+        ws['!cols'] = headers.map(function (h, i) { return { wch: i === 1 ? 34 : (i === 11 ? 18 : 11) }; });
+        XLSX.utils.book_append_sheet(wb, ws, xlsxSheetName(p.name, p.birth, used));
+        included.push(p.name);
+      });
+      if (included.length === 0) return { base64: '', included: [] };
+      return { base64: XLSX.write(wb, { bookType: 'xlsx', type: 'base64' }), included: included };
+    }
+
+    async function approveBackupRequest(reqId) {
+      const me = getCurrentAuthUser();
+      const list = getBackupRequests();
+      const r = list.find(function (x) { return x.id === reqId; });
+      if (!r) { appAlert('요청을 찾을 수 없습니다. 새로고침 후 다시 확인해 주세요.'); return; }
+      if (r.status !== 'pending') { appAlert('이미 처리된 요청입니다.'); return; }
+      const scope = normalizeOwnerId(getCurrentAdminScopeId());
+      if (normalizeOwnerId(r.ownerAdminId) !== scope) { appAlert('이 요청을 승인할 수 있는 관리자가 아닙니다.'); return; }
+      const built = buildBackupWorkbookBase64(r.ownerAdminId, r.playerIds || []);
+      if (!built.base64 || built.included.length === 0) {
+        appAlert('백업파일을 만들 선수 자료를 찾지 못했습니다. 요청을 승인하지 않았습니다.');
+        return;
+      }
+      const now = Date.now();
+      r.status = 'approved';
+      r.approvedAt = now;
+      r.expiresAt = now + BACKUP_REQUEST_TTL_MS;   // 승인 시점부터 정확히 72시간
+      r.approvedBy = me.name || me.email || '관리자';
+      r.includedNames = built.included;
+      r.fileBase64 = built.base64;
+      r.fileName = '선수기록_백업_' + (r.ownerAdminName || '관리자') + '_' + new Date(now).toISOString().slice(0, 10) + '.xlsx';
+      r.downloaded = false;
+      if (!writeBackupRequests(list)) {
+        appAlert('승인 파일을 저장하지 못했습니다. 브라우저 저장 공간을 확인한 뒤 다시 시도해 주세요.');
+        return;
+      }
+      renderApprovalList();
+      updatePendingBadge();
+      appAlert(`백업파일을 만들어 승인했습니다.\n대상 선수: ${built.included.join(', ')}\n${r.viewerName || '뷰어'} 뷰어가 72시간 이내 1회 다운로드할 수 있습니다.`);
+    }
+
+    function rejectBackupRequest(reqId) {
+      const list = getBackupRequests();
+      const r = list.find(function (x) { return x.id === reqId; });
+      if (!r || r.status !== 'pending') return;
+      const scope = normalizeOwnerId(getCurrentAdminScopeId());
+      if (normalizeOwnerId(r.ownerAdminId) !== scope) { appAlert('이 요청을 처리할 수 있는 관리자가 아닙니다.'); return; }
+      r.status = 'rejected';
+      r.respondedAt = Date.now();
+      writeBackupRequests(list);
+      renderApprovalList();
+      updatePendingBadge();
+      showSyncNotice('백업파일 요청을 거절했습니다.', 'info');
+    }
+
+    // ---------- 뷰어: 승인 알림·다운로드 ----------
+    function buildViewerBackupNoticesHtml() {
+      const me = getCurrentAuthUser();
+      if (!me || me.role !== 'viewer') return '';
+      const list = getBackupRequests().filter(function (r) { return isMyBackupRequest(r, me); })
+        .sort(function (a, b) { return (Number(b.requestedAt) || 0) - (Number(a.requestedAt) || 0); })
+        .slice(0, 10);
+      if (list.length === 0) return '';
+      return list.map(function (r) {
+        const names = (r.playerNames || []).join(', ');
+        const base = `
+          <div class="p-3.5 rounded-2xl ${r.status === 'approved' ? 'bg-emerald-950/40 border border-emerald-500/40' : 'bg-slate-900 border border-slate-700'} space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold ${r.status === 'approved' ? 'text-emerald-300' : 'text-slate-300'}"><span class="ui-ic" data-ic="download"></span> 백업파일 ${r.status === 'approved' ? '승인 완료' : (r.status === 'pending' ? '요청 접수' : (r.status === 'downloaded' ? '다운로드 완료' : (r.status === 'expired' ? '기간 만료' : '요청 거절')))}</span>
+              <span class="text-[10px] text-slate-400">${formatYmd(r.requestedAt)}</span>
+            </div>
+            <div class="text-xs text-slate-200 leading-relaxed space-y-0.5">
+              <p><strong class="text-white">${bodyEsc(r.ownerAdminName || '관리자')}</strong> 관리자 · 선수 ${(r.playerNames || []).length}명</p>
+              <p class="text-[11px] text-slate-400 break-words">${bodyEsc(names)}</p>
+            </div>`;
+        if (r.status === 'pending') {
+          return base + '<p class="text-[11px] text-amber-300/90 leading-relaxed">관리자 승인을 기다리는 중입니다.</p></div>';
+        }
+        if (r.status === 'approved') {
+          return base + `
+            <p class="text-[11px] text-emerald-200/90 leading-relaxed">다운로드 가능 기한: ${new Date(Number(r.expiresAt)).toLocaleString('ko-KR')}까지</p>
+            <p class="text-[10px] text-slate-400 leading-relaxed">${BACKUP_NOTICE_TEXT}</p>
+            <button type="button" onclick="downloadApprovedBackup('${bodyEsc(r.id)}')" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1"><span class="ui-ic" data-ic="download"></span> 백업파일 다운로드</button>
+          </div>`;
+        }
+        if (r.status === 'downloaded') {
+          return base + '<p class="text-[11px] text-slate-400 leading-relaxed">다운로드가 완료되어 백업파일과 다운로드 권한이 삭제되었습니다.</p></div>';
+        }
+        if (r.status === 'expired') {
+          return base + '<p class="text-[11px] text-slate-400 leading-relaxed">승인 후 72시간이 지나 파일과 다운로드 권한이 삭제되었습니다. 다시 받으려면 재신청해야 합니다.</p></div>';
+        }
+        return base + '<p class="text-[11px] text-slate-400 leading-relaxed">관리자가 요청을 거절했습니다. 필요하면 다시 요청해 주세요.</p></div>';
+      }).join('');
+    }
+
+    function downloadApprovedBackup(reqId) {
+      const me = getCurrentAuthUser();
+      const list = getBackupRequests();
+      const r = list.find(function (x) { return x.id === reqId; });
+      if (!r) { appAlert('승인된 백업파일을 찾을 수 없습니다.'); return; }
+      if (!isMyBackupRequest(r, me)) { appAlert('이 파일을 받을 수 있는 뷰어가 아닙니다.'); return; }
+      if (r.status === 'expired' || (r.status === 'approved' && Number(r.expiresAt) && Date.now() >= Number(r.expiresAt))) {
+        r.status = 'expired';
+        delete r.fileBase64;
+        writeBackupRequests(list);
+        renderApprovalList();
+        updatePendingBadge();
+        appAlert('승인 후 72시간이 지나 다운로드가 만료되었습니다. 다시 받으려면 재신청해 주세요.');
+        return;
+      }
+      if (r.status === 'downloaded') { appAlert('이미 다운로드한 요청입니다. 다시 받으려면 재신청해 주세요.'); return; }
+      if (r.status !== 'approved' || !r.fileBase64) { appAlert('다운로드할 수 있는 승인 파일이 없습니다.'); return; }
+      try {
+        const bin = atob(r.fileBase64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        downloadBlobFile(blob, r.fileName || '선수기록_백업.xlsx');
+      } catch (e) {
+        appAlert('백업파일을 만드는 중 문제가 생겼습니다: ' + (e && e.message ? e.message : e));
+        return;
+      }
+      // 1회 다운로드: 파일과 다운로드 권한을 바로 삭제한다.
+      r.status = 'downloaded';
+      r.downloadedAt = Date.now();
+      delete r.fileBase64;
+      writeBackupRequests(list);
+      renderApprovalList();
+      updatePendingBadge();
+      appAlert('백업파일을 다운로드했습니다.\n다운로드가 끝나 파일과 다운로드 권한이 삭제되었습니다. 다시 받으려면 재신청해야 합니다.');
+    }
+
     // ---------- 특별 뷰어 등록·해제(관리자) ----------
     function getCurrentAdminDisplayName() {
       const me = (typeof getCurrentAuthUser === 'function') ? getCurrentAuthUser() : null;
@@ -13005,8 +13797,11 @@
 
       if (isSpecialViewerRecord(item)) {
         const ok = await appConfirm(
-          `${viewerName}님의 특별 뷰어 권한을 해제하시겠습니까?\n\n기존에 개별 승인된 선수의 열람 권한은 유지됩니다.`,
-          { title: '특별 뷰어 해제', okText: '해제', danger: true }
+          `<div class="space-y-1.5">
+            <div class="text-[13px] font-bold text-white leading-snug">${bodyEsc(viewerName)}님의 특별 뷰어 권한을 해제하시겠습니까?</div>
+            <div class="text-xs text-slate-300 leading-relaxed">기존에 개별 승인된 선수의 열람 권한은 유지됩니다.</div>
+          </div>`,
+          { title: '특별 뷰어 해제', okText: '해제', danger: true, html: true }
         );
         if (!ok) return;
         const nextData = Object.assign({}, realtimeAuthData);
@@ -13029,8 +13824,12 @@
       }
 
       const ok = await appConfirm(
-        `${viewerName}님을 특별 뷰어로 등록하시겠습니까?\n\n${viewerName}님은 ${adminName}님의 모든 선수 기록을 별도의 승인 없이 볼 수 있습니다.\n\n· 프로필 잠금 선수는 제외`,
-        { title: '특별 뷰어 등록', okText: '등록' }
+        `<div class="space-y-1.5">
+          <div class="text-[13px] font-bold text-white leading-snug">${bodyEsc(viewerName)}님을 특별 뷰어로 등록하시겠습니까?</div>
+          <div class="text-xs text-slate-300 leading-relaxed">${bodyEsc(viewerName)}님은 ${bodyEsc(adminName)}님의 모든 선수 기록을 별도의 승인 없이 볼 수 있습니다.</div>
+          <div class="text-[11px] text-slate-500 leading-relaxed">· 프로필 잠금 선수는 제외</div>
+        </div>`,
+        { title: '특별 뷰어 등록', okText: '등록', html: true }
       );
       if (!ok) return;
       const nextData = Object.assign({}, realtimeAuthData);
@@ -13489,6 +14288,65 @@
 
 
   <!-- 특별 뷰어: 선수 조회 명단(읽기 전용) -->
+  <!-- 뷰어: 백업파일 요청 (열람 권한이 있는 선수만, 관리자별로 분리 요청) -->
+  <div id="modal-backup-request" class="modal-overlay fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-emerald-500/30 rounded-3xl w-full max-w-md modal-panel flex flex-col overflow-hidden shadow-2xl">
+      <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-emerald-300 shrink-0"><span class="ui-ic" data-ic="download"></span></span>
+          <h3 class="text-base font-bold text-white truncate">선수 기록 백업파일 요청</h3>
+        </div>
+        <button type="button" onclick="closeBackupRequestModal()" class="text-slate-400 hover:text-white p-1 rounded-lg" aria-label="닫기">
+          <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-fixed px-4 pt-3 pb-3 border-b border-slate-800 space-y-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] text-slate-400">요청 가능 선수 <b id="bkr-count" class="text-slate-200">0</b>명</span>
+          <span id="bkr-selected-count" class="text-[10px] px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold whitespace-nowrap">선택 0명</span>
+        </div>
+        <div class="relative">
+          <input type="text" id="bkr-search" oninput="renderBackupRequestList()" placeholder="선수 이름 또는 종목 검색..." autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+          <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <div>
+          <select id="bkr-admin-filter" onchange="renderBackupRequestList()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-2 text-[11px] text-white focus:outline-none focus:border-emerald-500">
+            <option value="ALL">전체 관리자</option>
+          </select>
+        </div>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-slate-500 text-[10px] whitespace-nowrap">부별:</span>
+            <button type="button" onclick="setBackupRequestLevel('all')" id="bkr-level-all" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
+            <button type="button" onclick="setBackupRequestLevel('중등부')" id="bkr-level-middle" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">중등부</button>
+            <button type="button" onclick="setBackupRequestLevel('고등부')" id="bkr-level-high" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">고등부</button>
+            <button type="button" onclick="setBackupRequestLevel('대학/실업')" id="bkr-level-adult" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">대학/실업</button>
+          </div>
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-slate-500 text-[10px] whitespace-nowrap">성별:</span>
+            <button type="button" onclick="setBackupRequestGender('all')" id="bkr-gender-all" class="px-2 py-1 rounded-lg bg-blue-600 text-white font-bold whitespace-nowrap">전체</button>
+            <button type="button" onclick="setBackupRequestGender('남')" id="bkr-gender-m" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">남</button>
+            <button type="button" onclick="setBackupRequestGender('여')" id="bkr-gender-f" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">여</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-scroll p-4" data-scroll-key="backup-request">
+        <div id="bkr-list" class="space-y-2"></div>
+      </div>
+
+      <div class="modal-fixed p-4 border-t border-slate-800 space-y-2">
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick="backupRequestSelectAll(true)" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-bold active:scale-95 transition">전체 선택</button>
+          <button type="button" onclick="backupRequestSelectAll(false)" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-bold active:scale-95 transition">전체 해제</button>
+        </div>
+        <button type="button" id="bkr-request-btn" onclick="submitBackupRequest()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition active:scale-95 disabled:opacity-40">선택한 선수로 요청</button>
+        <p class="text-[10px] text-slate-500 leading-relaxed">관리자 승인 뒤 72시간 이내 1회 다운로드할 수 있습니다. 여러 관리자의 선수를 골라도 요청은 관리자별로 따로 전달됩니다.</p>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-viewer-roster" class="modal-overlay fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-amber-500/30 rounded-3xl w-full max-w-md modal-panel flex flex-col overflow-hidden shadow-2xl">
       <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
