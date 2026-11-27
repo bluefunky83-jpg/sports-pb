@@ -513,11 +513,24 @@ window.run_scale = function () {
   measure('notif', '#modal-viewer-approvals .modal-panel', w.openViewerApprovalModal, w.closeViewerApprovalModal);
   return res;
 };
+function isSuperUi() {
+  const b = D().getElementById('btn-super-admin-top');
+  return !!b && !b.classList.contains('hidden');
+}
+function loginAs(email) {
+  const w = W();
+  w.alert = function () {};
+  w.fillStagingTestAccount(email, 'admin');
+  w.handleEmailPasswordLogin(null);
+  return waitMs(900);
+}
 window.run_scale_super = function () {
   const w = W();
   const d = D();
   const VH = w.innerHeight, VW = w.innerWidth;
-  return w.openSuperAdminModal().then(function () {
+  return Promise.resolve(isSuperUi() ? null : loginAs('super@test.local')).then(function () { return waitMs(400); }).then(function () {
+    return w.openSuperAdminModal();
+  }).then(function () {
     const panel = d.querySelector('#modal-super-admin-center .modal-panel');
     const r = panel.getBoundingClientRect();
     const closeBtn = d.querySelector('#modal-super-admin-center .modal-fixed:last-child button').getBoundingClientRect();
@@ -531,6 +544,32 @@ window.run_scale_super = function () {
       hScroll: d.documentElement.scrollWidth > d.documentElement.clientWidth + 1
     };
     w.closeSuperAdminModal();
+    return res;
+  });
+};
+
+
+/* ---------- run: 뷰어 특별 초대 문구 ---------- */
+window.run_viewer_offer = function () {
+  const w = W();
+  const d = D();
+  return loginAs('parent@test.local').then(function () {
+    // 알림 창 열기
+    w.openViewerApprovalModal();
+    return waitMs(600);
+  }).then(function () {
+    const pane = d.getElementById('approval-list-container');
+    const cards = Array.from(pane.querySelectorAll('div.rounded-2xl, [class*="rounded-2xl"]'));
+    const offer = Array.from(pane.querySelectorAll('p')).map(function (p) { return p.textContent.trim(); });
+    const res = {
+      offerParagraphs: offer,
+      hasOldPhrase: (pane.textContent || '').indexOf('관리자가 특별 뷰어로 지정하고 싶어') >= 0,
+      hasExcelPhrase: (pane.textContent || '').indexOf('엑셀 다운로드만') >= 0,
+      hasAdminHonorific: (pane.textContent || '').indexOf('지혜 님 관리자') >= 0,
+      buttons: Array.from(pane.querySelectorAll('button')).map(function (b) { return b.textContent.trim(); }),
+      roles: d.querySelectorAll('#gate-login-screen:not(.hidden)').length
+    };
+    w.closeViewerApprovalModal();
     return res;
   });
 };
