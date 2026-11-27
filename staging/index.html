@@ -142,6 +142,18 @@
     .ic-run-name { font-size: 18px; vertical-align: baseline; align-self: flex-end; }
     /* 관리자 센터: 선수 50명 기준에서도 가로로 넘치지 않도록 하는 목록 상자 */
     .player-pick-list { max-height: 15rem; overflow-y: auto; overscroll-behavior: contain; }
+    /* 관리자 센터 카드 아이콘: 배경 상자 크기에 맞춰 안쪽 선 아이콘도 함께 키운다(원본 비율 유지). */
+    .center-card-icon .ui-ic { width: 100%; height: 100%; }
+    .center-card-icon .ui-ic svg { width: 100%; height: 100%; }
+    /* 관리자 센터 아코디언: 두 영역을 따로 펼치고 접는다. 목록이 길면 목록 안에서만 스크롤한다. */
+    .center-acc-body { display: none; }
+    .center-acc-body.is-open { display: block; }
+    .center-acc-chevron { transition: transform 200ms ease; }
+    .center-acc-chevron.is-open { transform: rotate(180deg); }
+    .center-acc-list { max-height: calc(var(--app-vh, 100dvh) * 0.32); overflow-y: auto; overscroll-behavior: contain; }
+    .center-acc-list.tall { max-height: calc(var(--app-vh, 100dvh) * 0.42); }
+    /* 삭제된 선수 보관함 목록도 펼쳤을 때 목록 안에서만 스크롤한다. */
+    #deleted-players-list { max-height: calc(var(--app-vh, 100dvh) * 0.3); overflow-y: auto; overscroll-behavior: contain; }
   </style>
   <script>
     /* 화면 크기(배율): 첫 화면이 그려지기 전에 적용해 깜빡임을 막는다. 설정 모달과 같은 규칙을 쓴다. */
@@ -345,7 +357,7 @@
       </div>
 
       <div class="pt-4 p-4 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 text-xs text-center leading-relaxed space-y-3">
-        <p>선수 관리자(지혜 님)에게 열람 승인 요청이 전송되었습니다.<br>관리자가 승인하면 자동으로 화면이 열립니다.</p>
+        <p>선수 관리자에게 열람 승인 요청을 보냈습니다.<br>관리자가 승인하면 자동으로 화면이 열립니다.</p>
         <button type="button" onclick="checkViewerApprovalManual()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-1.5">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           <span>승인 상태 확인 (새로고침)</span>
@@ -384,7 +396,7 @@
         </div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
-        <!-- Admin Center Button (선수 관리자용 - 지혜 님 & 타 관리자: 세로 32px 칼각) -->
+        <!-- 관리자 센터 버튼(선수 관리자용, 세로 32px) -->
         <button type="button" id="btn-admin-profile-top" onclick="openAdminProfileModal()" class="h-8 px-2.5 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold text-xs flex items-center justify-center gap-1 transition active:scale-95 hidden whitespace-nowrap shrink-0" title="선수기록 관리자 센터">
           <span class="whitespace-nowrap"><span class="ui-ic" data-ic="shield" style="font-size:14px"></span> 관리자</span>
         </button>
@@ -395,8 +407,8 @@
           <span id="badge-pending-count" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-slate-900 shadow-sm hidden"></span>
         </button>
 
-        <!-- Super Admin Icon Button (지혜 님 전용 - 왕관 아이콘: 세로 32px 칼각) -->
-        <button type="button" id="btn-super-admin-top" onclick="openSuperAdminModal()" class="h-8 w-8 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 flex items-center justify-center transition active:scale-95 hidden" title="최고관리자 관제실">
+        <!-- 최고관리자 센터 버튼(최고관리자 전용, 세로 32px) -->
+        <button type="button" id="btn-super-admin-top" onclick="openSuperAdminModal()" class="h-8 w-8 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 flex items-center justify-center transition active:scale-95 hidden" title="최고관리자 센터">
           <span class="text-xs leading-none"><span class="ui-ic" data-ic="crown" style="font-size:14px"></span></span>
         </button>
 
@@ -696,12 +708,8 @@
         </button>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4 space-y-3" id="approval-list-container">
+      <div class="flex-1 overflow-y-auto p-4 space-y-3" id="approval-list-container" data-scroll-key="notif-list">
         <!-- Rendered dynamically -->
-      </div>
-      
-      <div class="p-3 border-t border-slate-800 bg-slate-900 text-center text-[10px] text-slate-500">
-        승인 즉시 상대방 폰의 깡통 화면이 풀리고 지정된 기록이 열립니다.
       </div>
       </div>
 
@@ -775,7 +783,7 @@
         </div>
         </div>
 
-        <div class="modal-scroll px-5 pb-5 pt-4 space-y-4 text-xs">
+        <div class="modal-scroll px-5 pb-5 pt-4 space-y-4 text-xs" data-scroll-key="record-form">
 
         <!-- Round / Stage (Smart Switched) -->
         <div>
@@ -903,32 +911,27 @@
   <!-- Modal 2: Player Management Modal (User's Hand-drawn Layout) -->
   <div id="modal-players" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md modal-panel flex flex-col overflow-hidden shadow-2xl">
-      <!-- Modal Header (고정) -->
+      <!-- 상단 고정: 제목 · 닫기 -->
       <div class="modal-fixed px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="text-blue-400 text-lg"><span class="ui-ic" data-ic="users"></span></span>
           <h3 class="text-base font-bold text-white">선수 관리 명단</h3>
         </div>
-        <button type="button" onclick="closePlayerManageModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+        <button type="button" onclick="closePlayerManageModal()" class="text-slate-400 hover:text-white p-1 rounded-lg" aria-label="닫기">
           <svg width="20" height="20" class="w-5 h-5" style="max-width:24px;max-height:24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <!-- 가운데: 검색창·필터·선수 명단·삭제된 선수 아코디언까지 모두 스크롤 -->
-      <div class="modal-scroll p-4 space-y-3">
-        <!-- 선수 일괄 삭제: 선택 모드 진입 버튼(목록 상단) -->
+      <!-- 상단 고정: 등록 선수 수 · 일괄 삭제 · 검색 · 부별/성별 필터 -->
+      <div class="modal-fixed px-4 pt-3 pb-3 border-b border-slate-800 space-y-2.5">
         <div class="flex items-center justify-between gap-2">
           <span class="text-[11px] text-slate-400">등록 선수 <b id="player-list-count" class="text-slate-200">0</b>명</span>
           <button type="button" id="btn-player-bulk-enter" onclick="enterPlayerBulkMode()" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-rose-500/60 text-[11px] font-bold text-slate-300 hover:text-rose-300 whitespace-nowrap active:scale-95 transition">선수 일괄 삭제</button>
         </div>
-        <!-- Filters Section -->
-        <div class="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2.5">
-        <!-- Search bar -->
         <div class="relative">
           <input type="text" id="player-filter-search" oninput="renderPlayerCards()" placeholder="선수 이름 또는 종목 검색..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
           <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
-
         <!-- Filter Chips: School Level & Gender (좁은 화면에서는 부별·성별 묶음 단위로 자연스럽게 즐을 바꿈) -->
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
           <div class="flex items-center gap-1.5 min-w-0">
@@ -947,26 +950,25 @@
         </div>
       </div>
 
-      <!-- Player Cards List -->
-      <div class="space-y-3" id="player-cards-container">
-        <!-- Rendered dynamically -->
+      <!-- 중간: 등록 선수 목록만 스크롤 -->
+      <div class="modal-scroll p-4" data-scroll-key="player-manage">
+        <div class="space-y-3" id="player-cards-container">
+          <!-- Rendered dynamically -->
+        </div>
       </div>
 
-      <!-- 삭제된 선수 복구 아코디언 (복구 가능한 선수가 있을 때만 표시 · 새 선수 등록하기 버튼 바로 위) -->
-      <div id="deleted-players-accordion" class="hidden rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden">
-        <button type="button" id="deleted-players-accordion-head" onclick="toggleDeletedPlayersAccordion()" class="w-full flex items-center justify-between gap-2 px-3.5 py-3 text-left transition active:scale-[0.99]">
-          <span class="flex items-center gap-2 min-w-0">
-            <span class="text-slate-400 shrink-0"><span class="ui-ic" data-ic="hourglass"></span></span>
-            <span id="deleted-players-accordion-title" class="text-xs font-bold text-slate-200 truncate">삭제된 선수(0명)</span>
-          </span>
-          <span id="deleted-players-accordion-chevron" class="shrink-0 text-slate-400 text-xs">▸</span>
-        </button>
-        <div id="deleted-players-list" class="hidden px-3.5 pb-3 space-y-2"></div>
-      </div>
-      </div>
-
-      <!-- 하단(고정): 기본은 [새 선수 등록하기], 일괄 삭제 모드에서는 [전체 선택][취소][선택 N명 삭제] -->
+      <!-- 하단 고정: 삭제된 선수 아코디언(복구할 선수가 있을 때만) + 새 선수 등록하기 -->
       <div class="modal-fixed p-4 border-t border-slate-800 bg-slate-900 space-y-2">
+        <div id="deleted-players-accordion" class="hidden rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden">
+          <button type="button" id="deleted-players-accordion-head" onclick="toggleDeletedPlayersAccordion()" class="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-left transition active:scale-[0.99]">
+            <span class="flex items-center gap-2 min-w-0">
+              <span class="text-slate-400 shrink-0"><span class="ui-ic" data-ic="hourglass"></span></span>
+              <span id="deleted-players-accordion-title" class="text-xs font-bold text-slate-200 truncate">삭제된 선수(0명)</span>
+            </span>
+            <span id="deleted-players-accordion-chevron" class="shrink-0 text-slate-400 text-xs">▸</span>
+          </button>
+          <div id="deleted-players-list" class="hidden px-3.5 pb-3 space-y-2" data-scroll-key="deleted-players"></div>
+        </div>
         <div id="player-bulk-bar" class="hidden items-center gap-1.5">
           <button type="button" id="btn-player-bulk-all" onclick="togglePlayerBulkAll()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-200 text-xs font-bold whitespace-nowrap active:scale-95 transition">전체 선택</button>
           <button type="button" onclick="exitPlayerBulkMode()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 text-xs font-bold whitespace-nowrap active:scale-95 transition">취소</button>
@@ -998,7 +1000,7 @@
           <input type="text" id="form-player-name" required placeholder="선수 이름 입력" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
         </div>
         <!-- 가운데: 성별·생년월일·종목·출전 세부 종목·프로필 잠금 (내용이 길면 여기만 스크롤) -->
-        <div class="modal-scroll px-5 py-4 space-y-3.5">
+        <div class="modal-scroll px-5 py-4 space-y-3.5" data-scroll-key="player-form">
 
         <div class="grid grid-cols-2 gap-2">
           <div class="min-w-0">
@@ -1133,7 +1135,7 @@
             <div>다음 백업 권장: 즉시 백업 필요</div>
           </div>
           <div class="flex gap-1.5">
-            <button type="button" onclick="requestWeeklyBackupPush()" class="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[10px] font-semibold"><span class="ui-ic" data-ic="bell"></span> 주간 알림 허용/테스트</button>
+            <button type="button" onclick="requestWeeklyBackupPush()" class="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[10px] font-semibold"><span class="ui-ic" data-ic="bell"></span> 주간 알림 허용</button>
             <button type="button" onclick="openDataNoticeModal(true)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px]">보관 안내</button>
           </div>
         </div>
@@ -1215,46 +1217,46 @@
     </div>
   </div>
 
-  <!-- Modal 5: Super Admin Center Modal (지혜 님 최고관리자 전용) -->
+  <!-- 최고관리자 센터 -->
   <div id="modal-super-admin-center" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md modal-panel overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div class="bg-slate-900 border border-purple-500/40 rounded-3xl w-full max-w-md modal-panel overflow-hidden flex flex-col shadow-2xl p-5 space-y-3">
+      <!-- 상단 고정: 제목 · 닫기 -->
+      <div class="modal-fixed flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2.5 min-w-0">
           <span class="center-head-icon text-slate-100" id="sa-head-icon"><span class="ui-ic" data-ic="crown"></span></span>
           <div class="min-w-0" id="sa-head-text">
             <h3 class="text-base font-extrabold text-white flex items-center gap-1.5 flex-wrap leading-tight">
               최고관리자 센터
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">지혜 님</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30"> 최고관리자 </span>
             </h3>
-            <p class="text-[11px] text-slate-400 leading-tight">전체 사용자 및 서비스 통합 관제</p>
+            <p class="text-[11px] text-slate-400 leading-tight">전체 관리자·선수·뷰어 현황</p>
           </div>
         </div>
-        <button type="button" onclick="closeSuperAdminModal()" class="text-slate-400 hover:text-white p-1">
+        <button type="button" onclick="closeSuperAdminModal()" class="text-slate-400 hover:text-white p-1" aria-label="닫기">
           <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <div class="overflow-y-auto space-y-4 pr-1 text-xs no-scrollbar">
-        <!-- Stats Summary Grid (지혜 님 지침: 카테고리별 서비스 통계) -->
+      <!-- 상단 고정: 3대 현황 · 공지 작성 및 관리 · 최고관리자 본인 정보 카드 -->
+      <div class="modal-fixed space-y-3">
         <div class="grid grid-cols-3 gap-2">
           <div class="bg-slate-950 p-3 rounded-2xl border border-purple-500/30 text-center">
-            <span class="text-slate-400 text-[10px]">총 관리자</span>
-            <div class="text-lg font-black text-purple-400 mt-0.5" id="sa-stat-admins">1명</div>
-            <span class="text-[9px] text-slate-500">지혜 님 외</span>
+            <span class="text-slate-400 text-[10px]">일반 관리자</span>
+            <div class="text-lg font-black text-purple-400 mt-0.5" id="sa-stat-admins">0명</div>
+            <span class="text-[9px] text-slate-500">최고관리자 제외</span>
           </div>
           <div class="bg-slate-950 p-3 rounded-2xl border border-blue-500/30 text-center">
             <span class="text-slate-400 text-[10px]">등록 선수</span>
-            <div class="text-lg font-black text-blue-400 mt-0.5" id="sa-stat-players">2명</div>
-            <span class="text-[9px] text-slate-500">기록 <strong id="sa-stat-records-badge" class="text-emerald-400">84건</strong></span>
+            <div class="text-lg font-black text-blue-400 mt-0.5" id="sa-stat-players">0명</div>
+            <span class="text-[9px] text-slate-500">기록 <strong id="sa-stat-records-badge" class="text-emerald-400">0건</strong></span>
           </div>
           <div class="bg-slate-950 p-3 rounded-2xl border border-amber-500/30 text-center">
             <span class="text-slate-400 text-[10px]">승인 뷰어</span>
-            <div class="text-lg font-black text-amber-400 mt-0.5" id="sa-stat-viewers">1명</div>
+            <div class="text-lg font-black text-amber-400 mt-0.5" id="sa-stat-viewers">0명</div>
             <span class="text-[9px] text-slate-500">열람 승인됨</span>
           </div>
         </div>
 
-        <!-- 공지 작성 및 관리 (최고관리자 전용) -->
         <button type="button" onclick="openNoticeAdminModal()" class="w-full p-3 rounded-2xl bg-slate-950 border border-purple-500/30 hover:border-purple-400/60 flex items-center justify-between gap-2 text-left transition active:scale-[0.99]">
           <span class="flex items-center gap-2.5 min-w-0">
             <span class="center-card-icon rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30" id="sa-notice-icon"><span class="ui-ic" data-ic="megaphone"></span></span>
@@ -1266,37 +1268,28 @@
           <span class="text-slate-500 shrink-0"><span class="ui-ic" data-ic="chevronRight"></span></span>
         </button>
 
-        <!-- User Hierarchy Tree (지혜 님 지침: 등록된 관리자 > 관리자별 등록선수 & 경기기록 사용내역 > 뷰어) -->
-        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
-              <span><span class="ui-ic" data-ic="users"></span></span>
-              <span>등록 관리자별 선수 & 뷰어 현황</span>
-            </span>
-          </div>
+        <!-- 최고관리자 본인 정보 카드: 등록 관리자 카드와 같은 형식(이름 / 이메일 / 선수·기록 / 소속 뷰어) -->
+        <div id="sa-super-card" class="rounded-2xl bg-slate-950 border border-purple-500/30 px-3.5 py-3 space-y-0.5"></div>
+      </div>
 
-          <div id="sa-viewers-tree-container" class="space-y-2 text-xs">
-            <!-- Dynamically rendered clean cards -->
-          </div>
-        </div>
+      <!-- 중간: 등록 관리자별 선수 & 뷰어 현황 목록만 스크롤 -->
+      <div class="modal-fixed flex items-center justify-between px-1 text-[11px] font-bold text-slate-300">
+        <span class="flex items-center gap-1.5"><span class="ui-ic" data-ic="users"></span> 등록 관리자별 선수 &amp; 뷰어 현황</span>
+        <span class="text-blue-300" id="sa-admin-count">0명</span>
+      </div>
+      <div id="sa-viewers-tree-container" class="modal-scroll space-y-2 text-xs no-scrollbar" data-scroll-key="super-admin"></div>
 
-
-        <!-- System Reset / Logout -->
-        <div class="pt-2 flex gap-2">
-          <button type="button" onclick="handleLogout()" class="flex-1 py-2.5 rounded-xl border border-rose-500/30 bg-rose-950/20 text-rose-300 font-bold hover:bg-rose-900/30">
-            로그아웃
-          </button>
-          <button type="button" onclick="closeSuperAdminModal()" class="flex-1 py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-500">
-            닫기
-          </button>
-        </div>
+      <!-- 하단 고정: 닫기 -->
+      <div class="modal-fixed pt-1">
+        <button type="button" onclick="closeSuperAdminModal()" class="w-full py-2.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-500 transition active:scale-95">닫기</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal 6: Admin Profile & Management Center (일반 관리자용) -->
+  <!-- 선수기록 관리자 센터(일반 관리자용) -->
   <div id="modal-admin-profile" class="modal-overlay fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-indigo-500/40 rounded-3xl w-full max-w-sm modal-panel overflow-hidden flex flex-col shadow-2xl p-5 space-y-4">
+    <div class="bg-slate-900 border border-indigo-500/40 rounded-3xl w-full max-w-sm modal-panel overflow-hidden flex flex-col shadow-2xl p-5 space-y-3">
+      <!-- 상단 고정: 제목 · 닫기 -->
       <div class="modal-fixed flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2.5 min-w-0">
           <span class="center-head-icon text-slate-100" id="admin-center-head-icon"><span class="ui-ic" data-ic="shield"></span></span>
@@ -1305,29 +1298,49 @@
             <p class="text-[11px] text-slate-400 leading-tight" id="admin-center-email-display">관리자 모드</p>
           </div>
         </div>
-        <button type="button" onclick="closeAdminProfileModal()" class="text-slate-400 hover:text-white p-1">
+        <button type="button" onclick="closeAdminProfileModal()" class="text-slate-400 hover:text-white p-1" aria-label="닫기">
           <svg width="20" height="20" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <div class="modal-scroll space-y-3 text-xs pr-0.5">
-        <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-          <div class="text-[11px] font-bold text-indigo-300">내 관리 선수</div>
-          <div id="admin-my-players-list" class="space-y-1.5">
-            <!-- Render my players -->
-          </div>
-          <button type="button" onclick="closeAdminProfileModal(); openAddEditPlayerModal();" class="w-full py-2 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold transition active:scale-95 text-center block mt-2">
-            + 새 선수 추가 등록
+      <!-- 가운데: 내 관리 선수 · 승인된 뷰어 관리 두 영역을 따로 펼치는 아코디언 -->
+      <div class="modal-scroll space-y-3 text-xs pr-0.5" data-scroll-key="admin-center">
+
+        <div class="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden">
+          <button type="button" id="admin-my-players-head" onclick="toggleAdminCenterAccordion('players')" class="w-full flex items-center justify-between gap-2 px-3.5 py-3 text-left transition active:scale-[0.99]" aria-expanded="false">
+            <span class="flex items-center gap-2 min-w-0">
+              <span class="text-indigo-300 shrink-0"><span class="ui-ic" data-ic="users"></span></span>
+              <span id="admin-my-players-title" class="text-[11px] font-bold text-indigo-300 truncate">내 관리 선수 (0명)</span>
+            </span>
+            <span id="admin-my-players-chevron" class="center-acc-chevron text-slate-400 shrink-0"><span class="ui-ic" data-ic="chevronDown"></span></span>
           </button>
+          <div id="admin-my-players-body" class="center-acc-body border-t border-slate-800">
+            <div class="p-3 space-y-2">
+              <input type="text" id="admin-my-players-search" oninput="renderAdminMyPlayers()" placeholder="선수 이름·종목 검색" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-2 text-[11px] text-white focus:outline-none focus:border-indigo-500">
+              <div id="admin-my-players-list" class="center-acc-list space-y-1.5 pr-0.5" data-scroll-key="admin-my-players"></div>
+              <button type="button" onclick="openPlayerFormFromAdminCenter()" class="w-full py-2 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 font-bold transition active:scale-95 text-center block">+ 새 선수 추가 등록</button>
+            </div>
+          </div>
         </div>
 
-        <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold text-emerald-300"><span class="ui-ic" data-ic="users"></span> 승인된 뷰어 관리</span>
-            <button type="button" onclick="openAdminProfileModal()" class="text-[10px] text-slate-400 hover:text-white">↻ 새로고침</button>
-          </div>
-          <div id="admin-approved-viewers-list" class="space-y-2 pr-0.5">
-            <!-- Render approved viewers -->
+        <div class="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden">
+          <button type="button" id="admin-approved-viewers-head" onclick="toggleAdminCenterAccordion('viewers')" class="w-full flex items-center justify-between gap-2 px-3.5 py-3 text-left transition active:scale-[0.99]" aria-expanded="false">
+            <span class="flex items-center gap-2 min-w-0">
+              <span class="text-emerald-300 shrink-0"><span class="ui-ic" data-ic="eye"></span></span>
+              <span id="admin-approved-viewers-title" class="text-[11px] font-bold text-emerald-300 truncate">승인된 뷰어 관리 (0명)</span>
+            </span>
+            <span id="admin-approved-viewers-chevron" class="center-acc-chevron text-slate-400 shrink-0"><span class="ui-ic" data-ic="chevronDown"></span></span>
+          </button>
+          <div id="admin-approved-viewers-body" class="center-acc-body border-t border-slate-800">
+            <div class="p-3 space-y-2">
+              <div class="flex items-center gap-1.5">
+                <input type="text" id="admin-approved-viewers-search" oninput="filterAdminApprovedViewers(this.value)" placeholder="뷰어 이름·이메일 검색" autocomplete="off" class="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-2 text-[11px] text-white focus:outline-none focus:border-emerald-500">
+                <button type="button" onclick="refreshAdminApprovedViewers()" class="px-2.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-[10px] font-bold text-slate-300 whitespace-nowrap active:scale-95 transition">새로고침</button>
+              </div>
+              <div id="admin-approved-viewers-list" class="center-acc-list tall space-y-2 pr-0.5" data-scroll-key="admin-viewers">
+                <!-- Render approved viewers -->
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1338,11 +1351,11 @@
             <span class="text-slate-500"><span class="ui-ic" data-ic="chevronRight"></span></span>
           </button>
         </div>
+      </div>
 
-        <div class="pt-2 flex gap-2">
-          <button type="button" onclick="handleLogout()" class="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700">로그아웃</button>
-          <button type="button" onclick="closeAdminProfileModal()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500">닫기</button>
-        </div>
+      <!-- 하단 고정: 닫기 -->
+      <div class="modal-fixed pt-1">
+        <button type="button" onclick="closeAdminProfileModal()" class="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition active:scale-95">닫기</button>
       </div>
     </div>
   </div>
@@ -2178,6 +2191,9 @@
     function switchPlayer(playerId) {
       currentPlayer = playerId;
       currentEvent = 'ALL_PB';
+      // 기록 등록창이 이전 선수의 종목 선택값을 그대로 들고 있지 않게 함께 비운다.
+      const recordEventSelect = document.getElementById('form-record-event');
+      if (recordEventSelect) recordEventSelect.innerHTML = '';
       // 선수를 바꾸면 연간 종합노트도 새 선수의 현재 연도부터 보여 준다.
       annualYear = null;
       // 선수 변경 시 이전 선수 필터 초기화 (유신  별하 영향 방지)
@@ -2450,6 +2466,8 @@
       allTabs.forEach(tab => {
         const btn = document.createElement('button');
         const isActive = tab.id === currentEvent;
+        btn.type = 'button';
+        btn.setAttribute('data-tab-id', tab.id);
         btn.onclick = () => selectEventTab(tab.id);
 
         btn.className = `px-3.5 py-2 rounded-xl text-xs whitespace-nowrap font-bold transition flex-shrink-0 ` +
@@ -2458,6 +2476,23 @@
         container.appendChild(btn);
       });
       initEventTabsDragScroll();
+      scrollEventTabIntoView();
+    }
+
+    // 선택된 종목 탭이 탭 바 밖에 있으면 보이는 자리까지 가로로 이동한다(스와이프·탭 공통).
+    function scrollEventTabIntoView() {
+      const container = document.getElementById('event-tabs-container');
+      if (!container) return;
+      const btns = Array.prototype.slice.call(container.children);
+      const btn = btns.find(b => b && b.getAttribute && b.getAttribute('data-tab-id') === String(currentEvent));
+      if (!btn) return;
+      // offsetLeft는 확대(zoom) 배율과 무관한 배치 좌표다(화면 좌표를 쓰면 배율에서 어긋난다).
+      const left = btn.offsetLeft - container.offsetLeft;
+      const right = left + btn.offsetWidth;
+      const viewLeft = container.scrollLeft;
+      const viewRight = viewLeft + container.clientWidth;
+      if (left < viewLeft + 8) container.scrollLeft = Math.max(0, left - 12);
+      else if (right > viewRight - 8) container.scrollLeft = right - container.clientWidth + 12;
     }
 
     let isEventTabsDragInit = false;
@@ -2517,6 +2552,81 @@
       renderCurrentView();
       saveViewState();
     }
+
+    // ------------------------------------------------------------
+    // 모바일 좌우 스와이프로 종목 전환
+    //  - 왼쪽으로 밀면 다음 종목, 오른쪽으로 밀면 이전 종목.
+    //  - 세로 스크롤·가로 스크롤 영역·그래프·입력칸·팝업에서는 동작하지 않는다.
+    //  - 첫/마직 종목에서는 더 넘어가지 않고, 선수 자체는 바뀌지 않는다.
+    //  - PC(마우스) 조작은 그대로 둔다.
+    // ------------------------------------------------------------
+    const SWIPE_MIN_X = 56;
+    const SWIPE_MIN_RATIO = 2.0;
+    const SWIPE_MAX_MS = 700;
+    const SWIPE_EDGE_PX = 24;
+    let swipeTouchState = null;
+
+    function isSwipeBlockedTarget(el) {
+      if (!el || typeof el.closest !== 'function') return true;
+      if (el.closest('input, textarea, select, [contenteditable="true"], .no-swipe')) return true;
+      if (el.closest('canvas')) return true;
+      if (el.closest('#event-tabs-container')) return true;
+      if (el.closest('#meet-name-list, .meet-ac-list')) return true;
+      if (el.closest('.modal-overlay:not(.hidden)')) return true;
+      let node = el;
+      while (node && node.nodeType === 1) {
+        const style = window.getComputedStyle(node);
+        const ox = style ? style.overflowX : '';
+        if ((ox === 'auto' || ox === 'scroll') && node.scrollWidth > node.clientWidth + 4) return true;
+        node = node.parentElement;
+      }
+      return false;
+    }
+
+    function moveEventTabBy(delta) {
+      if (!currentPlayer) return;
+      const order = ['ALL_PB'].concat(getPlayerEvents(currentPlayer).map(String));
+      const idx = order.indexOf(String(currentEvent));
+      if (idx < 0) return;
+      const next = idx + delta;
+      if (next < 0 || next >= order.length) return;
+      selectEventTab(order[next]);
+    }
+
+    document.addEventListener('touchstart', function (e) {
+      swipeTouchState = null;
+      if (!e.touches || e.touches.length !== 1) return;
+      if (document.body.classList.contains('kb-open')) return;
+      const t = e.touches[0];
+      // 화면 가장자리에서 시작한 터치는 브라우저 뒤로가기 제스처에 맡긴다.
+      if (t.clientX < SWIPE_EDGE_PX || t.clientX > window.innerWidth - SWIPE_EDGE_PX) return;
+      if (isSwipeBlockedTarget(e.target)) return;
+      swipeTouchState = { x: t.clientX, y: t.clientY, at: Date.now() };
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function (e) {
+      if (!swipeTouchState || !e.touches || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const dx = t.clientX - swipeTouchState.x;
+      const dy = t.clientY - swipeTouchState.y;
+      // 세로로 더 많이 움직이면 일반 스크롤로 보고 스와이프를 포기한다.
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) swipeTouchState = null;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function (e) {
+      const st = swipeTouchState;
+      swipeTouchState = null;
+      if (!st || !e.changedTouches || e.changedTouches.length !== 1) return;
+      if (document.body.classList.contains('kb-open')) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - st.x;
+      const dy = t.clientY - st.y;
+      if (Date.now() - st.at > SWIPE_MAX_MS) return;
+      if (Math.abs(dx) < SWIPE_MIN_X) return;
+      if (Math.abs(dx) < Math.abs(dy) * SWIPE_MIN_RATIO) return;
+      moveEventTabBy(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    document.addEventListener('touchcancel', function () { swipeTouchState = null; }, { passive: true });
 
     // 그래프 포인트·PB 카드에서 해당 경기 기록 카드로 이동한다.
     //  - 검색·연도 필터에 가려져 있으면 필터를 풀어 이동한다.
@@ -4985,7 +5095,9 @@
       document.getElementById('badge-modal-player').textContent = p ? p.name : '선수';
       const evSelect = document.getElementById('form-record-event');
       if (evSelect) {
-        const prev = String(desiredEvent || evSelect.value || '').trim();
+        // 이전에 열었던 창의 선택값(다른 선수·다른 종목 화면의 값)은 기본값으로 쓰지 않는다.
+        // 수정할 기록의 종목만 desiredEvent로 받아 그 종목으로 연다.
+        const desired = String(desiredEvent || '').trim();
         let evList = getPlayerEvents(currentPlayer);
         // 등록된 세부 종목이 하나도 없는 선수도 기록은 넣을 수 있어야 하므로,
         // 그때만 이 종목(육상·사이클)의 기본 종목 목록을 입력 후보로 쓴다(프로필 선택 상태는 건드리지 않는다).
@@ -4997,13 +5109,20 @@
           );
         }
         // 해제된 종목의 기존 기록을 수정할 때는 그 종목도 목록에 넣어 준다(수정 저장 때 종목이 바뀌지 않게).
-        if (prev && evList.indexOf(prev) < 0) evList.push(prev);
+        if (desired && !evList.some(ev => ev === desired || isEventMatch(ev, desired))) evList.push(desired);
         evSelect.innerHTML = evList.map(ev => `<option value="${ev}">${ev}</option>`).join('');
+        // 기본 선택: 수정할 종목 → 지금 보고 있는 종목 탭 → 이 선수의 첫 종목.
+        // 요약 화면(최고기록 요약·연간 종합노트)에서는 현재 종목이 없으므로 유효한 첫 종목을 쓴다.
+        const tabEvent = (currentEvent && currentEvent !== 'ALL_PB') ? String(currentEvent) : '';
         let wanted = '';
-        if (prev && evList.indexOf(prev) >= 0) wanted = prev;
-        else if (currentEvent && currentEvent !== 'ALL_PB' && evList.indexOf(currentEvent) >= 0) wanted = currentEvent;
-        else if (evList.length > 0) wanted = evList[0];
-        if (wanted) evSelect.value = wanted;
+        if (desired && evList.some(ev => ev === desired || isEventMatch(ev, desired))) {
+          wanted = evList.find(ev => ev === desired || isEventMatch(ev, desired)) || '';
+        } else if (tabEvent && evList.some(ev => ev === tabEvent || isEventMatch(ev, tabEvent))) {
+          wanted = evList.find(ev => ev === tabEvent || isEventMatch(ev, tabEvent)) || '';
+        } else if (evList.length > 0) {
+          wanted = evList[0];
+        }
+        evSelect.value = wanted;
       }
       populateMeetNameOptions();
     }
@@ -5257,6 +5376,7 @@
       if (!isMeetLocked) {
         resetFormFields();
       }
+      rememberScreenBeforeModal('modal-record');
       document.getElementById('record-modal-title').textContent = '새 운동 기록 등록';
       updateFormChips();
       setFormKind(selectedKind);
@@ -5265,12 +5385,14 @@
 
     function closeRecordModal() {
       document.getElementById('modal-record').classList.add('hidden');
+      restoreScreenAfterModal('modal-record');
     }
 
     function openAddRecordForMeet(encodedMeet, kind) {
       const meet = decodeURIComponent(encodedMeet);
       editingRecordId = null;
       resetFormFields();
+      rememberScreenBeforeModal('modal-record');
 
       applyMeetToForm(meet);
       if (!isMeetLocked) toggleLockMeet();
@@ -5289,6 +5411,7 @@
 
       editingRecordId = recordId;
       resetFormFields();
+      rememberScreenBeforeModal('modal-record');
 
       document.getElementById('record-modal-title').textContent = '운동 기록 수정';
       document.getElementById('input-date').value = record.date || '';
@@ -5441,7 +5564,7 @@
         }
         const wNum = Number(wStr);
         if (!Number.isFinite(wNum) || wNum < 0) {
-          return { ok: false, reason: '풍속 부호는 왼쪽 +/- 버튼으로 선택하고 숫자는 0 이상으로 입력해주세요.' };
+          return { ok: false, reason: '풍속 부호는 왼쪽 +/- 버튼으로 고르고, 숫자는 0 이상으로 입력해 주세요.' };
         }
         const signedWind = (windSign === '-' ? -1 : 1) * wNum;
         if (signedWind < -20.0 || signedWind > 20.0) {
@@ -5619,6 +5742,7 @@
     // 10. Player Management Modal (User's Hand-drawn Layout)
     function openPlayerManageModal() {
       try {
+        rememberScreenBeforeModal('modal-players');
         const modal = document.getElementById('modal-players');
         if (modal) modal.classList.remove('hidden');
         renderPlayerCards();
@@ -5630,6 +5754,7 @@
     function closePlayerManageModal() {
       const modal = document.getElementById('modal-players');
       if (modal) modal.classList.add('hidden');
+      restoreScreenAfterModal('modal-players');
     }
 
     function setPlayerFilterLevel(lvl) {
@@ -6356,12 +6481,18 @@
       }
 
       renderFormEventsChips();
+      rememberScreenBeforeModal('modal-player-form');
       modal.classList.remove('hidden');
     }
 
     function closeAddEditPlayerModal() {
       const modal = document.getElementById('modal-player-form');
       if (modal) modal.classList.add('hidden');
+      // 수정창을 닫으면 아래 화면(선수 관리 명단·관리자 센터)을 바뀐 내용으로 다시 그린 뒤
+      // 보던 스크롤 위치로 되돌린다.
+      if (isModalVisible('modal-players')) renderPlayerCards();
+      if (isModalVisible('modal-admin-profile')) renderAdminMyPlayers();
+      restoreScreenAfterModal('modal-player-form');
     }
 
     // 저장할 세부 종목 순서: 개인 종목 → 단체 종목, 거리형 종목은 거리 순서.
@@ -7451,11 +7582,11 @@
       const email = payload.email.toLowerCase();
       const name = payload.name || payload.email.split('@')[0];
 
-      // Only bluefunky83 can be Super Admin! (지혜 님 지침: bluefunky83 외 최고 권한 전면 배제)
+      // 최고관리자 권한은 지정된 계정 하나에만 준다.
       if (email === 'bluefunky83@gmail.com' || email === 'bluefunky83') {
         const user = {
           id: 'admin_jihye',
-          name: '지혜 님 (최고관리자)',
+          name: '최고관리자',
           email: 'bluefunky83@gmail.com',
           role: 'super_admin',
           approved: true,
@@ -7464,7 +7595,7 @@
         localStorage.setItem('STAGING_ATHLETE_APP_AUTH_USER', JSON.stringify(user));
         checkInitialAuthGate();
         renderCurrentView();
-        alert('지혜 님 환영합니다!\nGoogle 공식 인증으로 최고관리자 로그인되었습니다.');
+        alert('최고관리자로 로그인되었습니다.');
         return;
       }
 
@@ -7592,11 +7723,11 @@
 
     function processLoginWithEmail(inputId) {
       const clean = inputId.toLowerCase().trim();
-      // Only bluefunky83 can be Super Admin! (지혜 님 지침: bluefunky83 외 최고 권한 전면 배제)
+      // 최고관리자 권한은 지정된 계정 하나에만 준다.
       if (clean === 'bluefunky83@gmail.com' || clean === 'bluefunky83') {
         const user = {
           id: 'admin_jihye',
-          name: '지혜 님 (최고관리자)',
+          name: '최고관리자',
           email: 'bluefunky83@gmail.com',
           role: 'super_admin',
           approved: true,
@@ -7605,7 +7736,7 @@
         localStorage.setItem('STAGING_ATHLETE_APP_AUTH_USER', JSON.stringify(user));
         checkInitialAuthGate();
         renderCurrentView();
-        alert('지혜 님 환영합니다!\n최고관리자 센터 및 전체 관리 권한으로 로그인되었습니다.');
+        alert('최고관리자로 로그인되었습니다. 최고관리자 센터에서 전체 현황을 볼 수 있습니다.');
         return;
       }
 
@@ -7715,7 +7846,7 @@
         checkInitialAuthGate();
         alert(`${name} 관리자님, 회원가입이 완료되었습니다!\n상단 [선수관리]에서 첫 자녀 선수를 등록해 보세요.`);
       } else {
-        // Viewer Sign-up (지혜 님 지침: 초대코드 없이 심플하게 가입 후 선수 신청!)
+        // 뷰어 가입: 초대코드 없이 가입한 뒤 관리자에게 선수 열람을 신청한다.
         const user = {
           id: 'viewer_' + Date.now(),
           name: name,
@@ -8184,13 +8315,17 @@
 
     // Super Admin Modal Logic
     async function openSuperAdminModal() {
+      rememberScreenBeforeModal('modal-super-admin-center');
       document.getElementById('modal-super-admin-center').classList.remove('hidden');
+      renderSuperAdminViewersTree();
+      applyAdminCenterIconSizes();
       await updateSuperAdminStats();
       renderSuperAdminViewersTree();
       applyAdminCenterIconSizes();
     }
     function closeSuperAdminModal() {
       document.getElementById('modal-super-admin-center').classList.add('hidden');
+      restoreScreenAfterModal('modal-super-admin-center');
     }
 
     async function updateSuperAdminStats() {
@@ -8248,209 +8383,8 @@
       }
     }
 
-    function renderSuperAdminViewersTree() {
-      const c = document.getElementById('sa-viewers-tree-container');
-      if (!c) return;
-
-      const dummyNames = ['외할머니', '코치님', '하람아빠'];
-      const viewerKeys = Object.keys(realtimeAuthData).filter(k => !k.startsWith('_') && !dummyNames.includes(k));
-
-      // 경기기록 건수 계산 (지혜 님 지침: 선수별 경기기록 사용량)
-      let yusinRecs = Array.isArray(appData['yusin']) ? appData['yusin'].length : 72;
-      let byeolhaRecs = Array.isArray(appData['byeolha']) ? appData['byeolha'].length : 12;
-      let totalRecs = yusinRecs + byeolhaRecs;
-
-      const yusinViewers = viewerKeys.filter(k => {
-        const v = realtimeAuthData[k];
-        return v && v.status === 'approved' && (v.allowed === 'all' || v.allowed === 'yusin' || v.allowedPlayers?.includes('yusin'));
-      });
-      const byeolhaViewers = viewerKeys.filter(k => {
-        const v = realtimeAuthData[k];
-        return v && v.status === 'approved' && (v.allowed === 'all' || v.allowed === 'byeolha' || v.allowedPlayers?.includes('byeolha'));
-      });
-      const pendingViewers = viewerKeys.filter(k => {
-        const v = realtimeAuthData[k];
-        return !v || v.status !== 'approved' || !v.allowed || v.allowed === 'none';
-      });
-      const jihyeApprovedViewers = viewerKeys.filter(k => {
-        const v = realtimeAuthData[k];
-        return v && v.status === 'approved' && v.allowed && v.allowed !== 'none';
-      });
-
-      const externalAdmins = Object.values(realtimeAuthData._admins || {});
-
-      c.innerHTML = `
-        <div class="space-y-3 font-sans">
-          <!-- Admin 1: 지혜 님 (최고관리자) Accordion -->
-          <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm transition">
-            <button type="button" onclick="toggleSaAccordion('sa-admin-acc-jihye')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-800/40 transition">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center text-sm font-black">
-                  지
-                </div>
-                <div>
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-bold text-slate-100 text-xs">지혜 님</span>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">최고관리자</span>
-                  </div>
-                  <div class="text-[10px] text-slate-400 mt-0.5">
-                    bluefunky · 등록선수 2명 · 소속 뷰어 ${jihyeApprovedViewers.length}명
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] text-purple-400 font-semibold">관리 상세</span>
-                <svg id="sa-admin-acc-jihye-icon" class="w-4 h-4 text-slate-400 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-              </div>
-            </button>
-
-            <!-- Detailed Content inside Admin (지혜 님 지침: 선수별 경기기록 사용량 & 뷰어 명단) -->
-            <div id="sa-admin-acc-jihye" class="p-3.5 pt-0 border-t border-slate-800/60 space-y-3 text-xs bg-slate-950/40">
-              
-              <!-- 1. Managed Athletes & Record Usage Stats -->
-              <div class="space-y-1.5 pt-2">
-                <div class="text-[10px] font-bold text-slate-400 flex items-center justify-between">
-                  <span>관리 선수 및 경기기록 사용내역</span>
-                  <span class="text-[10px] text-emerald-400 font-bold">총 ${totalRecs}건</span>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-2">
-                  <!-- Yusin -->
-                  <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
-                    <div class="font-bold text-slate-200 text-xs flex items-center justify-between">
-                      <span>김유신</span>
-                      <span class="text-[9px] text-blue-300 bg-blue-500/20 px-1.5 py-0.2 rounded">육상</span>
-                    </div>
-                    <div class="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-0.5">
-                      <div class="text-[10px] text-slate-400 flex items-center justify-between">
-                        <span>경기기록</span>
-                        <span class="font-mono font-black text-emerald-400 text-xs">${yusinRecs}건</span>
-                      </div>
-                      <div class="text-[10px] text-slate-400 flex items-center justify-between">
-                        <span>열람 뷰어</span>
-                        <span class="font-bold text-blue-300">${yusinViewers.length}명</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Byeolha -->
-                  <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
-                    <div class="font-bold text-slate-200 text-xs flex items-center justify-between">
-                      <span class="flex items-center gap-1"><span>김별하</span></span>
-                      <span class="text-[9px] text-pink-300 bg-pink-500/20 px-1.5 py-0.2 rounded">사이클</span>
-                    </div>
-                    <div class="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 space-y-0.5">
-                      <div class="text-[10px] text-slate-400 flex items-center justify-between">
-                        <span>경기기록</span>
-                        <span class="font-mono font-black text-emerald-400 text-xs">${byeolhaRecs}건</span>
-                      </div>
-                      <div class="text-[10px] text-slate-400 flex items-center justify-between">
-                        <span>열람 뷰어</span>
-                        <span class="font-bold text-pink-300">${byeolhaViewers.length}명</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 2. Managed Viewers List -->
-              <div class="space-y-1.5">
-                <div class="text-[10px] font-bold text-slate-400 flex items-center justify-between">
-                  <span><span class="ui-ic" data-ic="eye"></span> 소속 뷰어 명단</span>
-                  <span class="text-slate-500">${jihyeApprovedViewers.length}명 승인됨</span>
-                </div>
-                <div class="flex flex-wrap gap-1">
-                  ${jihyeApprovedViewers.map(k => {
-                    const v = realtimeAuthData[k] || {};
-                    const displayName = v.name || k;
-                    const allowedLabel = (v.allowed === 'all' || v.allowedPlayers?.length > 1) ? '전체' : (v.allowed === 'byeolha' ? '별하' : '유신');
-                    const emailHtml = v.email ? `<span class="text-[10px] text-slate-400 font-normal">(${v.email})</span>` : '';
-                    return `
-                      <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-slate-200 border border-slate-700 text-[11px] flex items-center gap-1.5 flex-wrap">
-                        <span><span class="ui-ic" data-ic="eye"></span></span>
-                        <span class="font-bold text-white">${displayName}</span>
-                        ${emailHtml}
-                        <span class="text-[9px] text-purple-300 bg-purple-950/60 px-1 rounded border border-purple-500/30">${allowedLabel}</span>
-                      </span>
-                    `;
-                  }).join('') || '<span class="text-slate-500 text-[10px] py-1">현재 승인된 뷰어가 없습니다.</span>'}
-                </div>
-              </div>
-
-              <!-- 3. Pending Viewers for THIS admin -->
-              ${pendingViewers.length ? `
-                <div class="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-between text-xs mt-2">
-                  <div class="flex items-center gap-1.5 text-amber-300 font-bold">
-                    <span>⏳</span>
-                    <span>승인 대기 중 (${pendingViewers.length}명)</span>
-                  </div>
-                  <button type="button" onclick="closeSuperAdminModal(); openViewerApprovalModal();" class="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-[10px] hover:bg-amber-400 transition active:scale-95 shadow-sm">
-                    승인하기 →
-                  </button>
-                </div>
-              ` : ''}
-
-            </div>
-          </div>
-
-          <!-- Dynamic Other External Admins Accordions -->
-          ${externalAdmins.map((adm, aIdx) => {
-            const admPlayerIds = (adm.players || []).map(p => p.id);
-            const admViewerCount = viewerKeys.filter(k => {
-              const v = realtimeAuthData[k];
-              if (!v || !isViewerOwnedByCurrentAdmin(v, adm.id) || v.status !== 'approved' || !v.allowed || v.allowed === 'none') return false;
-              const allowedList = Array.isArray(v.allowedPlayers) && v.allowedPlayers.length > 0
-                ? v.allowedPlayers
-                : (v.allowed === 'all' ? admPlayerIds : [v.allowed]);
-              return allowedList.some(pid => admPlayerIds.includes(pid));
-            }).length;
-            return `
-            <div class="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm transition">
-              <button type="button" onclick="toggleSaAccordion('sa-admin-acc-ext-${aIdx}')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-800/40 transition">
-                <div class="flex items-center gap-2.5">
-                  <div class="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center text-sm font-black">
-                    ${adm.name ? adm.name.charAt(0) : '관'}
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-1.5">
-                      <span class="font-bold text-slate-100 text-xs">${adm.name}</span>
-                      <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">선수 관리자</span>
-                    </div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">
-                      ${adm.email || '이메일 없음'} · 등록선수 ${adm.playersCount || 0}명 · 소속 뷰어 ${admViewerCount}명
-                    </div>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-[10px] text-indigo-400 font-semibold">관리 상세</span>
-                  <svg id="sa-admin-acc-ext-${aIdx}-icon" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </div>
-              </button>
-
-              <div id="sa-admin-acc-ext-${aIdx}" class="p-3.5 pt-0 border-t border-slate-800/60 space-y-2 text-xs bg-slate-950/40 hidden">
-                <div class="pt-2 text-[11px] text-slate-300">
-                  <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <div class="flex items-center justify-between text-slate-400">
-                      <span>가입 일시</span>
-                      <span class="text-white font-mono">${adm.date || '최근'}</span>
-                    </div>
-                    <div class="flex items-center justify-between text-slate-400">
-                      <span>등록 관리 선수</span>
-                      <span class="text-indigo-300 font-bold">${adm.playersCount || 0}명</span>
-                    </div>
-                    <div class="flex items-center justify-between text-slate-400">
-                      <span>소속 뷰어</span>
-                      <span class="text-emerald-300 font-bold">${admViewerCount}명</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          `;
-          }).join('')}
-        </div>
-      `;
-    }
+    // 최고관리자 센터의 관리자별 현황은 아래 '모바일 검수 반영분' 구역에서 실제 데이터로 그린다.
+    function renderSuperAdminViewersTree() {}
 
     function toggleViewerApproval(id) {
       const list = getRegisteredViewers();
@@ -8475,15 +8409,40 @@
     }
 
     // Admin Profile Modal Logic
+    // 관리자 센터 두 영역(내 관리 선수 / 승인된 뷰어 관리)은 각각 따로 펼치는 아코디언이다.
+    // 처음에는 둘 다 접혀 있고, 둘 다 펼쳐도 팝업 안에서만 스크롤된다.
+    const adminCenterAccOpen = { players: false, viewers: false };
+    function applyAdminCenterAccordion(which) {
+      const ids = {
+        players: { body: 'admin-my-players-body', head: 'admin-my-players-head', chev: 'admin-my-players-chevron' },
+        viewers: { body: 'admin-approved-viewers-body', head: 'admin-approved-viewers-head', chev: 'admin-approved-viewers-chevron' }
+      }[which];
+      if (!ids) return;
+      const body = document.getElementById(ids.body);
+      const head = document.getElementById(ids.head);
+      const chev = document.getElementById(ids.chev);
+      const open = !!adminCenterAccOpen[which];
+      if (body) body.classList.toggle('is-open', open);
+      if (chev) chev.classList.toggle('is-open', open);
+      if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function toggleAdminCenterAccordion(which) {
+      adminCenterAccOpen[which] = !adminCenterAccOpen[which];
+      applyAdminCenterAccordion(which);
+    }
+
     async function openAdminProfileModal() {
       const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
       if (authUserStr) {
         const user = JSON.parse(authUserStr);
         const emailDisp = document.getElementById('admin-center-email-display');
-        if (emailDisp) emailDisp.textContent = `${user.email || user.name} (선수 관리자)`;
+        if (emailDisp) emailDisp.textContent = `${user.email || user.name}`;
       }
+      rememberScreenBeforeModal('modal-admin-profile');
       renderAdminMyPlayers();
       renderAdminApprovedViewers();
+      applyAdminCenterAccordion('players');
+      applyAdminCenterAccordion('viewers');
       document.getElementById('modal-admin-profile').classList.remove('hidden');
       applyAdminCenterIconSizes();
 
@@ -8498,6 +8457,30 @@
     }
     function closeAdminProfileModal() {
       document.getElementById('modal-admin-profile').classList.add('hidden');
+      restoreScreenAfterModal('modal-admin-profile');
+    }
+    function refreshAdminApprovedViewers() {
+      const c = document.getElementById('admin-approved-viewers-list');
+      if (c) c.innerHTML = '<div class="py-3 text-center text-slate-500 text-[11px]">뷰어 명단 확인 중...</div>';
+      (async function () {
+        try {
+          const res = await stagingCloudFetch(AUTH_API_ENDPOINT);
+          const json = await res.json();
+          if (json && json.data) {
+            realtimeAuthData = { ...realtimeAuthData, ...json.data };
+          }
+        } catch (e) {}
+        renderAdminApprovedViewers();
+      })();
+    }
+    function filterAdminApprovedViewers(query) {
+      const list = document.getElementById('admin-approved-viewers-list');
+      if (!list) return;
+      const q = String(query || '').trim().toLowerCase();
+      list.querySelectorAll('[data-viewer-row]').forEach(row => {
+        const hay = (row.getAttribute('data-search') || '').toLowerCase();
+        row.classList.toggle('hidden', !!q && hay.indexOf(q) < 0);
+      });
     }
     function getCurrentAdminScopeId() {
       const authUserStr = localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER');
@@ -8515,27 +8498,51 @@
     function renderAdminMyPlayers() {
       const c = document.getElementById('admin-my-players-list');
       if (!c) return;
+      const list = Array.isArray(playersData) ? playersData.filter(Boolean) : [];
+      const titleEl = document.getElementById('admin-my-players-title');
+      if (titleEl) titleEl.textContent = `내 관리 선수 (${list.length}명)`;
+      const keepScroll = c.scrollTop;
       const authUser = getCurrentAuthUser();
       const canTransfer = authUser.role === 'admin';
       const pendingRequests = getTransferRequests().filter(r => r.status === 'pending' && r.fromAdminId === authUser.id);
-      if (!playersData || playersData.length === 0) {
+      const searchEl = document.getElementById('admin-my-players-search');
+      const q = String((searchEl && searchEl.value) || '').trim().toLowerCase();
+      const filtered = !q ? list : list.filter(p =>
+        String(p.name || '').toLowerCase().indexOf(q) >= 0 ||
+        String(p.sport || '').toLowerCase().indexOf(q) >= 0 ||
+        String(p.mainEvent || '').toLowerCase().indexOf(q) >= 0
+      );
+      if (list.length === 0) {
         c.innerHTML = '<div class="py-3 text-center text-slate-500 text-[11px]">등록된 선수가 없습니다. 새 선수를 등록할 수 있습니다.</div>';
         return;
       }
-      c.innerHTML = playersData.map(p => `
+      if (filtered.length === 0) {
+        c.innerHTML = '<div class="py-3 text-center text-slate-500 text-[11px]">일치하는 선수가 없습니다.</div>';
+        return;
+      }
+      c.innerHTML = filtered.map(p => `
         <div class="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
           <div class="min-w-0">
             <div class="font-bold text-slate-200 truncate">${bodyEsc(p.name)} <span class="text-[10px] text-slate-400 font-normal">(${bodyEsc(p.sport)} · ${bodyEsc(p.mainEvent || '')})</span></div>
-            <div class="text-[10px] text-slate-500">기록 ${(appData[p.id]||[]).length}건 관리중</div>
+            <div class="text-[10px] text-slate-500">기록 ${(appData[p.id] || []).length}건 관리중</div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             ${canTransfer ? (pendingRequests.some(r => r.playerId === p.id)
               ? '<span class="text-[10px] text-amber-300 font-semibold whitespace-nowrap">양도 요청 중</span>'
               : `<button type="button" onclick="openPlayerTransferModal('${p.id}')" class="text-slate-400 hover:text-blue-300 font-semibold text-[11px] whitespace-nowrap">양도</button>`) : ''}
-            <button type="button" onclick="closeAdminProfileModal(); openAddEditPlayerModal('${p.id}');" class="text-indigo-400 hover:text-indigo-300 font-semibold text-[11px] whitespace-nowrap">수정</button>
+            <button type="button" onclick="openPlayerFormFromAdminCenter('${p.id}')" class="text-indigo-400 hover:text-indigo-300 font-semibold text-[11px] whitespace-nowrap">수정</button>
           </div>
         </div>
       `).join('');
+      c.scrollTop = keepScroll;
+    }
+
+    // 관리자 센터·선수 관리 명단 위에 선수 수정창을 겹쳐 연다.
+    // 저장하거나 닫으면 보던 자리 그대로 아래 화면으로 돌아온다.
+    function openPlayerFormFromAdminCenter(playerId) {
+      openAddEditPlayerModal(playerId || '');
+      const form = document.getElementById('modal-player-form');
+      if (form) form.style.zIndex = '60';
     }
 
     function applyAuthModeUI(role) {
@@ -8556,8 +8563,8 @@
       const btnViewerAddPlayerTop = document.getElementById('btn-viewer-add-player-top');
 
       if (currentRole === 'super_admin') {
-        if (btnSuperAdmin) btnSuperAdmin.classList.remove('hidden'); //  왕관 아이콘 지혜 님만 노출!
-        if (btnAdminProfile) btnAdminProfile.classList.remove('hidden'); //  관리자 버튼 지혜 님도 노출!
+        if (btnSuperAdmin) btnSuperAdmin.classList.remove('hidden'); // 최고관리자에게만 노출
+        if (btnAdminProfile) btnAdminProfile.classList.remove('hidden'); // 관리자 센터 버튼 노출
         if (btnViewerApprove) btnViewerApprove.classList.remove('hidden');
         if (badgeViewerMode) badgeViewerMode.classList.add('hidden');
         if (btnAddRecord) btnAddRecord.classList.remove('hidden');
@@ -9087,7 +9094,7 @@
     let selectedViewerSearchOwnerAdminId = 'super_admin';
 
     function getAllSearchableAthletes() {
-      const list = MASTER_PLAYERS_DATA.map(p => ({ ...p, ownerAdminId: 'super_admin', ownerAdminName: '지혜 님' }));
+      const list = MASTER_PLAYERS_DATA.map(p => ({ ...p, ownerAdminId: 'super_admin', ownerAdminName: getAdminDisplayNameById('super_admin') }));
       const extAdmins = Object.values(realtimeAuthData._admins || {});
       extAdmins.forEach(adm => {
         if (Array.isArray(adm.players)) {
@@ -9216,9 +9223,11 @@
             <div class="p-3.5 rounded-2xl bg-indigo-950/50 border border-indigo-500/40 space-y-2">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-indigo-300"><span class="ui-ic" data-ic="shield"></span> 특별 뷰어 초대</span>
-                <span class="text-[10px] text-slate-400">${bodyEsc(o.adminName)}</span>
               </div>
-              <p class="text-xs text-slate-200 leading-relaxed">${bodyEsc(o.adminName)} 관리자가 특별 뷰어로 지정하고 싶어 합니다. 수락하면 이 관리자의 <strong class="text-white">잠금이 해제된 모든 선수 기록</strong>을 자동으로 볼 수 있습니다(이후 새로 등록되는 선수 포함 · 조회와 엑셀 다운로드만).</p>
+              <div class="text-xs text-slate-200 leading-relaxed space-y-1">
+                <p>${bodyEsc(o.adminName)}님이 회원님을 특별 뷰어로 초대했습니다.</p>
+                <p>수락하면 새로 등록될 선수를 포함해 열람이 허용된 모든 선수의 기록을 볼 수 있습니다.</p>
+              </div>
               <div class="flex gap-1.5">
                 <button type="button" onclick="respondSpecialOffer('${bodyEsc(o.key)}', true)" class="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold active:scale-95 transition">수락</button>
                 <button type="button" onclick="respondSpecialOffer('${bodyEsc(o.key)}', false)" class="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 active:scale-95 transition">거절</button>
@@ -9481,7 +9490,7 @@
       }
     }
 
-    // --- Viewer Real-time Approval Polling (지혜 님 3번 지침 완벽 반영!) ---
+    // --- 뷰어 열람 승인 실시간 확인(관리자 알림 배지) ---
     let viewerPollingInterval = null;
     function startViewerApprovalPolling() {
       if (viewerPollingInterval) clearInterval(viewerPollingInterval);
@@ -9640,7 +9649,7 @@
       }, 5000);
     }
 
-    // --- Account Delete (회원 탈퇴: 지혜 님 필수 지침 반영) ---
+    // --- 회원 탈퇴 ---
     async function handleAccountDelete() {
       if (!confirm('정말 회원 탈퇴를 진행하시겠습니까?\n\n신청한 열람 권한과 계정 정보가 모두 초기화되며 대문 화면으로 이동합니다.')) return;
 
@@ -9691,6 +9700,7 @@
 
     function openViewerApprovalModal() {
       pushModalHistory('modal-viewer-approvals');
+      rememberScreenBeforeModal('modal-viewer-approvals');
       const modal = document.getElementById('modal-viewer-approvals');
       if (modal) modal.classList.remove('hidden');
       const svipBtn = document.getElementById('btn-notif-svip-invite');
@@ -9702,6 +9712,7 @@
 
     function closeViewerApprovalModal() {
       document.getElementById('modal-viewer-approvals').classList.add('hidden');
+      restoreScreenAfterModal('modal-viewer-approvals');
     }
 
     
@@ -10929,11 +10940,14 @@
       if (elV) elV.textContent = `${approvedViewers}명`;
     };
 
-    const _origRenderSuperAdminViewersTree = renderSuperAdminViewersTree;
+    // 최고관리자 센터: 상단의 최고관리자 정보 카드와, 가운데 목록(등록 관리자)을 따로 그린다.
+    // 두 카드는 이름 / 이메일 / 선수·기록 / 소속 뷰어 네 줄로 형식을 똑같이 맞춘다.
     renderSuperAdminViewersTree = function() {
       initStagingSeedData();
-      const c = document.getElementById('sa-viewers-tree-container');
-      if (!c) return;
+      const listEl = document.getElementById('sa-viewers-tree-container');
+      const cardEl = document.getElementById('sa-super-card');
+      const countEl = document.getElementById('sa-admin-count');
+      if (!listEl && !cardEl) return;
       const activeAdmins = getStagingActiveAdmins();
       const accounts = getStagingAccounts();
       const superAcc = Object.values(accounts).find(a => a.role === 'super_admin' && a.status === 'active') || { name: '테스트 최고관리자', email: 'super@test.local' };
@@ -10945,43 +10959,45 @@
         return !vAcc || vAcc.status === 'active';
       });
       const superViewers = activeViewerEntries.filter(({ v }) => v.ownerAdminId === 'super_admin' || v.ownerAdminId === 'staging_super');
-      const yusinRecs = Array.isArray(MASTER_APP_DATA['yusin']) ? MASTER_APP_DATA['yusin'].length : 72;
-      const byeolhaRecs = Array.isArray(MASTER_APP_DATA['byeolha']) ? MASTER_APP_DATA['byeolha'].length : 12;
 
-      c.innerHTML = `
-        <div class="space-y-3 font-sans">
-          <!-- 최고관리자 정보: 왕관 아이콘·배지 없이 정보만 줄을 나눠 보여 준다(불필요한 여백 없음). -->
-          <div class="rounded-2xl bg-slate-900 border border-purple-500/30 px-3.5 py-3 space-y-0.5">
-            <div class="font-bold text-slate-100 text-xs">${bodyEsc(superAcc.name)}</div>
-            <div class="text-[10px] text-blue-300 break-all">${bodyEsc(superAcc.email)}</div>
-            <div class="text-[10px] text-slate-300">김유신(${yusinRecs}건) · 김별하(${byeolhaRecs}건)</div>
-            <div class="text-[10px] text-slate-400">소속 뷰어 ${superViewers.length}명</div>
+      // 최고관리자가 관리하는 선수·기록은 지금 화면의 실제 데이터에서 센다(선수 이름을 나열하지 않는다).
+      const superPlayers = (Array.isArray(playersData) && playersData.length > 0)
+        ? playersData
+        : (Array.isArray(MASTER_PLAYERS_DATA) ? MASTER_PLAYERS_DATA : []);
+      const superPlayerCount = superPlayers.length;
+      const superRecordCount = superPlayers.reduce((sum, p) => {
+        const recs = (p && appData && Array.isArray(appData[p.id])) ? appData[p.id].length : 0;
+        return sum + recs;
+      }, 0);
+
+      if (cardEl) {
+        cardEl.innerHTML = `
+          <div class="font-bold text-slate-100 text-xs truncate">${bodyEsc(superAcc.name)} <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold whitespace-nowrap">최고관리자</span></div>
+          <div class="text-[10px] text-blue-300 break-all">${bodyEsc(superAcc.email || '')}</div>
+          <div class="text-[10px] text-slate-300">선수 ${superPlayerCount}명 · 기록 ${superRecordCount}건</div>
+          <div class="text-[10px] text-slate-400">소속 뷰어 ${superViewers.length}명</div>
+        `;
+      }
+
+      if (countEl) countEl.textContent = `${activeAdmins.length}명`;
+      if (!listEl) return;
+
+      if (activeAdmins.length === 0) {
+        listEl.innerHTML = '<div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-center text-slate-500 text-xs">등록된 일반 관리자가 없습니다.</div>';
+        return;
+      }
+
+      listEl.innerHTML = activeAdmins.map(adm => {
+        const admViewers = activeViewerEntries.filter(({ v }) => v.ownerAdminId === adm.id);
+        return `
+          <div class="rounded-2xl bg-slate-900 border border-slate-800 px-3.5 py-3 space-y-0.5">
+            <div class="font-bold text-slate-100 text-xs truncate">${bodyEsc(adm.name || '')} <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold whitespace-nowrap">선수 관리자</span></div>
+            <div class="text-[10px] text-blue-300 break-all">${bodyEsc(adm.email || '')}</div>
+            <div class="text-[10px] text-slate-300">선수 ${adm.playersCount || 0}명 · 기록 ${adm.recordsCount || 0}건</div>
+            <div class="text-[10px] text-slate-400">소속 뷰어 ${admViewers.length}명</div>
           </div>
-
-          <div class="text-[11px] font-bold text-slate-300 px-1 flex items-center justify-between">
-            <span><span class="ui-ic" data-ic="shield"></span> 활성 일반 관리자 목록</span>
-            <span class="text-blue-300">${activeAdmins.length}명</span>
-          </div>
-
-          ${activeAdmins.length === 0 ? '<div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-center text-slate-500 text-xs">활성 상태인 일반 관리자가 없습니다.</div>' : activeAdmins.map(adm => {
-            const admViewers = activeViewerEntries.filter(({ v }) => v.ownerAdminId === adm.id);
-            return `
-              <div class="rounded-2xl bg-slate-900 border border-slate-800 p-3.5 space-y-2">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <div class="font-bold text-white text-xs">${adm.name} <span class="text-[10px] text-emerald-400 font-normal">(${adm.status})</span></div>
-                    <div class="text-[10px] text-blue-300">${adm.email}</div>
-                  </div>
-                  <div class="text-right text-[10px] text-slate-400">
-                    <div>선수 ${adm.playersCount}명 · 기록 ${adm.recordsCount}건</div>
-                    <div>소속 뷰어 ${admViewers.length}명</div>
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      `;
+        `;
+      }).join('');
     };
 
     let stagingTransferSearchMatch = null;
@@ -11003,7 +11019,7 @@
       if (accStep) accStep.classList.add('hidden');
       if (prevEl) { prevEl.innerHTML = ''; prevEl.classList.add('hidden'); }
       if (execBtn) execBtn.disabled = true;
-      if (accBtn) { accBtn.disabled = false; accBtn.textContent = '이전받는 관리자 명시적 수락 시뮬레이션 진행'; }
+      if (accBtn) { accBtn.disabled = false; accBtn.textContent = '이전받는 관리자 수락 처리'; }
     }
 
     selectWithdrawMode = function(mode) {
@@ -11029,7 +11045,7 @@
         const execBtn = document.getElementById('btn-execute-transfer-withdraw');
         if (execBtn) execBtn.disabled = true;
         const accBtn = document.getElementById('btn-simulate-target-accept');
-        if (accBtn) { accBtn.disabled = false; accBtn.textContent = '이전받는 관리자 명시적 수락 시뮬레이션 진행'; }
+        if (accBtn) { accBtn.disabled = false; accBtn.textContent = '이전받는 관리자 수락 처리'; }
       }
     }
 
@@ -11081,7 +11097,7 @@
       if (!stagingTransferSelectedTarget) return;
       stagingTransferAccepted = true;
       const accBtn = document.getElementById('btn-simulate-target-accept');
-      if (accBtn) { accBtn.disabled = true; accBtn.textContent = '수락 완료 (로컬 시뮬레이션)'; }
+      if (accBtn) { accBtn.disabled = true; accBtn.textContent = '수락 완료'; }
 
       const authUser = JSON.parse(localStorage.getItem('STAGING_ATHLETE_APP_AUTH_USER') || '{}');
       const checkedPids = Array.from(document.querySelectorAll('.withdraw-transfer-chk:checked')).map(c => c.value);
@@ -11092,7 +11108,7 @@
 
       const prevEl = document.getElementById('withdraw-final-preview');
       prevEl.innerHTML = `
-        <div class="font-bold text-blue-300 mb-1"><span class="ui-ic" data-ic="clipboard"></span> 최종 이전 확인 (로컬 시뮬레이션)</div>
+        <div class="font-bold text-blue-300 mb-1"><span class="ui-ic" data-ic="clipboard"></span> 최종 이전 확인</div>
         <div>• 이전받을 관리자: <strong>${stagingTransferSelectedTarget.name}</strong> (${stagingTransferSelectedTarget.email})</div>
         <div>• 이전 대상 선수: <strong>${checkedPids.length}명</strong></div>
         <div>• 이전 대상 경기기록: <strong>${recCount}건</strong></div>
@@ -11137,7 +11153,7 @@
       localStorage.removeItem('STAGING_ATHLETE_APP_AUTH_USER');
       localStorage.removeItem('STAGING_CUSTOM_PLAYERS_v2_' + authUser.id);
       localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + authUser.id);
-      alert('[로컬 시뮬레이션] 선수·기록·학부모 권한 이전 및 관리자 탈퇴가 완료되었습니다.');
+      alert('선수·기록·열람 권한 이전과 관리자 탈퇴가 완료되었습니다.');
       window.location.reload();
     };
 
@@ -11387,11 +11403,13 @@
       if (me.role !== 'super_admin') { alert('공지 작성과 발송은 최고관리자만 할 수 있습니다.'); return; }
       renderNoticeAdminList();
       pushModalHistory('modal-notice-admin');
+      rememberScreenBeforeModal('modal-notice-admin');
       document.getElementById('modal-notice-admin')?.classList.remove('hidden');
     }
 
     function closeNoticeAdminModal() {
       document.getElementById('modal-notice-admin')?.classList.add('hidden');
+      restoreScreenAfterModal('modal-notice-admin');
     }
 
     function renderNoticeAdminList() {
@@ -11632,7 +11650,7 @@
       }
       stagingTransferAccepted = true;
       const accBtn = document.getElementById('btn-simulate-target-accept');
-      if (accBtn) { accBtn.disabled = true; accBtn.textContent = '수락 완료 (로컬 시뮬레이션)'; }
+      if (accBtn) { accBtn.disabled = true; accBtn.textContent = '수락 완료'; }
 
       const recCount = checkedPids.reduce((s, pid) => s + (Array.isArray(owned.records[pid]) ? owned.records[pid].length : 0), 0);
       const tombPlayers = Object.keys(owned.deletedPlayers || {}).length;
@@ -11640,7 +11658,7 @@
 
       const prevEl = document.getElementById('withdraw-final-preview');
       prevEl.innerHTML = `
-        <div class="font-bold text-blue-300 mb-1"><span class="ui-ic" data-ic="clipboard"></span> 최종 이전 확인 (로컬 시뮬레이션)</div>
+        <div class="font-bold text-blue-300 mb-1"><span class="ui-ic" data-ic="clipboard"></span> 최종 이전 확인</div>
         <div>• 이전받을 관리자: <strong>${stagingTransferSelectedTarget.name}</strong> (${stagingTransferSelectedTarget.email})</div>
         <div>• 이전 대상 선수: <strong>${checkedPids.length}명</strong> (전체 필수)</div>
         <div>• 이전 대상 경기기록: <strong>${recCount}건</strong></div>
@@ -11723,10 +11741,6 @@
       };
 
       try {
-        if (window.__STAGING_FORCE_TRANSFER_ERROR__) {
-          throw new Error('강제 이전 오류 테스트 (사전 단계)');
-        }
-
         const cloud = JSON.parse(localStorage.getItem(STAGING_CLOUD_KEY) || '{"_admins":{}}');
         const targetAdm = cloud._admins && cloud._admins[targetId];
         if (!targetAdm) throw new Error('이전받을 대상 관리자 클라우드 정보를 찾을 수 없습니다.');
@@ -11876,10 +11890,6 @@
         saveAdminTombstones(targetStableKey, { deletedPlayers: mergedDelPlayers, deletedRecords: mergedDelRecords });
         localStorage.setItem('STAGING_CUSTOM_PLAYERS_v2_' + targetStableKey, JSON.stringify(targetAdm.players));
 
-        if (window.__STAGING_FORCE_MID_SAVE_ERROR__) {
-          throw new Error('중간 저장 단계 강제 오류 테스트 (일부 키 저장 후 실패)');
-        }
-
         localStorage.setItem('STAGING_CUSTOM_DATA_v2_' + targetStableKey, JSON.stringify(targetAdm.records));
 
         delete cloud._admins[authUser.id];
@@ -11898,7 +11908,7 @@
         localStorage.removeItem('STAGING_CUSTOM_DATA_v2_' + owned.stableKey);
         localStorage.removeItem('STAGING_ATHLETE_APP_TOMBSTONES_' + owned.stableKey);
 
-        alert('[로컬 시뮬레이션] 전체 선수·기록(ID·내용·runners 검증 완료)·삭제이력·학부모 권한 이전 및 관리자 탈퇴가 완료되었습니다.');
+        alert('전체 선수와 경기 기록, 삭제 이력, 열람 권한을 넘기고 관리자 탈퇴가 완료되었습니다.');
         window.location.reload();
       } catch (err) {
         const rb = restoreSnapshots();
@@ -11911,6 +11921,53 @@
       }
     };
 
+
+    // ==================================================================
+    // 화면·스크롤 복귀 (창을 열고 닫을 때 보던 자리로 돌아온다)
+    //  - 창을 열 때 그 아래 화면의 스크롤 위치를 기억해 두고, 창을 닫으면 그 자리로 되돌린다.
+    //  - 선수 관리 명단에서 한참 아래 선수를 수정하고 저장·닫기해도 목록이 맨 위로 튀지 않는다.
+    //  - 검색어·필터·아코디언 펼침 상태는 화면을 다시 그리지 않고 그대로 두므로 함께 유지된다.
+    // ==================================================================
+    const modalScreenSnapshots = {};
+
+    function captureScrollSnapshot() {
+      const map = {};
+      const els = document.querySelectorAll('[data-scroll-key]');
+      for (let i = 0; i < els.length; i++) {
+        const el = els[i];
+        if (el.closest && el.closest('.modal-overlay.hidden')) continue;
+        const key = el.getAttribute('data-scroll-key');
+        if (key) map[key] = el.scrollTop;
+      }
+      return map;
+    }
+
+    function rememberScreenBeforeModal(modalId) {
+      if (!modalId) return;
+      modalScreenSnapshots[modalId] = captureScrollSnapshot();
+    }
+
+    function restoreScreenAfterModal(modalId) {
+      if (!modalId) return;
+      const snap = modalScreenSnapshots[modalId];
+      delete modalScreenSnapshots[modalId];
+      if (!snap) return;
+      requestAnimationFrame(function () {
+        const els = document.querySelectorAll('[data-scroll-key]');
+        for (let i = 0; i < els.length; i++) {
+          const el = els[i];
+          const key = el.getAttribute('data-scroll-key');
+          if (!key || !Object.prototype.hasOwnProperty.call(snap, key)) continue;
+          if (el.closest && el.closest('.modal-overlay.hidden')) continue;
+          el.scrollTop = snap[key];
+        }
+      });
+    }
+
+    function isModalVisible(modalId) {
+      const el = modalId ? document.getElementById(modalId) : null;
+      return !!el && !el.classList.contains('hidden');
+    }
 
     // ==================================================================
     // 2026-11-27 모바일 검수 반영분
@@ -11984,8 +12041,8 @@
       renderPlayerCards();
       renderCurrentView();
       showSyncNotice(p.locked
-        ? `[${p.name}] 프로필을 잠갔습니다. 특별 뷰어 자동 열람에서 제외됩니다.`
-        : `[${p.name}] 프로필 잠금을 풀었습니다. 특별 뷰어 자동 열람 대상에 다시 포함됩니다.`, 'info');
+        ? `[${p.name}] 선수는 이제 특별 뷰어의 자동 열람 대상에서 제외됩니다.`
+        : `[${p.name}] 선수는 이제 특별 뷰어도 자동으로 열람할 수 있습니다.`, 'info');
     }
 
     // ---------- 선수 일괄 삭제 ----------
@@ -12167,6 +12224,8 @@
         if (v.status !== 'approved' || !v.approved) return false;
         return allowedList.length > 0;
       });
+      const viewerTitleEl = document.getElementById('admin-approved-viewers-title');
+      if (viewerTitleEl) viewerTitleEl.textContent = `승인된 뷰어 관리 (${approvedKeys.length}명)`;
       if (approvedKeys.length === 0) {
         c.innerHTML = '<div class="py-4 text-center text-slate-500 text-[11px]">승인된 뷰어가 없습니다.</div>';
         return;
@@ -12204,6 +12263,8 @@
 
         const card = document.createElement('div');
         card.className = 'p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2';
+        card.setAttribute('data-viewer-row', '1');
+        card.setAttribute('data-search', ((item.name || key) + ' ' + (item.email || '')).toLowerCase());
         card.innerHTML = `
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0 space-y-1">
@@ -12218,7 +12279,7 @@
           </div>
           <div class="flex items-center gap-1.5 flex-wrap">
             <button type="button" onclick="toggleAdminViewerPanel('${bodyEsc(key)}')" class="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-300 text-[11px] font-bold active:scale-95 transition">${panelOpen ? '선수 선택 닫기' : '열람 선수 변경'}</button>
-            <button type="button" onclick="toggleSpecialViewer('${bodyEsc(key)}')" class="px-2.5 py-1.5 rounded-lg border text-[11px] font-bold active:scale-95 transition ${isSpecialViewerRecord(item) ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-slate-950 text-indigo-300 border-indigo-500/40'}">${isSpecialViewerRecord(item) ? '특별 뷰어 해제' : (pendingSpecialOffer(item) ? '수락 대기중' : '특별 뷰어 지정')}</button>
+            <button type="button" onclick="toggleSpecialViewer('${bodyEsc(key)}')" class="px-2.5 py-1.5 rounded-lg border text-[11px] font-bold active:scale-95 transition ${isSpecialViewerRecord(item) ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-slate-950 text-indigo-300 border-indigo-500/40'}">${isSpecialViewerRecord(item) ? '특별 뷰어 해제' : (pendingSpecialOffer(item) ? '수락 대기 중' : '특별 뷰어 지정')}</button>
             <button type="button" onclick="deleteViewerFromApproval('${bodyEsc(key)}')" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 border border-slate-700 text-[11px] active:scale-95 transition">삭제</button>
           </div>
           <div class="player-pick-panel ${panelOpen ? '' : 'hidden'} space-y-1.5 pt-1 border-t border-slate-800" data-panel-key="${bodyEsc(key)}">
@@ -12235,6 +12296,9 @@
           </div>`;
         c.appendChild(card);
       });
+      // 다시 그린 뒤에도 검색어에 맞는 뷰어만 보이게 한다.
+      const viewerSearchEl = document.getElementById('admin-approved-viewers-search');
+      if (viewerSearchEl && viewerSearchEl.value) filterAdminApprovedViewers(viewerSearchEl.value);
     }
 
     function toggleAdminViewerPanel(key) {
@@ -12290,8 +12354,16 @@
     }
 
     // ---------- 특별 뷰어(관리자별 자동 열람) ----------
+    // 초대 문구에 쓸 초대자 이름: 최고관리자는 지금 로그인한 최고관리자 계정의 이름을 쓴다.
     function getAdminDisplayNameById(adminId) {
-      if (!adminId || adminId === 'super_admin') return '지혜 님';
+      if (!adminId || adminId === 'super_admin' || adminId === 'staging_super') {
+        try {
+          const accounts = getStagingAccounts();
+          const acc = Object.values(accounts || {}).find(a => a && a.role === 'super_admin');
+          if (acc && acc.name) return acc.name;
+        } catch (e) {}
+        return '최고관리자';
+      }
       const adm = (realtimeAuthData && realtimeAuthData._admins) ? realtimeAuthData._admins[adminId] : null;
       return (adm && adm.name) ? adm.name : '관리자';
     }
@@ -12301,7 +12373,7 @@
       if (!item) return;
       const scopeId = getCurrentAdminScopeId();
       if (isSpecialViewerRecord(item)) {
-        if (!confirm('이 뷰어의 특별 뷰어(자동 열람) 지정을 해제할까요?\n\n자동 열람만 해제되며, 이미 개별 승인된 선수 열람 목록은 지우지 않습니다.\n(해제 시 개별 승인 권한을 어떻게 처리할지는 확정 전이라 임의로 바꾸지 않았습니다.)')) return;
+        if (!confirm('이 뷰어의 특별 뷰어(자동 열람) 지정을 해제할까요?\n\n자동 열람만 해제되며, 이미 개별 승인된 선수 열람 목록은 지우지 않습니다.')) return;
         const nextData = Object.assign({}, realtimeAuthData);
         const rec = Object.assign({}, nextData[key]);
         rec.special = { status: 'revoked', at: Date.now(), byAdminId: scopeId };
@@ -12617,6 +12689,38 @@
       window.location.reload();
     }
 
+    // ── 다시 그려도 보던 자리를 지킨다 ─────────────────────────────
+    // 선수 명단: 목록을 다시 그려도(수정 저장·복구·잠금 변경) 스크롤 위치를 유지한다.
+    const _origRenderPlayerCards = renderPlayerCards;
+    renderPlayerCards = function () {
+      const scroller = document.querySelector('#modal-players [data-scroll-key="player-manage"]');
+      const listEl = document.getElementById('player-cards-container');
+      const keepTop = scroller ? scroller.scrollTop : 0;
+      const keepListTop = listEl ? listEl.scrollTop : 0;
+      const result = _origRenderPlayerCards.apply(this, arguments);
+      const scroller2 = document.querySelector('#modal-players [data-scroll-key="player-manage"]');
+      const listEl2 = document.getElementById('player-cards-container');
+      if (scroller2) scroller2.scrollTop = keepTop;
+      if (listEl2) listEl2.scrollTop = keepListTop;
+      return result;
+    };
+
+    // 메인 화면: 같은 선수·종목·보기 모드를 다시 그릴 때는 보던 스크롤 위치를 유지한다.
+    const _origRenderCurrentView = renderCurrentView;
+    function getViewIdentity() {
+      return [currentPlayer || '', currentEvent || '', mainViewMode || '', annualYear || ''].join('|');
+    }
+    renderCurrentView = function () {
+      const before = getViewIdentity();
+      const keepY = window.scrollY || 0;
+      const result = _origRenderCurrentView.apply(this, arguments);
+      if (keepY > 0 && before === getViewIdentity()) {
+        requestAnimationFrame(function () {
+          if (before === getViewIdentity()) window.scrollTo(0, keepY);
+        });
+      }
+      return result;
+    };
   </script>
 
   <!-- Update Notification Toast -->
@@ -12674,7 +12778,7 @@
   <div id="modal-admin-withdraw" class="modal-overlay fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm modal-panel overflow-y-auto p-5 space-y-4 shadow-2xl text-xs">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="text-base font-bold text-white"><span class="ui-ic" data-ic="alertTri"></span> 관리자 회원 탈퇴 <span class="text-[10px] text-amber-300 font-normal">(로컬 시뮬레이션)</span></h3>
+        <h3 class="text-base font-bold text-white"><span class="ui-ic" data-ic="alertTri"></span> 관리자 회원 탈퇴 </h3>
         <button type="button" onclick="document.getElementById('modal-admin-withdraw').classList.add('hidden')" class="text-slate-400 hover:text-white"><span class="ui-ic" data-ic="x"></span></button>
       </div>
       <div id="withdraw-summary-box" class="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-slate-300 space-y-1"></div>
@@ -12690,7 +12794,7 @@
       </div>
       <div id="withdraw-transfer-panel" class="hidden space-y-2.5 p-3 rounded-2xl bg-slate-950 border border-slate-800">
         <div class="text-[10px] text-amber-300 bg-amber-950/40 border border-amber-500/30 rounded-xl p-2">
-          <span class="ui-ic" data-ic="flask"></span> 로컬 시뮬레이션 모드: 실제 다른 관리자의 서버 수락이 아닌 로컬 검수 절차로 동작합니다.
+          <span class="ui-ic" data-ic="flask"></span> 검수 모드: 실제 서버 수락이 아닌 이 기기 안에서만 처리됩니다.
         </div>
         <label class="block font-semibold text-slate-300">이전받을 관리자 이메일 검색</label>
         <div class="flex gap-1.5">
@@ -12705,7 +12809,7 @@
 
         <div id="withdraw-accept-step" class="hidden space-y-2 pt-1 border-t border-slate-800">
           <button type="button" id="btn-simulate-target-accept" onclick="simulateTransferTargetAccept()" class="w-full py-2 rounded-xl bg-emerald-700/40 hover:bg-emerald-700/60 text-emerald-200 border border-emerald-500/40 font-bold">
-            <span class="ui-ic" data-ic="users"></span> 이전받는 관리자 명시적 수락 시뮬레이션 진행
+            <span class="ui-ic" data-ic="users"></span> 이전받는 관리자 수락 처리
           </button>
         </div>
 
