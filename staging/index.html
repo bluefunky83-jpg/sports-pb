@@ -108,12 +108,12 @@
     body.kb-open #btn-add-record-fixed { display: none !important; }
     /* ===== 앱 자체 숫자 키패드 =====
        시스템 숫자 키보드·구글 자동완성 영역을 부르지 않고 앱 안에서만 숫자를 입력한다.
-       높이·간격은 아래 변수만 바꾸면 키 하나부터 전체 높이까지 함께 줄어든다(실기기 확인 후 조정). */
+       모바일·터치 환경 전용이고(PC는 물리 키보드로 직접 입력), 높이·간격은 아래 변수만 바꾸면 된다. */
     :root {
-      --numpad-key-h: 42px;
-      --numpad-gap: 5px;
-      --numpad-pad: 8px;
-      --numpad-radius: 11px;
+      --numpad-key-h: 34px;
+      --numpad-gap: 4px;
+      --numpad-pad: 6px;
+      --numpad-radius: 9px;
     }
     #app-numpad {
       position: fixed; left: 50%; transform: translateX(-50%); bottom: 0;
@@ -129,28 +129,28 @@
     }
     #app-numpad .numpad-head {
       display: flex; align-items: center; justify-content: space-between; gap: 8px;
-      padding: 1px 3px 6px;
+      padding: 0 2px 4px;
     }
-    #app-numpad .numpad-title { font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.01em; }
+    #app-numpad .numpad-title { font-size: 10.5px; font-weight: 700; color: #94a3b8; letter-spacing: 0.01em; }
     #app-numpad .numpad-value {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; font-weight: 700;
-      color: #ffffff; min-height: 18px; text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 700;
+      color: #ffffff; min-height: 15px; text-align: right; line-height: 1.1;
     }
     #app-numpad .numpad-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--numpad-gap); }
     #app-numpad .numpad-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--numpad-gap); margin-top: var(--numpad-gap); }
     #app-numpad button.numpad-key {
       height: var(--numpad-key-h); border-radius: var(--numpad-radius);
       background: #111c30; border: 1px solid #1e293b; color: #e2e8f0;
-      font-size: 17px; font-weight: 700; line-height: 1;
+      font-size: 15px; font-weight: 700; line-height: 1;
       display: flex; align-items: center; justify-content: center;
       transition: background 120ms ease, transform 90ms ease;
     }
     #app-numpad button.numpad-key:active { transform: scale(0.96); background: #1b2a45; }
-    #app-numpad button.numpad-key.sub { font-size: 13px; color: #93c5fd; }
+    #app-numpad button.numpad-key.sub { font-size: 12px; color: #93c5fd; }
     #app-numpad button.numpad-key.blank { visibility: hidden; }
     #app-numpad button.numpad-act {
       height: var(--numpad-key-h); border-radius: var(--numpad-radius);
-      font-size: 13px; font-weight: 700; line-height: 1;
+      font-size: 12px; font-weight: 700; line-height: 1;
       display: flex; align-items: center; justify-content: center;
     }
     #app-numpad button.numpad-act.cancel { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
@@ -161,7 +161,11 @@
        입력칸과 하단 버튼이 키패드에 가리지 않게 한다(높이는 JS가 실제 픽셀로 넣는다). */
     body.numpad-open #modal-record .modal-overlay { align-items: flex-start !important; }
     body.numpad-open #modal-record .modal-panel {
-      max-height: calc(var(--app-vh, 100dvh) - var(--numpad-total-h, 272px) - 12px);
+      max-height: calc(var(--app-vh, 100dvh) - var(--numpad-total-h, 232px) - 12px);
+    }
+    /* PC(마우스·정밀 포인터, 넓은 화면)에서는 자체 키패드를 쓰지 않고 물리 키보드로 직접 입력한다. */
+    @media (hover: hover) and (pointer: fine) and (min-width: 768px) {
+      #app-numpad { display: none !important; }
     }
     /* 모달이 열려 있는 동안은 배경 화면이 따라 움직이지 않게 잠근다(모달 안쪽 스크롤은 그대로).
        body를 fixed로 잠그고 top을 보던 위치만큼 당겨 두어, 잠그는 순간 배경이 맨 위로 튀지 않게 한다. */
@@ -5935,6 +5939,35 @@
     let numpadMode = 'int';      // int | dec1 | dec3
     let numpadTouched = false;   // 이번에 키를 눌렀는지(안 누르고 [확인]하면 원래 값을 둔다)
 
+    // 이 기기가 자체 숫자 키패드를 쓰는 환경인지(모바일·터치·좁은 화면). PC는 물리 키보드로 직접 입력한다.
+    function isNumpadEnvironment() {
+      try {
+        if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+      } catch (e) {}
+      return window.innerWidth < 768;
+    }
+    // 입력칸의 readonly·inputmode를 기기 환경에 맞춘다.
+    //  - 모바일·터치: readonly + inputmode="none"(시스템 키보드·구글 자동완성 미표시) → 자체 키패드
+    //  - PC: readonly 해제, inputmode=숫자 → 실물 키보드로 직접 입력(자체 키패드는 열지 않는다)
+    function applyNumpadEnvironment() {
+      const use = isNumpadEnvironment();
+      document.querySelectorAll('[data-numpad]').forEach(function (el) {
+        if (use) {
+          el.setAttribute('readonly', 'readonly');
+          el.setAttribute('inputmode', 'none');
+          el.classList.add('cursor-pointer');
+        } else {
+          el.removeAttribute('readonly');
+          el.setAttribute('inputmode', el.getAttribute('data-numpad') === 'int' ? 'numeric' : 'decimal');
+          el.classList.remove('cursor-pointer');
+          if (numpadField === el) closeNumpadSilent();
+        }
+      });
+    }
+    window.addEventListener('resize', function () { applyNumpadEnvironment(); });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyNumpadEnvironment);
+    else applyNumpadEnvironment();
+
     function numpadMaxLen() {
       const n = parseInt(numpadField ? numpadField.getAttribute('data-numpad-maxlen') : '', 10);
       return isNaN(n) || n <= 0 ? 3 : n;
@@ -5964,14 +5997,14 @@
     function measureNumpadHeight() {
       const pad = document.getElementById('app-numpad');
       const zoom = parseFloat(document.documentElement.style.zoom || '1') || 1;
-      const h = pad ? Math.round(pad.getBoundingClientRect().height / zoom) : 272;
+      const h = pad ? Math.round(pad.getBoundingClientRect().height / zoom) : 232;
       document.documentElement.style.setProperty('--numpad-total-h', Math.max(200, h) + 'px');
     }
     function numpadSyncPreview() {
       if (numpadField && ['time-h', 'time-m', 'time-s'].indexOf(numpadField.id) >= 0 && typeof updateTimePreview === 'function') updateTimePreview();
     }
     function numpadOpen(el) {
-      if (!el) return;
+      if (!el || !isNumpadEnvironment()) return;
       // 다른 숫자칸에서 넘어올 때는 그때까지 입력한 값을 먼저 확정한다.
       if (numpadField && numpadField !== el) {
         numpadField.value = numpadDraft;
@@ -6075,11 +6108,30 @@
     function onNumpadFieldTap(e) {
       const t = e.target;
       if (!t || !t.getAttribute || !t.getAttribute('data-numpad')) return;
+      if (!isNumpadEnvironment()) return;   // PC는 물리 키보드로 직접 입력한다.
       if (numpadField === t) return;
       numpadOpen(t);
     }
     document.addEventListener('focusin', onNumpadFieldTap);
     document.addEventListener('click', onNumpadFieldTap);
+    // PC 직접 입력: 숫자 입력칸에 숫자·소수점만 들어가게 하고 자리수를 지킨다(기존 검증 규칙은 그대로).
+    document.addEventListener('input', function (e) {
+      const t = e.target;
+      if (!t || !t.getAttribute || !t.getAttribute('data-numpad')) return;
+      if (isNumpadEnvironment() || t === numpadField) return;
+      const mode = t.getAttribute('data-numpad') || 'int';
+      const maxLen = parseInt(t.getAttribute('data-numpad-maxlen') || '3', 10) || 3;
+      const dec = mode === 'dec3' ? 3 : (mode === 'dec1' ? 1 : 0);
+      let v = String(t.value || '').replace(dec === 0 ? /[^0-9]/g : /[^0-9.]/g, '');
+      const dotIdx = v.indexOf('.');
+      if (dotIdx >= 0) {
+        v = v.slice(0, dotIdx + 1) + v.slice(dotIdx + 1).replace(/\./g, '').slice(0, dec);
+      }
+      const parts = v.split('.');
+      if (parts[0].length > maxLen) v = parts[0].slice(0, maxLen) + (parts.length > 1 ? '.' + parts[1] : '');
+      if (v !== t.value) t.value = v;
+      if (['time-h', 'time-m', 'time-s'].indexOf(t.id) >= 0 && typeof updateTimePreview === 'function') updateTimePreview();
+    });
 
     function handleSaveRecord(e) {
       e.preventDefault();
