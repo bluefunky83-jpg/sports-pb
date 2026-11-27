@@ -1205,7 +1205,7 @@
 
         <div id="viewer-search-result-container" class="space-y-2 pt-1">
           <div class="p-3 text-center text-slate-500 text-[11px] rounded-2xl bg-slate-950/60 border border-slate-800">
-            선수 이름을 입력하고 [조회]를 눌러주세요.
+            선수 이름을 입력하고 [조회]를 눌러 주세요.
           </div>
         </div>
 
@@ -5509,7 +5509,7 @@
     function validateRecordInput({ meetVal, eventName, hRaw, mRaw, sRaw, windRaw, windSign, rankRaw }) {
       const cleanMeet = String(meetVal || '').trim();
       if (!cleanMeet) {
-        return { ok: false, reason: '대회명을 입력해주세요.' };
+        return { ok: false, reason: '대회명을 입력해 주세요.' };
       }
 
       const hStr = String(hRaw ?? '').trim();
@@ -5517,7 +5517,7 @@
       const sStr = String(sRaw ?? '').trim();
 
       if (hStr === '' && mStr === '' && sStr === '') {
-        return { ok: false, reason: '기록 시간을 입력해주세요.' };
+        return { ok: false, reason: '기록 시간을 입력해 주세요.' };
       }
 
       const numPattern = /^-?\d+(\.\d+)?$/;
@@ -5539,10 +5539,10 @@
         return { ok: false, reason: '분은 정수만 입력할 수 있습니다.' };
       }
       if (mNum >= 60) {
-        return { ok: false, reason: '분은 0~59 사이의 값을 입력해주세요.' };
+        return { ok: false, reason: '분은 0~59 사이의 값을 입력해 주세요.' };
       }
       if (sNum >= 60) {
-        return { ok: false, reason: '초는 0 이상 60 미만의 값을 입력해주세요.' };
+        return { ok: false, reason: '초는 0 이상 60 미만의 값을 입력해 주세요.' };
       }
       if (sStr.includes('.') && sStr.split('.')[1].length > 3) {
         return { ok: false, reason: '초는 소수점 셋째 자리(0.001초)까지만 입력할 수 있습니다.' };
@@ -5555,7 +5555,7 @@
 
       const bounds = getEventTimeBounds(eventName);
       if (totalSec < bounds.min || totalSec > bounds.max) {
-        return { ok: false, reason: `${bounds.label} 허용 범위를 벗어난 기록입니다. 입력값을 다시 확인해주세요.` };
+        return { ok: false, reason: `${bounds.label} 허용 범위를 벗어난 기록입니다. 입력값을 다시 확인해 주세요.` };
       }
 
       let windVal = '';
@@ -5570,7 +5570,7 @@
         }
         const signedWind = (windSign === '-' ? -1 : 1) * wNum;
         if (signedWind < -20.0 || signedWind > 20.0) {
-          return { ok: false, reason: '풍속은 -20.0 ~ +20.0 m/s 범위 내에서 입력해주세요.' };
+          return { ok: false, reason: '풍속은 -20.0 ~ +20.0 m/s 범위 내에서 입력해 주세요.' };
         }
         windVal = (windSign === '-' ? '-' : '+') + wNum.toFixed(1);
       }
@@ -8601,7 +8601,7 @@
       const codeInput = document.getElementById('input-viewer-auth-code');
       const code = (codeInput && codeInput.value ? codeInput.value : '').trim();
       if (!code) {
-        alert('승인코드 4자리를 입력해주세요.');
+        alert('승인코드 4자리를 입력해 주세요.');
         return;
       }
 
@@ -8619,7 +8619,7 @@
         authUser.allowedPlayers = ['yusin', 'byeolha'];
         alert('전체 선수 기록 열람이 승인되었습니다!');
       } else {
-        alert('올바른 승인코드가 아닙니다. 관리자에게 코드를 확인해주세요.');
+        alert('올바른 승인코드가 아닙니다. 관리자에게 코드를 확인해 주세요.');
         return;
       }
 
@@ -9133,7 +9133,7 @@
       }
 
       if (!query) {
-        container.innerHTML = '<div class="p-3 text-center text-slate-500 text-[11px] rounded-2xl bg-slate-950/60 border border-slate-800">선수 이름을 입력하고 [조회]를 눌러주세요.</div>';
+        container.innerHTML = '<div class="p-3 text-center text-slate-500 text-[11px] rounded-2xl bg-slate-950/60 border border-slate-800">선수 이름을 입력하고 [조회]를 눌러 주세요.</div>';
         return;
       }
 
