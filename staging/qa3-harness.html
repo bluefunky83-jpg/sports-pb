@@ -484,6 +484,57 @@ window.run_shot = function () {
   });
 };
 
+
+/* ---------- run: 배율별 잘림 점검 ---------- */
+window.run_scale = function () {
+  const w = W();
+  const d = D();
+  const VH = w.innerHeight, VW = w.innerWidth;
+  const res = { vh: VH, vw: VW, zoom: d.documentElement.style.zoom, scaleSetting: localStorage.getItem('STAGING_ATHLETE_APP_UI_SCALE') };
+  const measure = function (key, panelSel, opener, closer, opt) {
+    try {
+      opener();
+      const panel = d.querySelector(panelSel);
+      const r = panel.getBoundingClientRect();
+      const footerBtn = opt && opt.footerSel ? d.querySelector(opt.footerSel) : panel.querySelector('.modal-fixed:last-child button, .modal-fixed:last-of-type button');
+      const fr = footerBtn ? footerBtn.getBoundingClientRect() : null;
+      res[key] = {
+        top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height), w: Math.round(r.width),
+        inside: r.top >= -1 && r.bottom <= VH + 1 && r.left >= -1 && r.right <= VW + 1,
+        footerBtnVisible: fr ? (fr.bottom <= VH + 1 && fr.top >= 0) : null
+      };
+      closer();
+    } catch (e) { res[key] = { error: String(e) }; }
+  };
+  measure('players', '#modal-players .modal-panel', w.openPlayerManageModal, w.closePlayerManageModal);
+  measure('admincenter', '#modal-admin-profile .modal-panel', function () { w.openAdminProfileModal(); w.toggleAdminCenterAccordion('players'); w.toggleAdminCenterAccordion('viewers'); }, w.closeAdminProfileModal);
+  measure('record', '#modal-record .modal-panel', w.openRecordModal, w.closeRecordModal);
+  measure('settings', '#modal-settings .modal-panel', w.openSettingsModal, w.closeSettingsModal);
+  measure('notif', '#modal-viewer-approvals .modal-panel', w.openViewerApprovalModal, w.closeViewerApprovalModal);
+  return res;
+};
+window.run_scale_super = function () {
+  const w = W();
+  const d = D();
+  const VH = w.innerHeight, VW = w.innerWidth;
+  return w.openSuperAdminModal().then(function () {
+    const panel = d.querySelector('#modal-super-admin-center .modal-panel');
+    const r = panel.getBoundingClientRect();
+    const closeBtn = d.querySelector('#modal-super-admin-center .modal-fixed:last-child button').getBoundingClientRect();
+    const list = d.getElementById('sa-viewers-tree-container').getBoundingClientRect();
+    const res = {
+      vh: VH, vw: VW, zoom: d.documentElement.style.zoom,
+      panel: { top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height), w: Math.round(r.width) },
+      inside: r.top >= -1 && r.bottom <= VH + 1 && r.left >= -1 && r.right <= VW + 1,
+      closeVisible: closeBtn.bottom <= VH + 1 && closeBtn.top >= 0,
+      listVisible: list.bottom <= VH + 1 && list.height > 40,
+      hScroll: d.documentElement.scrollWidth > d.documentElement.clientWidth + 1
+    };
+    w.closeSuperAdminModal();
+    return res;
+  });
+};
+
 /* ---------- run: login (계정 전환) ---------- */
 window.run_login = function (email) {
   const w = W();
