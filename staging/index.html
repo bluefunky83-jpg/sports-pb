@@ -13347,7 +13347,7 @@
         localStorage.setItem('STAGING_CUSTOM_PLAYERS_v2_' + DUMMY50_ADMIN_ID, JSON.stringify(built.players));
         localStorage.setItem('STAGING_CUSTOM_DATA_v2_' + DUMMY50_ADMIN_ID, JSON.stringify(built.records));
         localStorage.removeItem('STAGING_ATHLETE_APP_TOMBSTONES_' + DUMMY50_ADMIN_ID);
-        // 예전 검수에서 지운 선수가 '삭제된 선수'에 남아 구성이 헷갈리지 않게 코치 A 보관함만 비운다.
+        // 코치 A의 삭제 보관함을 비워 더미 구성과 섞이지 않게 한다.
         localStorage.removeItem('STAGING_DELETED_PLAYER_TRASH_v1_' + DUMMY50_ADMIN_ID);
       } catch (e) { console.warn('dummy50 local cache warning:', e); }
 
