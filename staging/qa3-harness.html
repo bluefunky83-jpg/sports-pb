@@ -11,7 +11,7 @@
 </style>
 </head>
 <body>
-<div id="wrap">
+<div id="wrap" aria-hidden="true">
   <iframe id="frame" src="index.html?qa3=1"></iframe>
   <pre id="out">init...</pre>
 </div>
@@ -474,8 +474,13 @@ window.run_shot = function () {
   const ready = login ? loginAs(login, role) : waitMs(200);
   return ready.then(function () {
   if (player) { const o = playerOptions().find(function (p) { return String(p.label).indexOf(player) >= 0; }); if (o) switchPlayerById(o.id); }
-  if (tab) { const b = tabBtn(tab); if (b) b.click(); }
   return waitMs(500);
+  }).then(function () {
+  if (tab) { const b = tabBtn(tab); if (b) b.click(); }
+  return waitMs(400);
+  }).then(function () {
+  if (tab) { const b = tabBtn(tab); if (b && activeTab() !== tab) b.click(); }
+  return waitMs(300);
   }).then(function () {
     if (open === 'players') { w.openPlayerManageModal(); if (q.get('bulk') === '1') w.enterPlayerBulkMode(); log('ok'); }
     else if (open === 'admincenter') { w.openAdminProfileModal(); return waitMs(400).then(function () { w.toggleAdminCenterAccordion('players'); w.toggleAdminCenterAccordion('viewers'); log('ok'); }); }
