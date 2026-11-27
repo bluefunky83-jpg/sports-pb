@@ -67,17 +67,6 @@
     .notice-item.open .notice-body-wrap { grid-template-rows: 1fr; }
     .notice-body-inner { overflow: hidden; min-height: 0; }
     .notice-body { padding: 10px 13px 12px; border-top: 1px solid #1e293b; font-size: 11px; line-height: 1.65; color: #cbd5e1; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
-    /* 생년월일 달력 버튼: 브라우저 기본 달력 아이콘은 숨기고 단색 SVG 하나만 보이게 한다. */
-    .birth-picker-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
-    .birth-picker-wrap .birth-picker-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; color: #64748b; }
-    #form-player-birth-picker { position: relative; }
-    #form-player-birth-picker::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
-    #form-player-birth-picker::-webkit-inner-spin-button,
-    #form-player-birth-picker::-webkit-clear-button { display: none; }
-    /* 날짜 값 글자와 브라우저 기본 달력 그림은 숨긴다(달력 아이콘이 두 개로 겹쳐 보이던 원인). */
-    #form-player-birth-picker::-webkit-datetime-edit,
-    #form-player-birth-picker::-webkit-datetime-edit-fields-wrapper { display: none; }
-    #form-player-birth-picker { -webkit-appearance: none; appearance: none; color: transparent; }
     /* 숫자 입력칸: 브라우저 기본 증감(▲▼) 버튼은 쓰지 않고 직접 입력만 받는다(PC·모바일 공통). */
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
@@ -112,6 +101,67 @@
     body.kb-open .modal-overlay .modal-panel {
       max-height: var(--app-vh, 100dvh);
       border-radius: 0 0 1.5rem 1.5rem;
+    }
+    /* 팝업이 떠 있는 동안에는 화면 뒤의 [+ 기록 추가] 버튼을 아예 그리지 않는다.
+       (반투명 배경 너머로 버튼이 비쳐 보이던 문제 — 키보드가 올라온 상태 포함) */
+    body.modal-open #btn-add-record-fixed,
+    body.kb-open #btn-add-record-fixed { display: none !important; }
+    /* ===== 앱 자체 숫자 키패드 =====
+       시스템 숫자 키보드·구글 자동완성 영역을 부르지 않고 앱 안에서만 숫자를 입력한다.
+       높이·간격은 아래 변수만 바꾸면 키 하나부터 전체 높이까지 함께 줄어든다(실기기 확인 후 조정). */
+    :root {
+      --numpad-key-h: 42px;
+      --numpad-gap: 5px;
+      --numpad-pad: 8px;
+      --numpad-radius: 11px;
+    }
+    #app-numpad {
+      position: fixed; left: 50%; transform: translateX(-50%); bottom: 0;
+      width: 100%; max-width: 28rem; z-index: 80; display: none;
+    }
+    #app-numpad.open { display: block; }
+    #app-numpad .numpad-panel {
+      background: #0b1220; border: 1px solid #1e293b; border-bottom: 0;
+      border-top-left-radius: 18px; border-top-right-radius: 18px;
+      box-shadow: 0 -12px 28px rgba(2,6,23,0.78);
+      padding: var(--numpad-pad);
+      padding-bottom: calc(var(--numpad-pad) + env(safe-area-inset-bottom, 0px));
+    }
+    #app-numpad .numpad-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 1px 3px 6px;
+    }
+    #app-numpad .numpad-title { font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.01em; }
+    #app-numpad .numpad-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; font-weight: 700;
+      color: #ffffff; min-height: 18px; text-align: right;
+    }
+    #app-numpad .numpad-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--numpad-gap); }
+    #app-numpad .numpad-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--numpad-gap); margin-top: var(--numpad-gap); }
+    #app-numpad button.numpad-key {
+      height: var(--numpad-key-h); border-radius: var(--numpad-radius);
+      background: #111c30; border: 1px solid #1e293b; color: #e2e8f0;
+      font-size: 17px; font-weight: 700; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 120ms ease, transform 90ms ease;
+    }
+    #app-numpad button.numpad-key:active { transform: scale(0.96); background: #1b2a45; }
+    #app-numpad button.numpad-key.sub { font-size: 13px; color: #93c5fd; }
+    #app-numpad button.numpad-key.blank { visibility: hidden; }
+    #app-numpad button.numpad-act {
+      height: var(--numpad-key-h); border-radius: var(--numpad-radius);
+      font-size: 13px; font-weight: 700; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #app-numpad button.numpad-act.cancel { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+    #app-numpad button.numpad-act.clear { background: #0f172a; color: #93c5fd; border: 1px solid #1e293b; }
+    #app-numpad button.numpad-act.ok { background: #2563eb; color: #ffffff; border: 1px solid #3b82f6; }
+    #app-numpad button.numpad-act:active { transform: scale(0.97); }
+    /* 키패드가 올라오면 기록 입력 팝업을 위로 붙이고, 키패드 높이만큼 팝업 높이를 줄여
+       입력칸과 하단 버튼이 키패드에 가리지 않게 한다(높이는 JS가 실제 픽셀로 넣는다). */
+    body.numpad-open #modal-record .modal-overlay { align-items: flex-start !important; }
+    body.numpad-open #modal-record .modal-panel {
+      max-height: calc(var(--app-vh, 100dvh) - var(--numpad-total-h, 272px) - 12px);
     }
     /* 모달이 열려 있는 동안은 배경 화면이 따라 움직이지 않게 잠근다(모달 안쪽 스크롤은 그대로).
        body를 fixed로 잠그고 top을 보던 위치만큼 당겨 두어, 잠그는 순간 배경이 맨 위로 튀지 않게 한다. */
@@ -369,7 +419,7 @@
           </div>
         </div>
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.28.2</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.28.3</div>
     </div>
   </div>
   </div>
@@ -804,7 +854,7 @@
         <div>
           <label class="block font-semibold text-slate-400 mb-1">대회명 / 경기명 *</label>
           <div class="flex items-center gap-2">
-            <input type="number" id="input-meet-round" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="회차" title="대회 회차(선택)" class="w-[3.2rem] shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-1 py-2 text-center text-white focus:outline-none focus:border-blue-500">
+            <input type="text" id="input-meet-round" readonly inputmode="none" data-numpad="int" data-numpad-title="회차" data-numpad-maxlen="3" autocomplete="off" placeholder="회차" title="대회 회차(선택)" class="w-[3.2rem] shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-1 py-2 text-center text-white focus:outline-none focus:border-blue-500 cursor-pointer">
             <div class="flex-1 min-w-0 relative">
               <div class="flex items-center gap-1">
                 <input type="text" id="input-meet" required autocomplete="off" placeholder="대회명 입력·선택" oninput="onMeetInput()" oncompositionend="onMeetInput()" onchange="onMeetNameChanged()" onfocus="onMeetInput()" class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-blue-500">
@@ -832,24 +882,24 @@
         <!-- Relay Runners (Conditional: Only for Relay/Team Events) -->
         <div id="field-relay-container" class="hidden bg-slate-900/80 border border-blue-500/30 rounded-xl p-3 space-y-2">
           <label class="block font-semibold text-blue-400 text-xs">릴레이 / 단체전 주자</label>
-          <div class="text-[10px] text-slate-400 leading-relaxed">릴레이 선수 선택에서 이름을 누르면 주자로 배정되고, 선택한 순서대로 주자 순번이 붙습니다. 배정된 선수를 다시 누르면 해제됩니다.</div>
+          <div class="text-[10px] text-slate-400 leading-relaxed">주자 선택에서 이름을 누르면 주자로 배정되고, 선택한 순서대로 주자 순번이 붙습니다. 배정된 선수를 다시 누르면 해제됩니다.</div>
 
           <!-- 주자 배정 결과: 직접 입력하지 않고 선택 결과·순번만 보여 준다. -->
           <div id="relay-slot-area" class="grid grid-cols-2 gap-2"></div>
 
           <div>
-            <div class="flex items-center justify-between gap-2 mb-1.5">
-              <span class="text-[11px] font-semibold text-slate-300">릴레이 선수 선택:</span>
-              <div class="flex items-center gap-1.5 flex-wrap justify-end">
-                <button type="button" id="btn-toggle-runner-del" onclick="toggleTeammateEditMode()" class="text-[11px] text-slate-300 hover:text-red-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
+            <div class="flex items-center justify-between gap-1.5 mb-1.5">
+              <span class="shrink-0 text-[11px] font-semibold text-slate-300 whitespace-nowrap">주자 선택:</span>
+              <div class="flex items-center justify-end gap-1 min-w-0 shrink-0">
+                <button type="button" id="btn-toggle-runner-del" onclick="toggleTeammateEditMode()" class="shrink-0 text-[11px] text-slate-300 hover:text-red-400 font-bold px-1.5 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
                   편집
                 </button>
-                <span id="runner-del-count" class="hidden text-[11px] font-bold text-rose-300 px-2 py-0.5 rounded-lg border border-rose-500/40 bg-rose-950/40 whitespace-nowrap">삭제(0명)</span>
-                <button type="button" id="btn-runner-del-confirm" onclick="confirmTeammateDeletion()" disabled class="hidden text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed whitespace-nowrap">확인</button>
-                <button type="button" id="btn-cancel-runner-del" onclick="cancelTeammateEditMode()" class="hidden text-[11px] text-slate-300 hover:text-white px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
+                <span id="runner-del-count" class="hidden shrink-0 text-[11px] font-bold text-rose-300 px-1.5 py-0.5 rounded-lg border border-rose-500/40 bg-rose-950/40 whitespace-nowrap">삭제(0명)</span>
+                <button type="button" id="btn-runner-del-confirm" onclick="confirmTeammateDeletion()" disabled class="hidden shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-lg border bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed whitespace-nowrap">확인</button>
+                <button type="button" id="btn-cancel-runner-del" onclick="cancelTeammateEditMode()" class="hidden shrink-0 text-[11px] text-slate-300 hover:text-white px-1.5 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
                   취소
                 </button>
-                <button type="button" id="btn-add-teammate" onclick="promptAddNewTeammate()" class="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-0.5 transition active:scale-95 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/30 whitespace-nowrap">
+                <button type="button" id="btn-add-teammate" onclick="promptAddNewTeammate()" class="shrink-0 text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-0.5 transition active:scale-95 bg-blue-500/10 px-1.5 py-0.5 rounded-lg border border-blue-500/30 whitespace-nowrap">
                   <span>+ 새 선수 등록</span>
                 </button>
               </div>
@@ -870,15 +920,15 @@
           <div class="grid grid-cols-3 gap-2 text-center">
             <div>
               <span class="text-[10px] text-slate-400 block mb-1">시 (Hour)</span>
-              <input type="number" id="time-h" min="0" autocomplete="off" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500">
+              <input type="text" id="time-h" readonly inputmode="none" data-numpad="int" data-numpad-title="시 (Hour)" data-numpad-maxlen="2" autocomplete="off" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500 cursor-pointer">
             </div>
             <div>
               <span class="text-[10px] text-slate-400 block mb-1">분 (Min)</span>
-              <input type="number" id="time-m" min="0" max="59" autocomplete="off" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500">
+              <input type="text" id="time-m" readonly inputmode="none" data-numpad="int" data-numpad-title="분 (Min)" data-numpad-maxlen="2" autocomplete="off" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-500 cursor-pointer">
             </div>
             <div>
               <span class="text-[10px] text-slate-400 block mb-1">초 (Sec.00)</span>
-              <input type="number" step="0.01" id="time-s" autocomplete="off" placeholder="0.00" class="w-full bg-slate-900 border border-blue-500/80 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-400 bg-blue-500/5">
+              <input type="text" step="0.01" id="time-s" readonly inputmode="none" data-numpad="dec3" data-numpad-title="초 (Sec.00)" data-numpad-maxlen="3" autocomplete="off" placeholder="0.00" class="w-full bg-slate-900 border border-blue-500/80 rounded-xl py-2 text-center text-white font-bold text-sm focus:outline-none focus:border-blue-400 bg-blue-500/5 cursor-pointer">
             </div>
           </div>
           <div class="mt-2 text-right text-[11px] text-blue-400 font-mono font-semibold" id="preview-formatted-time">
@@ -890,7 +940,7 @@
         <div class="grid grid-cols-2 gap-2.5 items-start">
           <div>
             <label class="block font-semibold text-slate-400 mb-1">순위</label>
-            <input type="number" id="input-rank" inputmode="numeric" autocomplete="off" placeholder="" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <input type="text" id="input-rank" readonly inputmode="none" data-numpad="int" data-numpad-title="순위" data-numpad-maxlen="3" autocomplete="off" placeholder="" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500 cursor-pointer">
           </div>
           <div id="field-wind-container">
             <label class="block font-semibold text-slate-400 mb-1">풍속 (m/s)</label>
@@ -898,7 +948,7 @@
               <button type="button" id="btn-wind-sign" onclick="toggleWindSign()" class="px-3 py-2 rounded-xl bg-blue-600/30 text-blue-300 border border-blue-500/40 font-mono font-bold text-sm shrink-0 active:scale-95 transition">
                 +
               </button>
-              <input type="number" step="0.1" id="input-wind-val" inputmode="decimal" autocomplete="off" placeholder="0.0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-blue-500">
+              <input type="text" step="0.1" id="input-wind-val" readonly inputmode="none" data-numpad="dec1" data-numpad-title="풍속 (m/s)" data-numpad-maxlen="2" autocomplete="off" placeholder="0.0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-blue-500 cursor-pointer">
             </div>
           </div>
         </div>
@@ -1031,14 +1081,8 @@
             </div>
           </div>
           <div class="min-w-0">
-            <label class="block font-semibold text-slate-400 mb-1">생년월일 *</label>
-            <div class="flex gap-1 items-center">
-              <input type="text" id="form-player-birth" required placeholder="0000-00-00" maxlength="10" inputmode="numeric" oninput="formatBirthInput(this)" onchange="onFormPlayerBirthChange()" class="flex-1 min-w-0 w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-              <span class="birth-picker-wrap">
-                <input type="date" id="form-player-birth-picker" onchange="if(this.value){ document.getElementById('form-player-birth').value = this.value; }" onclick="if (this.showPicker) { try { this.showPicker(); } catch (e) {} }" aria-label="달력에서 날짜 선택" title="달력에서 날짜 선택" class="w-8 h-[34px] bg-slate-800 border border-slate-700 rounded-xl px-1 text-xs text-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer flex-shrink-0">
-                <span class="birth-picker-icon"><span class="ui-ic" data-ic="calendar" data-size="15"></span></span>
-              </span>
-            </div>
+            <label class="block font-semibold text-slate-400 mb-1">생년 *</label>
+            <input type="text" id="form-player-birth" required placeholder="예: 2011" maxlength="4" inputmode="numeric" autocomplete="off" oninput="formatBirthInput(this)" onchange="onFormPlayerBirthChange()" class="w-full min-w-0 bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white tracking-wide focus:outline-none focus:border-blue-500">
           </div>
         </div>
 
@@ -1201,7 +1245,7 @@
       </div>
 
       <div class="modal-fixed text-[10px] text-slate-500 text-center px-5 py-2.5 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.28.2
+        선수 성장노트 v2026.11.28.3
       </div>
     </div>
   </div>
@@ -1970,7 +2014,7 @@
     }
 
     // 2. Storage Functions
-    const SAVE_FAILURE_MESSAGE = '저장에 실패했습니다. 브라우저 저장 공간이 가득 찼을 수 있습니다.\n먼저 [JSON 백업 다운로드]로 데이터를 내려받아 보관한 뒤, 공간을 확보하고 다시 시도해 주세요.';
+    const SAVE_FAILURE_MESSAGE = '저장에 실패했습니다. 브라우저 저장 공간이 가득 찼을 수 있습니다.\n먼저 [전체 선수 엑셀 백업]으로 데이터를 내려받아 보관한 뒤, 공간을 확보하고 다시 시도해 주세요.';
 
     function saveDataToStorage() {
       try {
@@ -2064,10 +2108,27 @@
     }
 
     // 4. Age & Grade Calculator (2026 Year Baseline)
+    // 생년(4자리)과 기존 생년월일 값을 모두 받는다. 월·일은 수집하지 않으므로 앞 4자리만 쓴다.
+    function getBirthYear(birthStr) {
+      const m = String(birthStr == null ? '' : birthStr).match(/(\d{4})/);
+      if (!m) return '';
+      const y = parseInt(m[1], 10);
+      return (y >= 1900 && y <= 2100) ? String(y) : '';
+    }
+    // 화면 표기용 생년(4자리 연도). 기존에 저장된 생년월일도 연도만 보여 준다(저장값은 바꾸지 않는다).
+    function getBirthYearLabel(birthStr) {
+      return getBirthYear(birthStr);
+    }
+    // 입력한 생년을 저장 가능한 4자리 연도로 다듬는다(4자리가 아니면 빈 값).
+    function normalizeBirthYearInput(raw) {
+      const digits = String(raw == null ? '' : raw).replace(/\D/g, '').slice(0, 4);
+      if (digits.length !== 4) return '';
+      const y = parseInt(digits, 10);
+      return (y >= 1900 && y <= 2100) ? String(y) : '';
+    }
     function calculateGradeAndAge(birthStr) {
       if (!birthStr) return { gradeBadge: '일반', schoolLevel: '대학/실업', age: 0 };
-      const parts = birthStr.split('-');
-      const birthYear = parseInt(parts[0], 10) || 2011;
+      const birthYear = parseInt(getBirthYear(birthStr), 10) || 2011;
       const currentYear = 2026;
       const age = currentYear - birthYear + 1;
 
@@ -5350,6 +5411,7 @@
     }
 
     function resetFormFields() {
+      closeNumpadSilent();
       closeMeetAutocomplete();
       document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
       document.getElementById('input-meet').value = '';
@@ -5649,6 +5711,7 @@
     function closeRecordModal() {
       // 명단 [확인]을 누르지 않고 창을 닫으면 그동안의 편집은 취소된다.
       if (isTeammateEditMode) cancelTeammateEditMode();
+      closeNumpadSilent();
       document.getElementById('modal-record').classList.add('hidden');
       restoreScreenAfterModal('modal-record');
     }
@@ -5863,6 +5926,161 @@
       });
     });
 
+    // ===== 앱 자체 숫자 키패드 (기록 입력의 시·분·초, 순위, 풍속, 회차) =====
+    //  해당 입력칸은 readonly + inputmode="none"이라 시스템 키보드와 구글 자동완성 영역이 열리지 않는다.
+    //  입력 규칙·저장 형식(정수, 소수 자리수, 풍속 부호)은 기존 검증 그대로이고, [취소]는 누르기 전 값을 남긴다.
+    let numpadField = null;      // 지금 입력 중인 입력칸
+    let numpadDraft = '';        // 입력 중인 임시값(확정 전까지 입력칸에 보여 준다)
+    let numpadOriginal = '';     // 키패드를 열기 전의 값([취소]하면 되돌린다)
+    let numpadMode = 'int';      // int | dec1 | dec3
+    let numpadTouched = false;   // 이번에 키를 눌렀는지(안 누르고 [확인]하면 원래 값을 둔다)
+
+    function numpadMaxLen() {
+      const n = parseInt(numpadField ? numpadField.getAttribute('data-numpad-maxlen') : '', 10);
+      return isNaN(n) || n <= 0 ? 3 : n;
+    }
+    function numpadDecimals() {
+      if (numpadMode === 'dec3') return 3;
+      if (numpadMode === 'dec1') return 1;
+      return 0;
+    }
+    function numpadSignLabel() {
+      // 풍속은 입력칸 옆 +/- 버튼과 같은 상태를 쓴다(저장 형식도 지금 그대로).
+      if (!numpadField || numpadMode !== 'dec1') return '';
+      return currentWindSign === '-' ? '-' : '+';
+    }
+    function renderNumpadValue() {
+      const el = document.getElementById('app-numpad-value');
+      if (el) el.textContent = numpadSignLabel() + (numpadDraft || '0');
+    }
+    function syncNumpadMode() {
+      const pad = document.getElementById('app-numpad');
+      if (!pad) return;
+      const signBtn = pad.querySelector('[data-num-key="sign"]');
+      const dotBtn = pad.querySelector('[data-num-key="dot"]');
+      if (signBtn) signBtn.classList.toggle('blank', numpadMode !== 'dec1');
+      if (dotBtn) dotBtn.classList.toggle('blank', numpadDecimals() === 0);
+    }
+    function measureNumpadHeight() {
+      const pad = document.getElementById('app-numpad');
+      const zoom = parseFloat(document.documentElement.style.zoom || '1') || 1;
+      const h = pad ? Math.round(pad.getBoundingClientRect().height / zoom) : 272;
+      document.documentElement.style.setProperty('--numpad-total-h', Math.max(200, h) + 'px');
+    }
+    function numpadSyncPreview() {
+      if (numpadField && ['time-h', 'time-m', 'time-s'].indexOf(numpadField.id) >= 0 && typeof updateTimePreview === 'function') updateTimePreview();
+    }
+    function numpadOpen(el) {
+      if (!el) return;
+      // 다른 숫자칸에서 넘어올 때는 그때까지 입력한 값을 먼저 확정한다.
+      if (numpadField && numpadField !== el) {
+        numpadField.value = numpadDraft;
+        numpadSyncPreview();
+      }
+      numpadField = el;
+      numpadMode = el.getAttribute('data-numpad') || 'int';
+      numpadOriginal = String(el.value || '');
+      numpadTouched = false;
+      // 순위처럼 숫자가 아닌 예전 값(실격·DNS)은 그대로 두고, 새로 누를 때만 바꾼다.
+      numpadDraft = /^[0-9.]+$/.test(numpadOriginal) ? numpadOriginal : '';
+      const title = document.getElementById('app-numpad-title');
+      if (title) title.textContent = el.getAttribute('data-numpad-title') || '숫자 입력';
+      syncNumpadMode();
+      renderNumpadValue();
+      const pad = document.getElementById('app-numpad');
+      if (pad) pad.classList.add('open');
+      document.body.classList.add('numpad-open');
+      measureNumpadHeight();
+      // 입력칸이 키패드에 가려지지 않게 보이는 영역 가운데로 당긴다.
+      [60, 260].forEach(function (ms) {
+        setTimeout(function () { try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) {} }, ms);
+      });
+    }
+    function numpadWriteDraft() {
+      if (!numpadField) return;
+      numpadField.value = numpadDraft;
+      renderNumpadValue();
+      numpadSyncPreview();
+    }
+    function numpadPress(key) {
+      if (!numpadField) return;
+      const k = String(key || '');
+      if (k === 'sign') return;
+      if (k === 'dot') {
+        if (numpadDecimals() === 0) return;
+        if (numpadDraft.indexOf('.') >= 0) return;
+        numpadTouched = true;
+        numpadDraft = (numpadDraft || '0') + '.';
+        numpadWriteDraft();
+        return;
+      }
+      if (!/^\d$/.test(k)) return;
+      numpadTouched = true;
+      const dot = numpadDraft.indexOf('.');
+      if (dot >= 0) {
+        if (numpadDraft.length - dot - 1 >= numpadDecimals()) return;
+        numpadDraft += k;
+        numpadWriteDraft();
+        return;
+      }
+      if (numpadDraft === '0') numpadDraft = '';
+      if (numpadDraft.replace(/\./g, '').length >= numpadMaxLen()) return;
+      numpadDraft += k;
+      numpadWriteDraft();
+    }
+    function numpadClear() {
+      if (!numpadField) return;
+      numpadTouched = true;
+      numpadDraft = '';
+      numpadField.value = '';
+      renderNumpadValue();
+      numpadSyncPreview();
+    }
+    function numpadToggleSign() {
+      if (!numpadField || numpadMode !== 'dec1') return;
+      if (typeof toggleWindSign === 'function') toggleWindSign();
+      renderNumpadValue();
+    }
+    function closeNumpadSilent() {
+      numpadField = null;
+      numpadDraft = '';
+      numpadOriginal = '';
+      numpadTouched = false;
+      const pad = document.getElementById('app-numpad');
+      if (pad) pad.classList.remove('open');
+      document.body.classList.remove('numpad-open');
+    }
+    function closeNumpad(commit) {
+      const el = numpadField;
+      if (!el) { closeNumpadSilent(); return; }
+      el.value = (commit && (numpadTouched || numpadOriginal !== '')) ? numpadDraft : numpadOriginal;
+      closeNumpadSilent();
+      if (['time-h', 'time-m', 'time-s'].indexOf(el.id) >= 0 && typeof updateTimePreview === 'function') updateTimePreview();
+    }
+    document.addEventListener('click', function (e) {
+      const pad = document.getElementById('app-numpad');
+      if (!pad || !pad.classList.contains('open')) return;
+      const btn = (e.target && e.target.closest) ? e.target.closest('[data-num-key]') : null;
+      if (!btn) return;
+      e.preventDefault();
+      numpadPress(btn.getAttribute('data-num-key'));
+    });
+    // 키패드가 열린 채 다른 입력칸으로 옮기면 그때까지의 값을 확정하고 닫는다.
+    document.addEventListener('focusin', function (e) {
+      const t = e.target;
+      if (!numpadField || !t || t === numpadField) return;
+      if (t.closest && t.closest('#app-numpad')) return;
+      if (t.tagName && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(t.tagName)) closeNumpad(true);
+    });
+    function onNumpadFieldTap(e) {
+      const t = e.target;
+      if (!t || !t.getAttribute || !t.getAttribute('data-numpad')) return;
+      if (numpadField === t) return;
+      numpadOpen(t);
+    }
+    document.addEventListener('focusin', onNumpadFieldTap);
+    document.addEventListener('click', onNumpadFieldTap);
+
     function handleSaveRecord(e) {
       e.preventDefault();
       saveRecord(false);
@@ -5968,6 +6186,7 @@
       renderCurrentView();
 
       if (keepOpen) {
+        closeNumpadSilent();
         document.getElementById('time-h').value = '';
         document.getElementById('time-m').value = '';
         document.getElementById('time-s').value = '';
@@ -5985,6 +6204,8 @@
     // 10. Player Management Modal (User's Hand-drawn Layout)
     function openPlayerManageModal() {
       try {
+        // 다시 열면 항상 일반 선수 관리 화면(선택 없음)으로 시작한다.
+        resetTransientSelectionStates();
         // 화면에 처음 들어올 때는 '삭제된 선수'를 접힌 상태로 둔다.
         deletedPlayersAccordionOpen = false;
         rememberScreenBeforeModal('modal-players');
@@ -5997,6 +6218,8 @@
     }
 
     function closePlayerManageModal() {
+      // 창을 닫거나 [취소]하면 일괄 삭제 모드와 선택 상태를 버린다(다시 열면 일반 화면).
+      resetTransientSelectionStates();
       const modal = document.getElementById('modal-players');
       if (modal) modal.classList.add('hidden');
       restoreScreenAfterModal('modal-players');
@@ -6092,7 +6315,7 @@
             <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
                 <span class="text-sm font-bold text-white truncate max-w-[9rem]">${bodyEsc(p.name || '')}</span>
-                <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
+                <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${getBirthYearLabel(p.birth)}</span>
                 <span class="px-1.5 py-0.5 rounded border ${genderBadgeClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${p.gender || ''}</span>
                 <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${gradeBadge}</span>
                 ${locked ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">잠금</span>' : ''}
@@ -6692,7 +6915,7 @@
         idInput.value = p.id;
         nameInput.value = p.name || '';
         setFormPlayerGender(p.gender || '남');
-        birthInput.value = p.birth || '';
+        birthInput.value = getBirthYear(p.birth);
         // 기록에는 있는데 프로필 종목에 빠진 종목(예: 300m)을 먼저 정상화한 뒤 연다.
         ensurePlayerEventsForRecords(p.id, true);
         // 예전 저장본은 단체 종목도 문자열로 들어 있을 수 있어, 이름으로 개인/단체를 다시 판정한다.
@@ -6757,7 +6980,11 @@
       const id = document.getElementById('form-player-id').value;
       const name = document.getElementById('form-player-name').value.trim();
       const gender = document.getElementById('form-player-gender').value;
-      const birth = document.getElementById('form-player-birth').value;
+      const birth = normalizeBirthYearInput(document.getElementById('form-player-birth').value);
+      if (!birth) {
+        appAlert('생년은 4자리 출생 연도로 입력해 주세요. (예: 2011)', { title: '생년 입력' });
+        return;
+      }
       const sport = document.getElementById('form-player-sport').value.trim();
       const mainEventSelect = document.getElementById('form-player-event');
       // 주종목은 등록된 세부 종목 중에서만 저장한다(목록에서 해진 경우 유효한 첫 종목으로 정리).
@@ -6792,7 +7019,9 @@
           disabled = disabled.filter(n => nextNames.indexOf(n) < 0);
           p.name = name;
           p.gender = gender;
-          p.birth = birth;
+          // 생년만 다시 입력하므로, 연도가 그대로면 이미 저장된 생년월일 값은 바꾸지 않는다.
+          const prevBirthYear = getBirthYear(p.birth);
+          p.birth = (prevBirthYear && prevBirthYear === birth && String(p.birth || '').length > 4) ? p.birth : birth;
           p.sport = sport;
           p.mainEvent = mainEvent;
           p.events = cleanEvents;
@@ -7909,9 +8138,50 @@
       }
     }
 
+    // 계정이 바뀌거나 화면을 닫을 때 남으면 안 되는 '임시 선택' 상태를 모두 초기화한다.
+    //  - 선수 일괄 삭제 선택, 기록 일괄 삭제 선택, 뷰어 백업파일 요청 선택, 단체전 주자 명단 편집,
+    //    관리자 알림의 뷰어 승인 선택, 자체 숫자 키패드.
+    //  - 저장된 선수·기록 데이터는 전혀 건드리지 않는다(확정하지 않은 선택만 버린다).
+    function resetTransientSelectionStates() {
+      try {
+        playerBulkMode = false;
+        playerBulkSelected = new Set();
+        syncPlayerBulkUi();
+      } catch (e) {}
+      try {
+        bulkDeleteMode = false;
+        bulkDeleteSelected = new Set();
+        bulkDeleteVisibleIds = [];
+        const recBar = document.getElementById('bulk-delete-bar');
+        if (recBar) recBar.classList.add('hidden');
+      } catch (e) {}
+      try {
+        bkrSelection = new Set();
+        bkrLevel = 'all';
+        bkrGender = 'all';
+      } catch (e) {}
+      try {
+        isTeammateEditMode = false;
+        relayDraftRoster = null;
+        relayPendingRemoval = new Set();
+      } catch (e) {}
+      try { closeNumpadSilent(); } catch (e) {}
+    }
+
+    // 계정 단위 임시 상태(다른 계정으로 넘어가면 남으면 안 되는 것)도 함께 비운다.
+    function resetAccountScopedStates() {
+      try { pendingViewerSelections = {}; } catch (e) {}
+      try { adminViewerDraft = {}; } catch (e) {}
+      try { adminViewerPanelOpen = {}; } catch (e) {}
+      try { viewerApprovalNotifs = []; } catch (e) {}
+    }
+
     // 로그아웃 직후·비로그인 상태에서 직전 계정의 화면 조각(모달·토스트·선수·기록 DOM)을 모두 비운다.
     //  clearMemory가 true이면 메모리에 들고 있던 선수·기록도 함께 놓아 준다.
     function clearAuthedScreen(clearMemory) {
+      // 다른 계정으로 넘어갈 때 앞 계정의 임시 선택(일괄 삭제·백업 요청 등)이 따라가지 않게 먼저 비운다.
+      resetTransientSelectionStates();
+      resetAccountScopedStates();
       try {
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
         if (Array.isArray(openModalsStack)) openModalsStack.length = 0;
@@ -9214,14 +9484,9 @@
     }
 
     function formatBirthInput(el) {
-      const digits = el.value.replace(/\D/g, '').slice(0, 8);
-      if (digits.length >= 7) {
-        el.value = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
-      } else if (digits.length >= 5) {
-        el.value = `${digits.slice(0, 4)}-${digits.slice(4)}`;
-      } else {
-        el.value = digits;
-      }
+      // 생년만 받는다(4자리 출생 연도). 숫자 외 글자는 지우고 4자리에서 멈춘다.
+      const digits = el.value.replace(/\D/g, '').slice(0, 4);
+      if (el.value !== digits) el.value = digits;
     }
 
     // --- ANDROID BACK BUTTON INTERCEPT (History API) ---
@@ -9258,6 +9523,9 @@
         if (m && !m.classList.contains('hidden')) {
           m.classList.add('hidden');
           openModalsStack = openModalsStack.filter(x => x !== id);
+          // 뒤로가기로 닫은 선수 관리 창도 다음에 열 때 일반 화면(선택 없음)으로 돌아간다.
+          if (id === 'modal-players') { try { resetTransientSelectionStates(); } catch (e) {} }
+          if (id === 'modal-record') { try { closeNumpadSilent(); } catch (e) {} }
           return;
         }
       }
@@ -9761,7 +10029,7 @@
               <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">${bodyEsc(p.sport)}</span>
               ${approved ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">승인됨</span>' : ''}
             </div>
-            <div class="text-[10px] text-slate-400 mt-0.5">${bodyEsc(p.mainEvent || '')} · ${bodyEsc(p.birth || '')} (${bodyEsc(p.ownerAdminName || '관리자')})</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">${bodyEsc(p.mainEvent || '')} · ${bodyEsc(getBirthYearLabel(p.birth))} (${bodyEsc(p.ownerAdminName || '관리자')})</div>
           </div>
         </label>`;
       }).join('');
@@ -10803,7 +11071,7 @@
         const sheetSel = document.getElementById('import-target-sheet');
         if (sel) {
           sel.innerHTML = '<option value="">선택 안 함</option>' + (players || []).map(p =>
-            `<option value="${bodyEsc(p.id)}">${bodyEsc(p.name)} (${bodyEsc(p.sport || '')} · ${bodyEsc(p.birth || '')})</option>`).join('');
+            `<option value="${bodyEsc(p.id)}">${bodyEsc(p.name)} (${bodyEsc(p.sport || '')} · ${bodyEsc(getBirthYearLabel(p.birth))})</option>`).join('');
           sel.value = '';
           sel.onchange = function () { updateLegacyImportTargetState(); };
         }
@@ -10842,7 +11110,7 @@
     // ============================================================
     const XLSX_TRACK_HEADERS = ['날짜', '대회명', '종목', '라운드', '공식기록', '비공식기록', '차수', '순위', '풍속', '엔트리', '순번', '비고/메모'];
     const XLSX_CYCLE_HEADERS = ['날짜', '대회명', '종목', '라운드', '공식기록', '비공식기록', '차수', '순위', '엔트리', '순번', '비고/메모'];
-    const XLSX_PROFILE_LABELS = ['이름', '성별', '생년월일', '종목', '주종목'];
+    const XLSX_PROFILE_LABELS = ['이름', '성별', '생년', '종목', '주종목'];
 
     function xlsxHeadersForSport(sport) {
       return String(sport || '').indexOf('사이클') >= 0 ? XLSX_CYCLE_HEADERS : XLSX_TRACK_HEADERS;
@@ -10908,7 +11176,7 @@
       const aoa = [
         ['이름', p.name || ''],
         ['성별', p.gender || ''],
-        ['생년월일', p.birth || ''],
+        ['생년', getBirthYear(p.birth) ? Number(getBirthYear(p.birth)) : ''],
         ['종목', p.sport || ''],
         ['주종목', p.mainEvent || ''],
         [],
@@ -10984,20 +11252,21 @@
     }
 
     function xlsxNormalizeBirth(v) {
+      // [생년] 4자리 출생 연도를 돌려준다.
+      //  기존 양식의 생년월일(YYYY-MM-DD / YYYY.MM.DD / YYYYMMDD / 엑셀 날짜형)도 연도만 추출해 호환한다.
       if (v === null || v === undefined || v === '') return '';
       if (typeof v === 'number' && isFinite(v)) {
-        const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000);
-        return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+        // 엑셀 날짜 일련번호(20000~60000)면 날짜로 바꾼 뒤 연도를 쓴다.
+        if (v >= 20000 && v <= 60000) {
+          const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000);
+          return isNaN(d.getTime()) ? '' : String(d.getUTCFullYear());
+        }
+        return (v >= 1900 && v <= 2100) ? String(Math.trunc(v)) : '';
       }
-      const s = String(v).trim().replace(/[./]/g, '-');
-      const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-      if (!m) return '';
-      const mm = String(Number(m[2])).padStart(2, '0');
-      const dd = String(Number(m[3])).padStart(2, '0');
-      const out = m[1] + '-' + mm + '-' + dd;
-      const d = new Date(out + 'T00:00:00Z');
-      if (isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== out) return '';
-      return out;
+      const digits = String(v).trim().replace(/\D/g, '');
+      if (!digits) return '';
+      const y = parseInt(digits.slice(0, 4), 10);
+      return (y >= 1900 && y <= 2100) ? String(y) : '';
     }
 
     // 시트 앞부분에서 선수 기본정보 영역을 읽는다. 라벨이 있으면 신규 양식으로만 취급한다.
@@ -11008,7 +11277,7 @@
         return row[c] === undefined || row[c] === null ? '' : row[c];
       };
       const labels = [xlsxCellText(cellAt(0, 0)), xlsxCellText(cellAt(1, 0)), xlsxCellText(cellAt(2, 0)), xlsxCellText(cellAt(3, 0)), xlsxCellText(cellAt(4, 0))];
-      const hasProfileArea = labels[0] === '이름' || labels[1] === '성별' || labels[2] === '생년월일' || (labels[3] === '종목' && labels[4] === '주종목');
+      const hasProfileArea = labels[0] === '이름' || labels[1] === '성별' || labels[2] === '생년월일' || labels[2] === '생년' || (labels[3] === '종목' && labels[4] === '주종목');
       return {
         hasProfileArea: hasProfileArea,
         labels: labels,
@@ -11127,9 +11396,10 @@
       return { parsedNew: parsedNew, dupCount: dupCount, errCount: errCount };
     }
 
-    // 같은 관리자 소유 트리에서 이름+생년월일로 선수를 찾는다.
+    // 같은 관리자 소유 트리에서 이름+생년으로 선수를 찾는다(저장값이 생년월일이어도 연도로 비교한다).
     function findOwnedPlayersByNameBirth(name, birth) {
-      return (playersData || []).filter(p => String(p.name || '').trim() === String(name || '').trim() && String(p.birth || '').trim() === String(birth || '').trim());
+      const wantYear = getBirthYear(birth) || String(birth || '').trim();
+      return (playersData || []).filter(p => String(p.name || '').trim() === String(name || '').trim() && (getBirthYear(p.birth) || String(p.birth || '').trim()) === wantYear);
     }
 
     function findOwnedPlayersByName(name) {
@@ -11159,7 +11429,7 @@
         if (!p) {
           p = {
             id: makeImportedPlayerId(),
-            code: String(plan.profile.name || '선수') + '_' + String(plan.profile.birth || '').replace(/-/g, ''),
+            code: String(plan.profile.name || '선수') + '_' + getBirthYear(plan.profile.birth),
             ownerAdminId: currentAdminOwnerId(),
             name: plan.profile.name,
             gender: plan.profile.gender,
@@ -11266,7 +11536,7 @@
               const missing = [];
               if (!pf.name) missing.push('이름');
               if (pf.gender !== '남' && pf.gender !== '여') missing.push('성별(남/여)');
-              if (!pf.birth) missing.push('생년월일');
+              if (!pf.birth) missing.push('생년');
               if (!pf.sport) missing.push('종목');
               if (!pf.mainEvent) missing.push('주종목');
               if (missing.length > 0) {
@@ -11281,7 +11551,7 @@
               const matches = findOwnedPlayersByNameBirth(pf.name, pf.birth);
               let player = null;
               if (matches.length > 1) {
-                problems.push(pf.name + ' 선수: 같은 이름과 생년월일의 선수가 ' + matches.length + '명 있어 자동으로 연결할 수 없습니다. 대상 선수를 직접 선택해 주세요.');
+                problems.push(pf.name + ' 선수: 같은 이름과 생년의 선수가 ' + matches.length + '명 있어 자동으로 연결할 수 없습니다. 대상 선수를 직접 선택해 주세요.');
                 return;
               }
               if (matches.length === 1) player = matches[0];
@@ -13398,7 +13668,7 @@
             <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
               <span class="text-[10px] text-slate-400 shrink-0">[${bodyEsc(r.ownerName)}]</span>
               <span class="text-sm font-bold text-white truncate max-w-[9rem]">${bodyEsc(p.name || '')}</span>
-              <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
+              <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${getBirthYearLabel(p.birth)}</span>
               <span class="px-1.5 py-0.5 rounded border ${genderClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${bodyEsc(p.gender || '')}</span>
               <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${bodyEsc(info.gradeBadge || '')}</span>
             </div>
@@ -13426,7 +13696,7 @@
     //  - 요청·승인 기록과 승인 파일은 이 브라우저 저장소에 보관한다.
     // =========================================================================
     const BACKUP_REQUEST_TTL_MS = 72 * 60 * 60 * 1000;
-    const BACKUP_NOTICE_TEXT = '승인 후 72시간 이내 1회 다운로드할 수 있습니다. 다운로드 완료 또는 기간 만료 시 백업파일이 삭제되며, 다시 받으려면 재신청해야 합니다.';
+    const BACKUP_NOTICE_TEXT = '승인 후 72시간 내 1회 다운로드할 수 있습니다. 다운로드 완료 또는 기간 만료 시 백업파일이 삭제되며, 다시 받으려면 재신청해야 합니다.';
 
     let bkrLevel = 'all';
     let bkrGender = 'all';
@@ -13605,7 +13875,7 @@
                 <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
                   <span class="text-[10px] text-slate-400 shrink-0">[${bodyEsc(r.ownerName)}]</span>
                   <span class="text-sm font-bold text-white truncate max-w-[9rem]">${bodyEsc(p.name || '')}</span>
-                  <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${(p.birth || '').replace(/-/g, '.')}</span>
+                  <span class="text-[11px] text-slate-400 font-mono whitespace-nowrap">${getBirthYearLabel(p.birth)}</span>
                   <span class="px-1.5 py-0.5 rounded border ${genderClass} text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${bodyEsc(p.gender || '')}</span>
                   <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-none shrink-0 whitespace-nowrap">${bodyEsc(info.gradeBadge || '')}</span>
                 </div>
@@ -13827,13 +14097,18 @@
       const me = getCurrentAuthUser();
       if (!me || me.role !== 'viewer') return '';
       const list = getBackupRequests().filter(function (r) { return isMyBackupRequest(r, me); })
+        .filter(function (r) { return !(r.status === 'downloaded' && r.noticeAckAt); })
         .sort(function (a, b) { return (Number(b.requestedAt) || 0) - (Number(a.requestedAt) || 0); })
         .slice(0, 10);
       if (list.length === 0) return '';
       return list.map(function (r) {
         const names = (r.playerNames || []).join(', ');
+        // 다운로드 완료 카드는 특별 뷰어 해제 알림과 같이 카드 전체를 누르면 확인 처리된다.
+        const ackAttrs = r.status === 'downloaded'
+          ? ` role="button" tabindex="0" onclick="ackBackupDownloadNotice('${bodyEsc(r.id)}')" data-backup-download-notice="${bodyEsc(r.id)}"`
+          : '';
         const base = `
-          <div class="p-3.5 rounded-2xl ${r.status === 'approved' ? 'bg-emerald-950/40 border border-emerald-500/40' : 'bg-slate-900 border border-slate-700'} space-y-2">
+          <div${ackAttrs} class="p-3.5 rounded-2xl ${r.status === 'approved' ? 'bg-emerald-950/40 border border-emerald-500/40' : 'bg-slate-900 border border-slate-700'} space-y-2 ${r.status === 'downloaded' ? 'cursor-pointer active:scale-[0.99] transition' : ''}">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs font-bold ${r.status === 'approved' ? 'text-emerald-300' : 'text-slate-300'}"><span class="ui-ic" data-ic="download"></span> 백업파일 ${r.status === 'approved' ? '승인 완료' : (r.status === 'pending' ? '요청 접수' : (r.status === 'downloaded' ? '다운로드 완료' : (r.status === 'expired' ? '기간 만료' : '요청 거절')))}</span>
               <span class="text-[10px] text-slate-400">${formatYmd(r.requestedAt)}</span>
@@ -13853,7 +14128,7 @@
           </div>`;
         }
         if (r.status === 'downloaded') {
-          return base + '<p class="text-[11px] text-slate-400 leading-relaxed">다운로드가 완료되어 백업파일과 다운로드 권한이 삭제되었습니다.</p></div>';
+          return base + '<p class="text-[11px] text-slate-400 leading-relaxed">백업파일이 필요하시면 다시 신청해 주세요.</p><p class="text-[10px] text-slate-500 pt-0.5">카드를 누르면 확인 처리됩니다.</p></div>';
         }
         if (r.status === 'expired') {
           return base + '<p class="text-[11px] text-slate-400 leading-relaxed">승인 후 72시간이 지나 파일과 다운로드 권한이 삭제되었습니다. 다시 받으려면 재신청해야 합니다.</p></div>';
@@ -13896,7 +14171,21 @@
       writeBackupRequests(list);
       renderApprovalList();
       updatePendingBadge();
-      appAlert('백업파일을 다운로드했습니다.\n다운로드가 끝나 파일과 다운로드 권한이 삭제되었습니다. 다시 받으려면 재신청해야 합니다.');
+      appAlert('백업파일을 다운로드했습니다.\n백업파일이 필요하시면 다시 신청해 주세요.', { title: '다운로드 완료' });
+    }
+
+    // 다운로드 완료 알림 확인 처리 — 특별 뷰어 해제 알림과 같은 방식으로 카드를 누르면 알림 목록에서 지운다.
+    //  알림만 숨기고 다운로드 이력·운영 기록은 그대로 보관한다(새로고침·재로그인해도 다시 나타나지 않는다).
+    function ackBackupDownloadNotice(reqId) {
+      const list = getBackupRequests();
+      const r = list.find(function (x) { return x.id === reqId; });
+      if (!r || r.status !== 'downloaded') return;
+      if (!r.noticeAckAt) {
+        r.noticeAckAt = Date.now();
+        writeBackupRequests(list);
+      }
+      renderApprovalList();
+      updatePendingBadge();
     }
 
     // ---------- 특별 뷰어 등록·해제(관리자) ----------
@@ -14519,6 +14808,35 @@
   </div>
 
   <!-- 앱 공통 팝업: 브라우저 기본 alert/confirm/prompt 대신 앱 디자인으로 띄운다. -->
+  <!-- 앱 자체 숫자 키패드 (기록 입력 팝업의 숫자 입력칸 전용) -->
+  <div id="app-numpad" role="dialog" aria-modal="false" aria-label="숫자 입력">
+    <div class="numpad-panel">
+      <div class="numpad-head">
+        <span id="app-numpad-title" class="numpad-title">숫자 입력</span>
+        <span id="app-numpad-value" class="numpad-value"></span>
+      </div>
+      <div class="numpad-keys">
+        <button type="button" class="numpad-key" data-num-key="1">1</button>
+        <button type="button" class="numpad-key" data-num-key="2">2</button>
+        <button type="button" class="numpad-key" data-num-key="3">3</button>
+        <button type="button" class="numpad-key" data-num-key="4">4</button>
+        <button type="button" class="numpad-key" data-num-key="5">5</button>
+        <button type="button" class="numpad-key" data-num-key="6">6</button>
+        <button type="button" class="numpad-key" data-num-key="7">7</button>
+        <button type="button" class="numpad-key" data-num-key="8">8</button>
+        <button type="button" class="numpad-key" data-num-key="9">9</button>
+        <button type="button" class="numpad-key sub" data-num-key="sign" onclick="numpadToggleSign()" aria-label="부호 바꿈">±</button>
+        <button type="button" class="numpad-key" data-num-key="0">0</button>
+        <button type="button" class="numpad-key" data-num-key="dot" aria-label="소수점">.</button>
+      </div>
+      <div class="numpad-actions">
+        <button type="button" class="numpad-act clear" onclick="numpadClear()">지우기</button>
+        <button type="button" class="numpad-act cancel" onclick="closeNumpad(false)">취소</button>
+        <button type="button" class="numpad-act ok" onclick="closeNumpad(true)">확인</button>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-app-dialog" class="modal-overlay fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div id="app-dialog-panel" class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm modal-panel flex flex-col overflow-hidden shadow-2xl">
       <div class="modal-fixed px-5 pt-4 pb-2 flex items-start justify-between gap-2 border-b border-slate-800">
