@@ -51,6 +51,10 @@ frame.addEventListener('load', function () {
 function tabBtn(id) { return D().querySelector('#event-tabs-container button[data-tab-id="' + String(id).replace(/"/g, '\\"') + '"]'); }
 function tabs() { return Array.from(D().querySelectorAll('#event-tabs-container button')).map(function (b) { return b.getAttribute('data-tab-id'); }); }
 function openRecord() { const w = W(); const d = D(); const b = d.getElementById('btn-add-record-fixed'); if (b) b.querySelector('button').click(); }
+function activeTab() {
+  const b = D().querySelector('#event-tabs-container button.bg-blue-600');
+  return b ? b.getAttribute('data-tab-id') : '(none)';
+}
 function recordSelectInfo() {
   const s = D().getElementById('form-record-event');
   if (!s) return null;
@@ -119,9 +123,11 @@ window.run_swipe = function () {
   const w = W();
   const d = D();
   const res = [];
-  const snap = function (label) { res.push({ step: label, tab: w.currentEvent, player: w.currentPlayer, scrollX: D().getElementById('event-tabs-container').scrollLeft }); };
+  const yusinOpt = playerOptions().find(function (p) { return String(p.label).indexOf('김유신') >= 0; });
+  if (yusinOpt) switchPlayerById(yusinOpt.id);
+  const snap = function (label) { res.push({ step: label, tab: activeTab(), scrollX: Math.round(D().getElementById('event-tabs-container').scrollLeft) }); };
 
-  const order = ['ALL_PB'].concat(w.getPlayerEvents(w.currentPlayer));
+  const order = tabs();
   const body = d.getElementById('view-container');
   w.selectEventTab(order[0]);
   snap('start: ' + order[0]);
@@ -167,7 +173,7 @@ window.run_tabscroll = function () {
   const w = W();
   const d = D();
   const res = [];
-  const order = ['ALL_PB'].concat(w.getPlayerEvents(w.currentPlayer));
+  const order = tabs();
   const c = d.getElementById('event-tabs-container');
   order.forEach(function (id) {
     w.selectEventTab(id);
