@@ -336,7 +336,7 @@
             <button type="button" onclick="fillStagingTestAccount('coach_a@test.local','admin')" class="p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-blue-300 hover:bg-slate-800 text-left"><span class="ui-ic" data-ic="shield"></span> 코치 A (테스트유신)<br><span class="text-slate-400">coach_a@test.local</span></button>
             <button type="button" onclick="fillStagingTestAccount('coach_b@test.local','admin')" class="p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-emerald-300 hover:bg-slate-800 text-left"><span class="ui-ic" data-ic="shield"></span> 코치 B (이체고)<br><span class="text-slate-400">coach_b@test.local</span></button>
             <button type="button" onclick="fillStagingTestAccount('parent@test.local','viewer')" class="p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-amber-300 hover:bg-slate-800 text-left"><span class="ui-ic" data-ic="eye"></span> 학부모 뷰어<br><span class="text-slate-400">parent@test.local</span></button>
-        <button type="button" onclick="seedStagingDummy50()" class="col-span-2 w-full mt-1.5 py-1.5 rounded-lg bg-blue-950/70 hover:bg-blue-900/70 text-blue-200 border border-blue-500/30 text-[10px] font-semibold"><span class="ui-ic" data-ic="users"></span> 검수용 더미 50명 채우기 (선수 50명 + 기록 + 뷰어 승인)</button>
+        <button type="button" onclick="seedStagingDummy50()" class="col-span-2 w-full mt-1.5 py-1.5 rounded-lg bg-blue-950/70 hover:bg-blue-900/70 text-blue-200 border border-blue-500/30 text-[10px] font-semibold"><span class="ui-ic" data-ic="users"></span> 검수용 더미 데이터 채우기 (선수 50명 + 관리자 10명 + 뷰어 10명)</button>
         <button type="button" onclick="resetStagingTestDataManual()" class="w-full mt-1.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold"><span class="ui-ic" data-ic="refresh"></span> 검수용 로컬 데이터 수동 초기화 (시드 복원)</button>
           </div>
         </div>
@@ -1167,9 +1167,9 @@
             <span class="text-[10px] text-amber-200/70">staging 전용</span>
           </div>
           <button type="button" onclick="seedStagingDummy50()" class="w-full py-2.5 rounded-xl bg-amber-500/15 text-amber-200 border border-amber-500/40 hover:bg-amber-500/25 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95">
-            <span class="ui-ic" data-ic="users"></span> 검수용 더미 50명 채우기
+            <span class="ui-ic" data-ic="users"></span> 검수용 더미 데이터 채우기
           </button>
-          <p class="text-[10px] text-slate-400 leading-relaxed">코치 A 테스트 계정에 가상 선수 50명(잠금 5명)과 경기 기록, 학부모 뷰어 승인·대기 신청을 채웁니다. 운영 앱 데이터는 바뀌지 않습니다.</p>
+          <p class="text-[10px] text-slate-400 leading-relaxed">코치 A 계정에 가상 선수 50명(잠금 5명)과 경기 기록, 가상 관리자 10명, 가상 뷰어 10명(개별 승인·승인 대기·특별 뷰어 등록·해제)을 채웁니다. 운영 앱 데이터는 바뀌지 않습니다.</p>
         </div>
 
         <!-- Notion Guide & FAQ Link -->
@@ -1181,7 +1181,7 @@
       </div>
 
       <div class="modal-fixed text-[10px] text-slate-500 text-center px-5 py-2.5 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.21.40
+        선수 성장노트 v2026.11.27.1
       </div>
     </div>
   </div>
