@@ -517,10 +517,10 @@ function isSuperUi() {
   const b = D().getElementById('btn-super-admin-top');
   return !!b && !b.classList.contains('hidden');
 }
-function loginAs(email) {
+function loginAs(email, role) {
   const w = W();
   w.alert = function () {};
-  w.fillStagingTestAccount(email, 'admin');
+  w.fillStagingTestAccount(email, role || 'admin');
   w.handleEmailPasswordLogin(null);
   return waitMs(900);
 }
@@ -553,7 +553,7 @@ window.run_scale_super = function () {
 window.run_viewer_offer = function () {
   const w = W();
   const d = D();
-  return loginAs('parent@test.local').then(function () {
+  return loginAs('parent@test.local', 'viewer').then(function () {
     // 알림 창 열기
     w.openViewerApprovalModal();
     return waitMs(600);
