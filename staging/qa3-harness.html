@@ -26,6 +26,8 @@ frame.src = 'index.html?qa3=1&cb=' + Date.now();
 frame.style.width = WIDTH + 'px';
 frame.style.height = HEIGHT + 'px';
 if (SCALE) { try { localStorage.setItem('STAGING_ATHLETE_APP_UI_SCALE', SCALE); } catch (e) {} }
+// 점검 실행 중에는 앱 화면을 화면 밖처럼 숨긴다(배치는 유지되어 계측은 그대로). 스크린샷용(shot=1)일 때만 보인다.
+if (q.get('shot') !== '1') frame.style.visibility = 'hidden';
 
 function log(o) { out.textContent = typeof o === 'string' ? o : JSON.stringify(o, null, 1); }
 function W() { return frame.contentWindow; }
