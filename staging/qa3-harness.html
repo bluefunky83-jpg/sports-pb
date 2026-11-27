@@ -340,6 +340,148 @@ window.run_texts = function () {
   });
 };
 
+
+/* ---------- run: 50명 명단(코치 A) ---------- */
+function waitMs(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+window.run_50 = function () {
+  const w = W();
+  const d = D();
+  w.alert = function () {};
+  w.confirm = function () { return true; };
+  const res = {};
+  w.fillStagingTestAccount('coach_a@test.local', 'admin');
+  w.handleEmailPasswordLogin(null);
+  return waitMs(500).then(function () {
+    try { w.seedStagingDummy50(); } catch (e) { res.seedErr = String(e); }
+    return waitMs(600);
+  }).then(function () {
+    w.openPlayerManageModal();
+    const scroller = d.querySelector('#modal-players [data-scroll-key="player-manage"]');
+    const header = d.querySelector('#modal-players .modal-fixed');
+    const footer = d.querySelector('#modal-players .modal-panel > div:last-child');
+    res.count = d.getElementById('player-list-count').textContent;
+    res.scroller = { h: scroller.clientHeight, sh: scroller.scrollHeight };
+    const headerTop = Math.round(header.getBoundingClientRect().top);
+    scroller.scrollTop = 700;
+    res.scrolledTo = Math.round(scroller.scrollTop);
+    res.headerStaysOnScroll = Math.round(header.getBoundingClientRect().top) === headerTop;
+    res.footerVisible = footer.getBoundingClientRect().bottom <= d.documentElement.clientHeight + 1;
+    res.deletedHiddenWhenNone = d.getElementById('deleted-players-accordion').classList.contains('hidden');
+    const cards = Array.from(d.querySelectorAll('#player-cards-container > div'));
+    res.cards = cards.length;
+    scroller.scrollTop = 620;
+    const keep = scroller.scrollTop;
+    const target = cards[26];
+    const nameEl = target ? target.querySelector('.text-sm.font-bold') : null;
+    const editBtn = target ? target.querySelector('button[title="프로필 수정"]') : null;
+    if (editBtn) {
+      editBtn.click();
+      res.editTarget = nameEl ? nameEl.textContent.trim() : null;
+      res.listStayedOpen = !d.getElementById('modal-players').classList.contains('hidden');
+      w.closeAddEditPlayerModal();
+      res.scrollBefore = Math.round(keep);
+      res.scrollAfterClose = Math.round(scroller.scrollTop);
+      res.keepsPosition = Math.abs(scroller.scrollTop - keep) <= 2;
+    }
+    // 삭제 → 아코디언 표시 → 복구 → 숨김
+    const firstCard = d.querySelector('#player-cards-container > div');
+    const delBtn = firstCard ? firstCard.querySelector('button[title="선수 삭제"]') : null;
+    const m = delBtn ? String(delBtn.getAttribute('onclick')).match(/'([^']+)'/) : null;
+    const pid = m ? m[1] : null;
+    res.deleteTarget = pid;
+    if (!pid) { w.closePlayerManageModal(); return res; }
+    const pr = w.deletePlayer(pid);
+    return waitMs(120).then(function () {
+      const yes = d.querySelector('#modal-player-delete button[onclick*="resolvePlayerDeleteConfirm(true)"]');
+      if (yes) yes.click();
+      return pr;
+    }).then(function () {
+      res.deletedShownAfterDelete = !d.getElementById('deleted-players-accordion').classList.contains('hidden');
+      res.deletedTitle = d.getElementById('deleted-players-accordion-title').textContent;
+      w.toggleDeletedPlayersAccordion();
+      const listEl = d.getElementById('deleted-players-list');
+      const cs = getComputedStyle(listEl);
+      res.deletedListStyle = { maxHeight: cs.maxHeight, overflowY: cs.overflowY };
+      w.toggleDeletedPlayersAccordion();
+      return w.restoreDeletedPlayer(pid);
+    }).then(function () {
+      return waitMs(200);
+    }).then(function () {
+      res.deletedHiddenAfterRestore = d.getElementById('deleted-players-accordion').classList.contains('hidden');
+      res.countAfterRestore = d.getElementById('player-list-count').textContent;
+      w.closePlayerManageModal();
+      return res;
+    });
+  });
+};
+
+/* ---------- run: 관리자 많을 때 최고관리자 센터 ---------- */
+window.run_manyadmins = function () {
+  const w = W();
+  const d = D();
+  return w.openSuperAdminModal().then(function () {
+    const list = d.getElementById('sa-viewers-tree-container');
+    const first = list.querySelector(':scope > div');
+    if (first) { for (let i = 0; i < 12; i++) list.appendChild(first.cloneNode(true)); }
+    const panel = d.querySelector('#modal-super-admin-center .modal-panel');
+    const rect = panel.getBoundingClientRect();
+    const header = d.querySelector('#modal-super-admin-center .modal-fixed');
+    const footer = d.querySelector('#modal-super-admin-center .modal-fixed:last-child');
+    const headerTop = Math.round(header.getBoundingClientRect().top);
+    const footerBottom = Math.round(footer.getBoundingClientRect().bottom);
+    const res = {
+      panelH: Math.round(rect.height), top: Math.round(rect.top), bottom: Math.round(rect.bottom),
+      vh: d.documentElement.clientHeight,
+      inViewport: rect.top >= -1 && rect.bottom <= d.documentElement.clientHeight + 1,
+      listClientH: list.clientHeight, listScrollH: list.scrollHeight,
+      scrollable: list.scrollHeight > list.clientHeight,
+      footerBottom: footerBottom
+    };
+    list.scrollTop = 300;
+    res.listScrolled = Math.round(list.scrollTop);
+    res.headerStays = Math.round(header.getBoundingClientRect().top) === headerTop;
+    res.footerStays = Math.round(footer.getBoundingClientRect().bottom) === footerBottom;
+    w.closeSuperAdminModal();
+    return res;
+  });
+};
+
+/* ---------- run: 최고관리자 센터 높이(관리자 적을 때) ---------- */
+window.run_superfit = function () {
+  const w = W();
+  const d = D();
+  return w.openSuperAdminModal().then(function () {
+    const panel = d.querySelector('#modal-super-admin-center .modal-panel');
+    const kids = Array.from(panel.children).map(function (c) {
+      return { cls: c.className.split(' ').slice(0, 2).join(' '), h: Math.round(c.getBoundingClientRect().height), scrollH: c.scrollHeight };
+    });
+    const r = { panelH: Math.round(panel.getBoundingClientRect().height), vh: d.documentElement.clientHeight, kids: kids };
+    w.closeSuperAdminModal();
+    return r;
+  });
+};
+
+/* ---------- run: 화면 고정(스크린샷용) ---------- */
+window.run_shot = function () {
+  const w = W();
+  const player = q.get('player') || '';
+  const tab = q.get('tab') || '';
+  if (player) { const o = playerOptions().find(function (p) { return String(p.label).indexOf(player) >= 0; }); if (o) switchPlayerById(o.id); }
+  if (tab) { const b = tabBtn(tab); if (b) b.click(); }
+  const open = q.get('open') || '';
+  return waitMs(500).then(function () {
+    if (open === 'players') { w.openPlayerManageModal(); if (q.get('bulk') === '1') w.enterPlayerBulkMode(); log('ok'); }
+    else if (open === 'admincenter') { w.openAdminProfileModal(); return waitMs(400).then(function () { w.toggleAdminCenterAccordion('players'); w.toggleAdminCenterAccordion('viewers'); log('ok'); }); }
+    else if (open === 'super') { return w.openSuperAdminModal().then(function () { log('ok'); }); }
+    else if (open === 'record') { w.openRecordModal(); log('ok'); }
+    else if (open === 'notif') { w.openViewerApprovalModal(); log('ok'); }
+    else if (open === 'notice') { w.openNoticeAdminModal(); log('ok'); }
+    else if (open === 'settings') { w.openSettingsModal(); log('ok'); }
+    else log('ok');
+    return waitMs(100);
+  });
+};
+
 /* ---------- run: login (계정 전환) ---------- */
 window.run_login = function (email) {
   const w = W();
