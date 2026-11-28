@@ -84,23 +84,26 @@
     .modal-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     .modal-fixed { flex: 0 0 auto; }
     /* 기록 입력 팝업: 키보드가 올라오면 상단 대회 정보와 하단 추가·저장 영역의 고정을 풀고
-       팝업 안 전체를 스크롤한다(입력 중인 항목이 키보드에 가리지 않게). 키보드가 닫히면 원래 구조로 돌아간다. */
-    body.kb-open #modal-record .modal-panel { height: var(--app-vh, 100dvh); max-height: var(--app-vh, 100dvh); }
+       팝업 안 전체를 스크롤한다(입력 중인 항목이 키보드에 가리지 않게). 키보드가 닫히면 원래 구조로 돌아간다.
+       팝업 높이는 키보드 위 남은 높이 안으로 '제한'만 하고 강제로 늘리지 않는다 — 높이를 고정하면
+       키보드가 뜨는 순간 팝업이 화면 끝까지 확 커지며 앞으로 점프하는 것처럼 보인다. */
+    body.kb-open #modal-record .modal-panel { max-height: calc(var(--app-vh, 100dvh) - 1rem); }
     body.kb-open #modal-record form { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
     body.kb-open #modal-record .modal-fixed { flex: 0 0 auto; }
     body.kb-open #modal-record .modal-scroll { flex: 0 0 auto; min-height: 0; overflow: visible; }
-    /* 키보드가 올라온 상태(body.kb-open): 가운데 정렬 대신 보이는 화면(visualViewport) 위쪽에 붙이고,
-       팝업 높이를 남은 화면 높이에 꼭 맞춰 아래 버튼이 키보드 바로 위에 오게 한다(빈 여백 없음). */
+    /* 키보드가 올라온 상태(body.kb-open): 가운데 정렬 대신 보이는 화면(visualViewport) 위쪽에 붙인다.
+       다만 팝업의 가로 폭·좌우 여백·둥근 모서리는 키보드가 없을 때와 똑같이 유지하고,
+       높이만 키보드 위 남은 화면 안으로 제한해 그 안에서 스크롤되게 한다.
+       (여백을 0으로 덮으면 키보드가 뜨는 순간 팝업이 양옆으로 확 벌어지며 점프하듯 커져 보인다.) */
     body.kb-open .modal-overlay {
       align-items: flex-start !important;
-      padding: 0 !important;
+      padding: 0.5rem 1rem !important;
       top: var(--app-vv-top, 0px);
       bottom: auto;
       height: var(--app-vh, 100dvh);
     }
     body.kb-open .modal-overlay .modal-panel {
-      max-height: var(--app-vh, 100dvh);
-      border-radius: 0 0 1.5rem 1.5rem;
+      max-height: calc(var(--app-vh, 100dvh) - 1rem);
     }
     /* 팝업이 떠 있는 동안에는 화면 뒤의 [+ 기록 추가] 버튼을 아예 그리지 않는다.
        (반투명 배경 너머로 버튼이 비쳐 보이던 문제 — 키보드가 올라온 상태 포함) */
@@ -424,7 +427,7 @@
           </div>
         </div>
       <div>선수 성장노트 · PWA WebApp</div>
-      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.28.3</div>
+      <div id="gate-version-label" class="text-[10px] text-slate-700 font-mono mt-0.5">v2026.11.28.4</div>
     </div>
   </div>
   </div>
@@ -1254,7 +1257,7 @@
       </div>
 
       <div class="modal-fixed text-[10px] text-slate-500 text-center px-5 py-2.5 border-t border-slate-800/80">
-        선수 성장노트 v2026.11.28.3
+        선수 성장노트 v2026.11.28.4
       </div>
     </div>
   </div>
@@ -10666,7 +10669,7 @@
 
     
     // --- Update Notification Logic ---
-    const CURRENT_APP_VERSION = '2026.11.28.2';
+    const CURRENT_APP_VERSION = '2026.11.28.4';
 
     function checkForUpdates() {
       // Listen for Service Worker update
