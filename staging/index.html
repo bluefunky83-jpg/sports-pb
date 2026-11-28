@@ -896,12 +896,14 @@
           <div id="relay-slot-area" class="grid grid-cols-2 gap-2"></div>
 
           <div>
-            <div class="flex items-center justify-between gap-1.5 mb-1.5">
-              <span class="shrink-0 text-[11px] font-semibold text-slate-300 whitespace-nowrap">주자 선택:</span>
-              <div class="flex items-center justify-end gap-1 min-w-0 shrink-0">
-                <button type="button" id="btn-toggle-runner-del" onclick="toggleTeammateEditMode()" class="shrink-0 text-[11px] text-slate-300 hover:text-red-400 font-bold px-1.5 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
+            <div class="mb-1.5">
+              <div class="flex items-center justify-between gap-1.5 mb-1.5">
+                <span class="shrink-0 text-[11px] font-semibold text-slate-300 whitespace-nowrap">주자 선택:</span>
+                <button type="button" id="btn-toggle-runner-del" onclick="toggleTeammateEditMode()" class="shrink-0 text-[11px] text-slate-300 hover:text-red-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
                   편집
                 </button>
+              </div>
+              <div class="flex items-center justify-end gap-1 min-w-0">
                 <span id="runner-del-count" class="hidden shrink-0 text-[11px] font-bold text-rose-300 px-1.5 py-0.5 rounded-lg border border-rose-500/40 bg-rose-950/40 whitespace-nowrap">삭제(0명)</span>
                 <button type="button" id="btn-runner-del-confirm" onclick="confirmTeammateDeletion()" disabled class="hidden shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-lg border bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed whitespace-nowrap">확인</button>
                 <button type="button" id="btn-cancel-runner-del" onclick="cancelTeammateEditMode()" class="hidden shrink-0 text-[11px] text-slate-300 hover:text-white px-1.5 py-0.5 rounded-lg border border-slate-700 bg-slate-800 transition active:scale-95 whitespace-nowrap">
@@ -7604,9 +7606,10 @@
       if (countEl) countEl.textContent = removedCount > 0 ? `삭제(${removedCount}명)` : (addedCount > 0 ? `추가(${addedCount}명)` : '변경 없음');
       if (confirmBtn) {
         confirmBtn.disabled = changedCount === 0;
-        confirmBtn.className = changedCount === 0
-          ? 'text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed whitespace-nowrap'
-          : 'text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-rose-600 text-white border-rose-400 shadow-sm transition active:scale-95 whitespace-nowrap';
+        // hidden 상태(일반 모드)는 이 클래스 재설정에서 지워지지 않게 그대로 이어 준다.
+        confirmBtn.className = (changedCount === 0
+          ? 'text-[11px] font-bold px-1.5 py-0.5 rounded-lg border bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed whitespace-nowrap'
+          : 'text-[11px] font-bold px-1.5 py-0.5 rounded-lg border bg-rose-600 text-white border-rose-400 shadow-sm transition active:scale-95 whitespace-nowrap') + (isTeammateEditMode ? '' : ' hidden');
       }
     }
 
