@@ -158,15 +158,12 @@
     #app-numpad button.numpad-act.ok { background: #2563eb; color: #ffffff; border: 1px solid #3b82f6; }
     #app-numpad button.numpad-act:active { transform: scale(0.97); }
     /* 키패드가 올라오면 기록 입력 팝업을 위로 붙이고, 키패드 높이만큼 팝업 높이를 줄여
-       입력칸과 하단 버튼이 키패드에 가리지 않게 한다(높이는 JS가 실제 픽셀로 넣는다).
-       팝업 안은 문자 키보드가 올라왔을 때와 같이 전체가 스크롤되어 숫자 입력칸을 자유롭게 볼 수 있다. */
+       입력칸과 하단 [추가]·[저장] 버튼이 키패드에 가리지 않게 한다(높이는 JS가 실제 픽셀로 넣는다).
+       가운데 입력 영역만 스크롤되어 숫자칸을 그대로 볼 수 있다. */
     body.numpad-open #modal-record { align-items: flex-start !important; }
     body.numpad-open #modal-record .modal-panel {
       max-height: calc(var(--app-vh, 100dvh) - var(--numpad-total-h, 232px) - 24px);
     }
-    body.numpad-open #modal-record form { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-    body.numpad-open #modal-record .modal-fixed { flex: 0 0 auto; }
-    body.numpad-open #modal-record .modal-scroll { flex: 0 0 auto; min-height: 0; overflow: visible; }
     /* PC(마우스·정밀 포인터, 넓은 화면)에서는 자체 키패드를 쓰지 않고 물리 키보드로 직접 입력한다. */
     @media (hover: hover) and (pointer: fine) and (min-width: 768px) {
       #app-numpad { display: none !important; }
